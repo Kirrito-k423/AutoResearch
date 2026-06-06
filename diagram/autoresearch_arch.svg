@@ -1,0 +1,293 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1380" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif">
+<defs>
+  <linearGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="#1E3A8A"/>
+    <stop offset="100%" stop-color="#3B82F6"/>
+  </linearGradient>
+  <linearGradient id="pinkGrad" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#FEE2E2"/>
+    <stop offset="100%" stop-color="#FECACA"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="2000" height="1380" rx="10" ry="10" fill="#F6F8FB" stroke="none" stroke-width="0" opacity="1.0"/>
+<rect x="0" y="0" width="2000" height="64" rx="10" ry="10" fill="url(#titleGrad)" stroke="none" stroke-width="0" opacity="1.0"/>
+<text x="1000.0" y="28" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="20" fill="#FFFFFF" text-anchor="middle" font-weight="700">AutoResearch · 自驱式训练 &amp; 调试系统架构</text>
+<text x="1000.0" y="50" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#DBEAFE" text-anchor="middle" font-weight="400">数据 / 代码 / 评测 / 决策 一体化 · Cline + GLM-5 + wandb</text>
+<text x="482.0" y="80" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="13" fill="#1E3A8A" text-anchor="middle" font-weight="700">① 主工作区 · 模型与训练链路</text>
+<text x="1034.0" y="80" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="13" fill="#334155" text-anchor="middle" font-weight="700">② PI Agent · 智能体层</text>
+<text x="1552.0" y="80" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="13" fill="#065F46" text-anchor="middle" font-weight="700">③ 数据湖 · 记忆与决策</text>
+<rect x="122" y="110" width="720" height="100" rx="10" ry="10" fill="#FEF3C7" stroke="#F59E0B" stroke-width="1.5" opacity="1.0"/>
+<text x="146" y="134" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="14" fill="#92400E" text-anchor="start" font-weight="700">🏠  黄区虚拟环境</text>
+<text x="146" y="154" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#78350F" text-anchor="start" font-weight="400">venv / docker 隔离运行容器</text>
+<text x="146" y="172" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#78350F" text-anchor="start" font-weight="400">镜像内置 verl + 训练脚本</text>
+<text x="146" y="190" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#78350F" text-anchor="start" font-weight="400">提供端到端一致的执行底座</text>
+<rect x="1226" y="110" width="664" height="100" rx="10" ry="10" fill="#FEF3C7" stroke="#F59E0B" stroke-width="1.5" opacity="1.0"/>
+<text x="1250" y="134" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="14" fill="#92400E" text-anchor="start" font-weight="700">📦  运行日志 &amp; Debug 数据</text>
+<text x="1250" y="154" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#78350F" text-anchor="start" font-weight="400">· 训练运行 log（成功 / 失败）</text>
+<text x="1250" y="172" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#78350F" text-anchor="start" font-weight="400">· profiling · 内存快照</text>
+<text x="1250" y="190" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#78350F" text-anchor="start" font-weight="400">· plog / debug info / artifact</text>
+<text x="116" y="156.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="end" font-weight="600">从私仓</text>
+<text x="116" y="170.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="end" font-weight="600">拉取</text>
+<path d="M120,160.0 L124,160.0" fill="none" stroke="#475569" stroke-width="1.2"/><path d="M116.8,163.5 L124.00,160.00 L116.8,156.5" fill="none" stroke="#475569" stroke-width="1.2" stroke-linejoin="round"/>
+<path d="M1558.0,210 L1558.0,240" fill="none" stroke="#475569" stroke-width="1.4"/><path d="M1554.5,232.8 L1558.00,240.00 L1561.5,232.8" fill="none" stroke="#475569" stroke-width="1.4" stroke-linejoin="round"/>
+<rect x="30" y="230" width="80" height="600" rx="10" ry="10" fill="#E2E8F0" stroke="#64748B" stroke-width="1.2" opacity="1.0"/>
+<text x="70.0" y="254" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="18" fill="#0F172A" text-anchor="middle" font-weight="700">☁️</text>
+<text x="70.0" y="276" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#0F172A" text-anchor="middle" font-weight="700">GitHub</text>
+<text x="70.0" y="292" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#0F172A" text-anchor="middle" font-weight="700">备份</text>
+<g transform="translate(70.0,530.0)">
+  <path d="M-22,-30 L22,-30 M22,-30 L12,-36 M22,-30 L12,-24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M22,30 L-22,30 M-22,30 L-12,24 M-22,30 L-12,36" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<rect x="1890" y="230" width="80" height="600" rx="10" ry="10" fill="#E2E8F0" stroke="#64748B" stroke-width="1.2" opacity="1.0"/>
+<text x="1930.0" y="254" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="18" fill="#0F172A" text-anchor="middle" font-weight="700">💾</text>
+<text x="1930.0" y="276" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#0F172A" text-anchor="middle" font-weight="700">数据</text>
+<text x="1930.0" y="292" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#0F172A" text-anchor="middle" font-weight="700">备份</text>
+<g transform="translate(1930.0,530.0)">
+  <path d="M-22,-30 L22,-30 M22,-30 L12,-36 M22,-30 L12,-24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M22,30 L-22,30 M-22,30 L-12,24 M-22,30 L-12,36" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<rect x="122" y="240" width="720" height="130" rx="10" ry="10" fill="#DBEAFE" stroke="#3B82F6" stroke-width="1.6" opacity="1.0"/>
+<text x="138" y="260" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="13" fill="#1E3A8A" text-anchor="start" font-weight="700">verl-DFX  ·  训练/推理能力底座</text>
+<rect x="146" y="280" width="130" height="70" rx="10" ry="10" fill="#FFFFFF" stroke="#93C5FD" stroke-width="1.2" opacity="1.0"/>
+<text x="211.0" y="302" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#1E3A8A" text-anchor="middle" font-weight="700">putils</text>
+<text x="211.0" y="322" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">工具集</text>
+<text x="211.0" y="338" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">Path Util</text>
+<rect x="292" y="280" width="530" height="70" rx="10" ry="10" fill="#EFF6FF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/>
+<text x="557.0" y="296" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1E40AF" text-anchor="middle" font-weight="700">verl 原仓  (verl 原生能力 · mode=x 切换)</text>
+<rect x="302.0" y="306" width="125.0" height="36" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/>
+<text x="364.5" y="328.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1E3A8A" text-anchor="middle" font-weight="600">FSDP</text>
+<rect x="433.0" y="306" width="125.0" height="36" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/>
+<text x="495.5" y="328.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1E3A8A" text-anchor="middle" font-weight="600">x-bridge</text>
+<rect x="564.0" y="306" width="125.0" height="36" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/>
+<text x="626.5" y="328.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1E3A8A" text-anchor="middle" font-weight="600">vllm</text>
+<rect x="695.0" y="306" width="125.0" height="36" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/>
+<text x="757.5" y="328.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1E3A8A" text-anchor="middle" font-weight="600">sglang…</text>
+<text x="116" y="301.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="start" font-weight="600">同步到</text>
+<text x="116" y="315.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="start" font-weight="600">私仓</text>
+<path d="M120,305.0 L124,305.0" fill="none" stroke="#475569" stroke-width="1.2"/><path d="M116.8,308.5 L124.00,305.00 L116.8,301.5" fill="none" stroke="#475569" stroke-width="1.2" stroke-linejoin="round"/>
+<rect x="302.0" y="376" width="360" height="18" rx="4" ry="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="0.8" opacity="1.0"/>
+<text x="482.0" y="388" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">通过 mode=x 使能不同 skill 且场景需要的代码</text>
+<path d="M482.0,394 L482.0,396" fill="none" stroke="#475569" stroke-width="1.2"/><path d="M478.5,388.8 L482.00,396.00 L485.5,388.8" fill="none" stroke="#475569" stroke-width="1.2" stroke-linejoin="round"/>
+<rect x="122" y="400" width="720" height="220" rx="10" ry="10" fill="#DBEAFE" stroke="#3B82F6" stroke-width="1.6" opacity="1.0"/>
+<text x="138" y="420" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="13" fill="#1E3A8A" text-anchor="start" font-weight="700">verl-workspace-adapter  ·  场景经验 / 治理与约束</text>
+<text x="826" y="420" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#475569" text-anchor="end" font-weight="500">(对接 DFX · 训练全流程 Skill 集)</text>
+<rect x="138.0" y="438" width="108.0" height="90" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.2" opacity="1.0"/>
+<rect x="146.0" y="446" width="44" height="16" rx="3" ry="3" fill="#EFF6FF" stroke="#60A5FA" stroke-width="0.8" opacity="1.0"/>
+<text x="168.0" y="458" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="9" fill="#60A5FA" text-anchor="middle" font-weight="700">SKILL</text>
+<text x="192.0" y="468" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1F2937" text-anchor="middle" font-weight="700">环境搭建 (verl)</text>
+<text x="192.0" y="482" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">沉淀脚本 / JSON</text>
+<text x="192.0" y="494" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">验收条件自检</text>
+<rect x="254.0" y="438" width="108.0" height="90" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.2" opacity="1.0"/>
+<rect x="262.0" y="446" width="44" height="16" rx="3" ry="3" fill="#EFF6FF" stroke="#60A5FA" stroke-width="0.8" opacity="1.0"/>
+<text x="284.0" y="458" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="9" fill="#60A5FA" text-anchor="middle" font-weight="700">SKILL</text>
+<text x="308.0" y="468" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1F2937" text-anchor="middle" font-weight="700">verl-env-doctor</text>
+<text x="308.0" y="482" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">检查代理 · NPU</text>
+<text x="308.0" y="494" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">CANN · torch_npu</text>
+<text x="308.0" y="506" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">Ray · 依赖 / 数据集</text>
+<rect x="370.0" y="438" width="108.0" height="90" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.2" opacity="1.0"/>
+<rect x="378.0" y="446" width="44" height="16" rx="3" ry="3" fill="#EFF6FF" stroke="#60A5FA" stroke-width="0.8" opacity="1.0"/>
+<text x="400.0" y="458" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="9" fill="#60A5FA" text-anchor="middle" font-weight="700">SKILL</text>
+<text x="424.0" y="468" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1F2937" text-anchor="middle" font-weight="700">任务运行</text>
+<text x="424.0" y="482" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">拉起训练任务</text>
+<text x="424.0" y="494" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">收集过程数据</text>
+<rect x="486.0" y="438" width="108.0" height="90" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.2" opacity="1.0"/>
+<rect x="494.0" y="446" width="44" height="16" rx="3" ry="3" fill="#EFF6FF" stroke="#60A5FA" stroke-width="0.8" opacity="1.0"/>
+<text x="516.0" y="458" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="9" fill="#60A5FA" text-anchor="middle" font-weight="700">SKILL</text>
+<text x="540.0" y="468" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1F2937" text-anchor="middle" font-weight="700">性能采集</text>
+<text x="540.0" y="482" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">推理 &amp; 训练</text>
+<text x="540.0" y="494" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">指标 · timeline</text>
+<rect x="602.0" y="438" width="108.0" height="90" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.2" opacity="1.0"/>
+<rect x="610.0" y="446" width="44" height="16" rx="3" ry="3" fill="#EFF6FF" stroke="#60A5FA" stroke-width="0.8" opacity="1.0"/>
+<text x="632.0" y="458" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="9" fill="#60A5FA" text-anchor="middle" font-weight="700">SKILL</text>
+<text x="656.0" y="468" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1F2937" text-anchor="middle" font-weight="700">显存采集</text>
+<text x="656.0" y="482" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">峰值 · 曲线</text>
+<text x="656.0" y="494" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">OOM 风险提示</text>
+<rect x="718.0" y="438" width="108.0" height="90" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.2" opacity="1.0"/>
+<rect x="726.0" y="446" width="44" height="16" rx="3" ry="3" fill="#EFF6FF" stroke="#60A5FA" stroke-width="0.8" opacity="1.0"/>
+<text x="748.0" y="458" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="9" fill="#60A5FA" text-anchor="middle" font-weight="700">SKILL</text>
+<text x="772.0" y="468" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1F2937" text-anchor="middle" font-weight="700">下游评测</text>
+<text x="772.0" y="482" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">任务级指标</text>
+<text x="772.0" y="494" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">结果回写</text>
+<rect x="138.0" y="536" width="340.0" height="80" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.3" opacity="1.0" stroke-dasharray="4 3"/>
+<rect x="146.0" y="544" width="44" height="16" rx="3" ry="3" fill="#FFFFFF" stroke="#60A5FA" stroke-width="0.8" opacity="1.0"/>
+<text x="168.0" y="556" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="9" fill="#60A5FA" text-anchor="middle" font-weight="700">SKILL</text>
+<text x="308.0" y="566" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1F2937" text-anchor="middle" font-weight="700">训练一致性分析</text>
+<text x="308.0" y="580" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">对比多 run</text>
+<text x="308.0" y="592" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">偏差定位</text>
+<rect x="486.0" y="536" width="340.0" height="80" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.3" opacity="1.0" stroke-dasharray="4 3"/>
+<rect x="494.0" y="544" width="44" height="16" rx="3" ry="3" fill="#FFFFFF" stroke="#60A5FA" stroke-width="0.8" opacity="1.0"/>
+<text x="516.0" y="556" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="9" fill="#60A5FA" text-anchor="middle" font-weight="700">SKILL</text>
+<text x="656.0" y="566" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1F2937" text-anchor="middle" font-weight="700">自动分析</text>
+<text x="656.0" y="580" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">异常归因</text>
+<text x="656.0" y="592" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">建议方案</text>
+<rect x="122" y="650" width="720" height="400" rx="10" ry="10" fill="#DBEAFE" stroke="#3B82F6" stroke-width="1.6" opacity="1.0"/>
+<text x="138" y="670" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="13" fill="#1E3A8A" text-anchor="start" font-weight="700">workspace-core  ·  工具接口与协议</text>
+<text x="826" y="670" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#475569" text-anchor="end" font-weight="500">(统一的 Skill 容器 / Session 编排)</text>
+<rect x="138" y="690" width="336.0" height="109.0" rx="10" ry="10" fill="#EFF6FF" stroke="#60A5FA" stroke-width="1.2" opacity="1.0"/>
+<text x="150" y="708" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#1E3A8A" text-anchor="start" font-weight="700">▎执行环境与沙箱</text>
+<rect x="150.0" y="720" width="102.0" height="46" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/>
+<rect x="179.0" y="725" width="44" height="13" rx="3" ry="3" fill="#EFF6FF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/><text x="201.0" y="735.5" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="8" fill="#1E40AF" text-anchor="middle" font-weight="600">SKILL</text>
+<text x="201.0" y="747" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#1F2937" text-anchor="middle" font-weight="700">园区网络</text>
+<text x="201.0" y="760" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="8" fill="#64748B" text-anchor="middle" font-weight="400">配置管理</text>
+<rect x="258.0" y="720" width="102.0" height="46" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/>
+<rect x="287.0" y="725" width="44" height="13" rx="3" ry="3" fill="#EFF6FF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/><text x="309.0" y="735.5" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="8" fill="#1E40AF" text-anchor="middle" font-weight="600">SKILL</text>
+<text x="309.0" y="747" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#1F2937" text-anchor="middle" font-weight="700">环境搭建</text>
+<text x="309.0" y="760" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="8" fill="#64748B" text-anchor="middle" font-weight="400">(数据库)</text>
+<rect x="366.0" y="720" width="102.0" height="46" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/>
+<rect x="395.0" y="725" width="44" height="13" rx="3" ry="3" fill="#EFF6FF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/><text x="417.0" y="735.5" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="8" fill="#1E40AF" text-anchor="middle" font-weight="600">SKILL</text>
+<text x="417.0" y="747" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#1F2937" text-anchor="middle" font-weight="700">远程连接</text>
+<text x="417.0" y="760" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="8" fill="#64748B" text-anchor="middle" font-weight="400">SSH/隧道</text>
+<rect x="150" y="773.0" width="312.0" height="20" rx="4" ry="4" fill="#D1FAE5" stroke="#10B981" stroke-width="1.0" opacity="1.0"/>
+<text x="306.0" y="787.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#065F46" text-anchor="middle" font-weight="600">沉淀 / 脚本 / 验收条件（前/后置 hook 实现）</text>
+<rect x="490.0" y="690" width="336.0" height="109.0" rx="10" ry="10" fill="#EFF6FF" stroke="#60A5FA" stroke-width="1.2" opacity="1.0"/>
+<text x="502.0" y="708" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#1E3A8A" text-anchor="start" font-weight="700">▎工具接口与协议</text>
+<rect x="502.0" y="720" width="102.0" height="56" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/>
+<rect x="531.0" y="725" width="44" height="13" rx="3" ry="3" fill="#EFF6FF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/><text x="553.0" y="735.5" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="8" fill="#1E40AF" text-anchor="middle" font-weight="600">SKILL</text>
+<text x="553.0" y="747" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#1F2937" text-anchor="middle" font-weight="700">执行</text>
+<text x="553.0" y="760" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="8" fill="#475569" text-anchor="middle" font-weight="400">会话上下文</text>
+<text x="553.0" y="770" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="8" fill="#475569" text-anchor="middle" font-weight="400">管理</text>
+<rect x="610.0" y="720" width="102.0" height="56" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/>
+<rect x="639.0" y="725" width="44" height="13" rx="3" ry="3" fill="#EFF6FF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/><text x="661.0" y="735.5" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="8" fill="#1E40AF" text-anchor="middle" font-weight="600">SKILL</text>
+<text x="661.0" y="747" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#1F2937" text-anchor="middle" font-weight="700">性能采集</text>
+<text x="661.0" y="760" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="8" fill="#475569" text-anchor="middle" font-weight="400">带/不带堆栈</text>
+<text x="661.0" y="770" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="8" fill="#475569" text-anchor="middle" font-weight="400">有限大小</text>
+<rect x="718.0" y="720" width="102.0" height="56" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/>
+<rect x="747.0" y="725" width="44" height="13" rx="3" ry="3" fill="#EFF6FF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/><text x="769.0" y="735.5" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="8" fill="#1E40AF" text-anchor="middle" font-weight="600">SKILL</text>
+<text x="769.0" y="747" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#1F2937" text-anchor="middle" font-weight="700">显存采集</text>
+<text x="769.0" y="760" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="8" fill="#475569" text-anchor="middle" font-weight="400">峰值/趋势</text>
+<text x="769.0" y="770" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="8" fill="#475569" text-anchor="middle" font-weight="400">OOM 提示</text>
+<rect x="138" y="811.0" width="336.0" height="109.0" rx="10" ry="10" fill="#EFF6FF" stroke="#60A5FA" stroke-width="1.2" opacity="1.0"/>
+<text x="150" y="829.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#1E3A8A" text-anchor="start" font-weight="700">▎可观测性</text>
+<rect x="150.0" y="841.0" width="156.0" height="56" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/>
+<rect x="206.0" y="846.0" width="44" height="13" rx="3" ry="3" fill="#EFF6FF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/><text x="228.0" y="856.5" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="8" fill="#1E40AF" text-anchor="middle" font-weight="600">SKILL</text>
+<text x="228.0" y="868.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#1F2937" text-anchor="middle" font-weight="700">对比可视化</text>
+<text x="228.0" y="886.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="9" fill="#475569" text-anchor="middle" font-weight="400">生成图表</text>
+<rect x="312.0" y="841.0" width="156.0" height="56" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/>
+<rect x="368.0" y="846.0" width="44" height="13" rx="3" ry="3" fill="#EFF6FF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/><text x="390.0" y="856.5" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="8" fill="#1E40AF" text-anchor="middle" font-weight="600">SKILL</text>
+<text x="390.0" y="868.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#1F2937" text-anchor="middle" font-weight="700">关键信息提取</text>
+<text x="390.0" y="886.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="9" fill="#475569" text-anchor="middle" font-weight="400">字段抽取/对齐</text>
+<rect x="490.0" y="811.0" width="336.0" height="109.0" rx="10" ry="10" fill="#EFF6FF" stroke="#60A5FA" stroke-width="1.2" opacity="1.0"/>
+<text x="502.0" y="829.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#1E3A8A" text-anchor="start" font-weight="700">▎生命周期与编排</text>
+<rect x="502.0" y="841.0" width="312.0" height="56" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.2" opacity="1.0" stroke-dasharray="4 3"/>
+<rect x="514.0" y="847.0" width="44" height="13" rx="3" ry="3" fill="#FFEDD5" stroke="#F97316" stroke-width="1.0" opacity="1.0"/><text x="536.0" y="857.5" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="8" fill="#9A3412" text-anchor="middle" font-weight="600">SKILL</text>
+<text x="658.0" y="869.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1F2937" text-anchor="middle" font-weight="700">自动研究</text>
+<text x="658.0" y="883.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="8" fill="#475569" text-anchor="middle" font-weight="400">已完成 / 未完成 → 启动 / 成功 /</text>
+<text x="658.0" y="893.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="8" fill="#475569" text-anchor="middle" font-weight="400">失败 / 重启 / 收敛</text>
+<rect x="138" y="1000" width="688" height="40" rx="8" ry="8" fill="#FFFFFF" stroke="#3B82F6" stroke-width="1.4" opacity="1.0"/>
+<rect x="146" y="1006" width="100" height="14" rx="3" ry="3" fill="#DBEAFE" stroke="#3B82F6" stroke-width="1.0" opacity="1.0"/><text x="196.0" y="1017.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#1E3A8A" text-anchor="middle" font-weight="700">Run / Session 层</text>
+<text x="482.0" y="1018" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">(完全托管给强大的工具层实现)  ·  日志 / 进程 / 资源 lease / 远程同步</text>
+<text x="482.0" y="1032" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="9" fill="#64748B" text-anchor="middle" font-weight="400">为上层 PI Agent 提供可复现的执行环境</text>
+<rect x="854" y="240" width="360" height="70" rx="10" ry="10" fill="#F1F5F9" stroke="#94A3B8" stroke-width="1.4" opacity="1.0"/>
+<rect x="866" y="250" width="56" height="16" rx="3" ry="3" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.0" opacity="1.0"/><text x="894.0" y="262.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#0F172A" text-anchor="middle" font-weight="700">工具层</text>
+<text x="894" y="262" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#334155" text-anchor="start" font-weight="600">Cline</text>
+<rect x="926" y="250" width="56" height="16" rx="3" ry="3" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.0" opacity="1.0"/><text x="954.0" y="262.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#0F172A" text-anchor="middle" font-weight="700">模型层</text>
+<text x="954" y="262" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#334155" text-anchor="start" font-weight="600">GLM-5</text>
+<rect x="866" y="274" width="96" height="16" rx="3" ry="3" fill="#FEE2E2" stroke="#EF4444" stroke-width="1.0" opacity="1.0"/><text x="914.0" y="286.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#991B1B" text-anchor="middle" font-weight="700">生命周期与编排</text>
+<text x="1202" y="262" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#0F172A" text-anchor="end" font-weight="700">📡  Agent 引擎</text>
+<rect x="854" y="322" width="360" height="110" rx="14" ry="14" fill="#FFFFFF" stroke="#3B82F6" stroke-width="2.0" opacity="1.0"/>
+<text x="1034.0" y="356" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="18" fill="#1E3A8A" text-anchor="middle" font-weight="800">🧠  PI Agent</text>
+<text x="1034.0" y="380" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="14" fill="#1E40AF" text-anchor="middle" font-weight="700">Oh-My-Pi</text>
+<text x="1034.0" y="404" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">阅读理解代码 · 修复 Bug · 开关特性</text>
+<text x="1034.0" y="420" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="600">任务 → 决策 → 行动  ↻</text>
+<rect x="854" y="446" width="360" height="220" rx="10" ry="10" fill="#F1F5F9" stroke="#94A3B8" stroke-width="1.2" opacity="1.0"/>
+<text x="866" y="464" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#0F172A" text-anchor="start" font-weight="700">▎核心工作循环</text>
+<rect x="866.0" y="482" width="92" height="50" rx="6" ry="6" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.1" opacity="1.0"/>
+<rect x="890.0" y="488" width="44" height="14" rx="3" ry="3" fill="#E2E8F0" stroke="#94A3B8" stroke-width="1.0" opacity="1.0"/><text x="912.0" y="499.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="9" fill="#0F172A" text-anchor="middle" font-weight="700">#1</text>
+<text x="912.0" y="522" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1F2937" text-anchor="middle" font-weight="700">测试运行</text>
+<rect x="988.0" y="482" width="92" height="50" rx="6" ry="6" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.1" opacity="1.0"/>
+<rect x="1012.0" y="488" width="44" height="14" rx="3" ry="3" fill="#E2E8F0" stroke="#94A3B8" stroke-width="1.0" opacity="1.0"/><text x="1034.0" y="499.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="9" fill="#0F172A" text-anchor="middle" font-weight="700">#2</text>
+<text x="1034.0" y="522" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1F2937" text-anchor="middle" font-weight="700">日志</text>
+<rect x="1110.0" y="482" width="92" height="50" rx="6" ry="6" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.1" opacity="1.0"/>
+<rect x="1134.0" y="488" width="44" height="14" rx="3" ry="3" fill="#E2E8F0" stroke="#94A3B8" stroke-width="1.0" opacity="1.0"/><text x="1156.0" y="499.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="9" fill="#0F172A" text-anchor="middle" font-weight="700">#3</text>
+<text x="1156.0" y="522" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1F2937" text-anchor="middle" font-weight="700">分析报告</text>
+<rect x="866.0" y="560" width="92" height="50" rx="6" ry="6" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.1" opacity="1.0"/>
+<rect x="890.0" y="566" width="44" height="14" rx="3" ry="3" fill="#E2E8F0" stroke="#94A3B8" stroke-width="1.0" opacity="1.0"/><text x="912.0" y="577.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="9" fill="#0F172A" text-anchor="middle" font-weight="700">#4</text>
+<text x="912.0" y="600" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1F2937" text-anchor="middle" font-weight="700">分析代码</text>
+<rect x="988.0" y="560" width="92" height="50" rx="6" ry="6" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.1" opacity="1.0"/>
+<rect x="1012.0" y="566" width="44" height="14" rx="3" ry="3" fill="#E2E8F0" stroke="#94A3B8" stroke-width="1.0" opacity="1.0"/><text x="1034.0" y="577.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="9" fill="#0F172A" text-anchor="middle" font-weight="700">#5</text>
+<text x="1034.0" y="600" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1F2937" text-anchor="middle" font-weight="700">修改代码</text>
+<rect x="1110.0" y="560" width="92" height="50" rx="6" ry="6" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.1" opacity="1.0"/>
+<rect x="1134.0" y="566" width="44" height="14" rx="3" ry="3" fill="#E2E8F0" stroke="#94A3B8" stroke-width="1.0" opacity="1.0"/><text x="1156.0" y="577.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="9" fill="#0F172A" text-anchor="middle" font-weight="700">#6</text>
+<text x="1156.0" y="600" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1F2937" text-anchor="middle" font-weight="700">目标</text>
+<text x="1222" y="548.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="start" font-weight="400">遵循 skills 规格</text>
+<text x="1222" y="562.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="start" font-weight="400">维护数据信息</text>
+<path d="M1214,556.0 L1224,556.0" fill="none" stroke="#475569" stroke-width="1.2"/><path d="M1216.8,559.5 L1224.00,556.00 L1216.8,552.5" fill="none" stroke="#475569" stroke-width="1.2" stroke-linejoin="round"/>
+<text x="846" y="842.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="end" font-weight="600">遵循与</text>
+<text x="846" y="856.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="end" font-weight="600">消化</text>
+<path d="M850,670 Q842,850.0 850,1030" fill="none" stroke="#94A3B8" stroke-width="1.2"/>
+<path d="M850,670 l-4,-3 M850,670 l-4,3" fill="none" stroke="#94A3B8" stroke-width="1.2"/>
+<path d="M850,1030 l-4,-3 M850,1030 l-4,3" fill="none" stroke="#94A3B8" stroke-width="1.2"/>
+<rect x="1226" y="240" width="664" height="30" rx="10" ry="10" fill="#DBEAFE" stroke="#3B82F6" stroke-width="1.4" opacity="1.0"/>
+<text x="1558.0" y="260" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="13" fill="#1E3A8A" text-anchor="middle" font-weight="700">wandb / 数据湖  ·  上下文 &amp; 记忆管理</text>
+<rect x="1226" y="278" width="664" height="90" rx="10" ry="10" fill="#EFF6FF" stroke="#60A5FA" stroke-width="1.2" opacity="1.0"/>
+<text x="1238" y="296" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#1E3A8A" text-anchor="start" font-weight="700">▎原始数据</text>
+<rect x="1238.0" y="310" width="209.33333333333334" height="50" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/>
+<text x="1342.6666666666667" y="332" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1E3A8A" text-anchor="middle" font-weight="700">运行 log</text>
+<text x="1342.6666666666667" y="348" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">成功 / 失败</text>
+<rect x="1453.3333333333333" y="310" width="209.33333333333334" height="50" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/>
+<text x="1558.0" y="332" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1E3A8A" text-anchor="middle" font-weight="700">profiling</text>
+<text x="1558.0" y="348" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">性能画像</text>
+<rect x="1668.6666666666667" y="310" width="209.33333333333334" height="50" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/>
+<text x="1773.3333333333335" y="332" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1E3A8A" text-anchor="middle" font-weight="700">历史会话</text>
+<text x="1773.3333333333335" y="348" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">上下文回放</text>
+<rect x="1226" y="378" width="664" height="96" rx="10" ry="10" fill="#EFF6FF" stroke="#60A5FA" stroke-width="1.2" opacity="1.0"/>
+<text x="1238" y="396" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#1E3A8A" text-anchor="start" font-weight="700">▎关键字段解析 &amp; 预处理</text>
+<rect x="1238.0" y="410" width="317.0" height="56" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/>
+<text x="1396.5" y="432" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1E3A8A" text-anchor="middle" font-weight="700">采集信息 + 初步建议</text>
+<text x="1396.5" y="450" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">性能 · 内存 · 精度 · 效果</text>
+<rect x="1561.0" y="410" width="317.0" height="56" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/>
+<text x="1719.5" y="432" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1E3A8A" text-anchor="middle" font-weight="700">脚本提取</text>
+<text x="1719.5" y="450" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">可复现的最小步骤</text>
+<path d="M1743.92,462 L1372.08,462" fill="none" stroke="#F97316" stroke-width="1.2"/><path d="M1379.3,458.5 L1372.08,462.00 L1379.3,465.5" fill="none" stroke="#F97316" stroke-width="1.2" stroke-linejoin="round"/>
+<rect x="1226" y="484" width="664" height="50" rx="8" ry="8" fill="url(#pinkGrad)" stroke="#EF4444" stroke-width="1.6" opacity="1.0"/>
+<rect x="1238" y="492" width="120" height="16" rx="3" ry="3" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.0" opacity="1.0"/><text x="1298.0" y="504.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#991B1B" text-anchor="middle" font-weight="700">Experiment Registry</text>
+<text x="1878" y="513.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#991B1B" text-anchor="end" font-weight="600">实验进度表 · 长期记忆 · 指导任务的下一步</text>
+<rect x="1226" y="544" width="664" height="90" rx="10" ry="10" fill="#EFF6FF" stroke="#60A5FA" stroke-width="1.2" opacity="1.0"/>
+<text x="1238" y="562" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#1E3A8A" text-anchor="start" font-weight="700">▎报告  (LLM 可读 md)</text>
+<rect x="1518.0" y="576" width="80" height="50" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.2" opacity="1.0" stroke-dasharray="4 3"/>
+<text x="1558.0" y="596" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#1E40AF" text-anchor="middle" font-weight="700">LLM</text>
+<text x="1558.0" y="612" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#1E40AF" text-anchor="middle" font-weight="700">分析</text>
+<rect x="1238" y="582" width="260.0" height="18" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/>
+<text x="1368.0" y="594" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#1F2937" text-anchor="middle" font-weight="600">md 分析报告（AI 交互）</text>
+<rect x="1238" y="604" width="260.0" height="18" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0"/>
+<text x="1368.0" y="616" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#1F2937" text-anchor="middle" font-weight="600">自动研究进度</text>
+<path d="M1518.0,601.0 L1500.0,591" fill="none" stroke="#475569" stroke-width="1.0"/><path d="M1508.0,591.5 L1500.00,591.00 L1504.6,597.5" fill="none" stroke="#475569" stroke-width="1.0" stroke-linejoin="round"/>
+<path d="M1518.0,601.0 L1500.0,613" fill="none" stroke="#475569" stroke-width="1.0"/><path d="M1504.1,606.1 L1500.00,613.00 L1507.9,611.9" fill="none" stroke="#475569" stroke-width="1.0" stroke-linejoin="round"/>
+<rect x="122" y="1080" width="576.0" height="110" rx="10" ry="10" fill="#DBEAFE" stroke="#3B82F6" stroke-width="1.5" opacity="1.0"/>
+<text x="410.0" y="1106" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="14" fill="#1E3A8A" text-anchor="middle" font-weight="700">📊  任务进度看板</text>
+<text x="410.0" y="1138" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#1F2937" text-anchor="middle" font-weight="500">监控各阶段流程的拆解与完成情况</text>
+<text x="410.0" y="1152" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#1F2937" text-anchor="middle" font-weight="500">（参考 AgentHub）</text>
+<rect x="706.0" y="1080" width="576.0" height="110" rx="10" ry="10" fill="#D1FAE5" stroke="#10B981" stroke-width="1.5" opacity="1.0"/>
+<text x="994.0" y="1106" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="14" fill="#065F46" text-anchor="middle" font-weight="700">📈  数据指标分析看板</text>
+<text x="994.0" y="1138" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#1F2937" text-anchor="middle" font-weight="500">wandb 集成：loss / acc / 吞吐</text>
+<text x="994.0" y="1152" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#1F2937" text-anchor="middle" font-weight="500">指标趋势 / 异常告警</text>
+<rect x="1290.0" y="1080" width="576.0" height="110" rx="10" ry="10" fill="#FFEDD5" stroke="#F97316" stroke-width="1.5" opacity="1.0"/>
+<text x="1578.0" y="1106" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="14" fill="#9A3412" text-anchor="middle" font-weight="700">🖥️  运行时资源看板</text>
+<text x="1578.0" y="1138" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#1F2937" text-anchor="middle" font-weight="500">Prometheus + Grafana</text>
+<text x="1578.0" y="1152" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#1F2937" text-anchor="middle" font-weight="500">GPU / 内存 / 网络 / 队列</text>
+<text x="1558.0" y="1072" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#065F46" text-anchor="middle" font-weight="600">↓  可视化 · 全过程监控</text>
+<line x1="1558.0" y1="636" x2="1558.0" y2="1064" stroke="#10B981" stroke-width="1.2" stroke-dasharray="4 3"/>
+<rect x="122" y="1214" width="460" height="70" rx="10" ry="10" fill="#FFFFFF" stroke="#3B82F6" stroke-width="1.6" opacity="1.0"/>
+<rect x="138" y="1224" width="96" height="18" rx="3" ry="3" fill="#DBEAFE" stroke="#3B82F6" stroke-width="1.0" opacity="1.0"/><text x="186.0" y="1237.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#1E3A8A" text-anchor="middle" font-weight="700">⚙️ 自动研究</text>
+<text x="352.0" y="1244" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="600">(定时任务 + 提示词：)</text>
+<text x="352.0" y="1262" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#1F2937" text-anchor="middle" font-weight="400">任务队列 → 生成提议 → 创建 session → 调用技能</text>
+<text x="352.0" y="1276" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#1F2937" text-anchor="middle" font-weight="400">→ 跑训练 → 生成简报</text>
+<rect x="1328.0" y="1214" width="460" height="70" rx="10" ry="10" fill="#FFFFFF" stroke="#10B981" stroke-width="1.6" opacity="1.0"/>
+<rect x="1344.0" y="1224" width="96" height="18" rx="3" ry="3" fill="#D1FAE5" stroke="#10B981" stroke-width="1.0" opacity="1.0"/><text x="1392.0" y="1237.0" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#065F46" text-anchor="middle" font-weight="700">👤  开发人员</text>
+<text x="1558.0" y="1252" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="12" fill="#1F2937" text-anchor="middle" font-weight="600">需求评审 · 异常介入 · 验收</text>
+<text x="1558.0" y="1270" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="400">查看看板 · 决策干预</text>
+<path d="M1328.0,1249.0 L584,1249.0" fill="none" stroke="#475569" stroke-width="1.2"/><path d="M591.2,1245.5 L584.00,1249.00 L591.2,1252.5" fill="none" stroke="#475569" stroke-width="1.2" stroke-linejoin="round"/>
+<path d="M352.0,1212 L352.0,1058" fill="none" stroke="#3B82F6" stroke-width="1.4" stroke-dasharray="5 4"/><path d="M355.5,1065.2 L352.00,1058.00 L348.5,1065.2" fill="none" stroke="#3B82F6" stroke-width="1.4" stroke-linejoin="round"/>
+<rect x="302.0" y="1192" width="100" height="16" rx="4" ry="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="0.8" opacity="1.0"/>
+<text x="352.0" y="1204" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="middle" font-weight="600">派发 / 调用</text>
+<rect x="1640" y="1320" width="330" height="46" rx="8" ry="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.0" opacity="1.0"/>
+<text x="1654" y="1336" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="11" fill="#0F172A" text-anchor="start" font-weight="700">图例 · Legend</text>
+<rect x="1656" y="1344" width="12" height="12" rx="10" ry="10" fill="#FEF3C7" stroke="#F59E0B" stroke-width="1.0" opacity="1.0"/>
+<text x="1674" y="1353" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="start" font-weight="400">数据 / 制品</text>
+<rect x="1734" y="1344" width="12" height="12" rx="10" ry="10" fill="#DBEAFE" stroke="#3B82F6" stroke-width="1.0" opacity="1.0"/>
+<text x="1752" y="1353" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="start" font-weight="400">主工作区</text>
+<rect x="1812" y="1344" width="12" height="12" rx="10" ry="10" fill="url(#pinkGrad)" stroke="#EF4444" stroke-width="1.0" opacity="1.0"/>
+<text x="1830" y="1353" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="start" font-weight="400">关键记忆</text>
+<rect x="1890" y="1344" width="12" height="12" rx="10" ry="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.0" opacity="1.0" stroke-dasharray="4 3"/>
+<text x="1908" y="1353" font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',sans-serif" font-size="10" fill="#475569" text-anchor="start" font-weight="400">规划中 Skill</text>
+</svg>

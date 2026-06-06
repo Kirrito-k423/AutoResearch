@@ -1,0 +1,39 @@
+{
+  "mode": "yolo",
+  "granularity": "standard",
+  "research": true,
+  "model_profile": "balanced",
+  "commit_docs": true,
+  "phase_validation": "strict",
+  "git": {
+    "branch_prefix": "codex/phase-",
+    "commit_message_format": "conventional",
+    "auto_push": false
+  },
+  "verification": {
+    "uat_required": true,
+    "two_pass": false,
+    "block_on_fail": true
+  },
+  "workflow": {
+    "discuss_before_plan": true,
+    "plan_before_execute": true,
+    "execute_atomically": true,
+    "verify_before_ship": true,
+    "ship_as_pr": true
+  },
+  "milestones": {
+    "current": "v1.0-minviable-loop",
+    "archive_path": ".planning/milestones"
+  },
+  "execution": {
+    "wave_based": true,
+    "max_concurrent_plans": 3,
+    "skip_research": false
+  },
+  "context": {
+    "preserve_session_log": true,
+    "auto_resume_on_clear": true
+  },
+  "notes": "GSD core defaults, customized for AutoResearch single-user single-machine setup. M1 = 14 phases. Each phase = 1 PR."
+}
