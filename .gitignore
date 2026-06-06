@@ -65,4 +65,5 @@ runs/
 .autoresearch/
 *.log
 wandb/
+!services/wandb/
 __experiment_logs__/
