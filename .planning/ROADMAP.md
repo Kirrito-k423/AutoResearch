@@ -27,9 +27,9 @@
 **Plans**: 3 plans
 Plans:
 
-- [ ] 01-01: 仓根文档（README + AGENTS + CLAUDE + LICENSE + .gitignore）
-- [ ] 01-02: docker-compose.yml 4 服务 + .env.example + 启动脚本
-- [ ] 01-03: `autoresearch services` CLI 子命令（status / start / stop）
+- [x] 01-01: 仓根文档（README + AGENTS + CLAUDE + LICENSE + .gitignore）
+- [x] 01-02: docker-compose.yml 4 服务 + .env.example + 启动脚本
+- [x] 01-03: `autoresearch services` CLI 子命令（status / start / stop）
 
 ### Phase 2: workspace-core 沉淀
 

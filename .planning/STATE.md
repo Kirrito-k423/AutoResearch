@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: MinViable Loop
-status: unknown
-last_updated: "2026-06-06T07:33:48.903Z"
-last_activity: 2026-06-06 — completed $gsd-new-project (PROJECT.md, REQUIREMENTS.md, ROADMAP.md, STATE.md, config.json)
+status: phase-1-complete
+last_updated: "2026-06-06T08:35:00.000Z"
+last_activity: 2026-06-06 — completed $gsd-execute-phase 1 (3/3 plans)
 progress:
   total_phases: 14
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 0
-  percent: 0
+  completed_plans: 3
+  percent: 7
 ---
 
 # State: AutoResearch v1.0
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 ## Position
 
 - **Milestone:** v1.0 MinViable Loop
-- **Phase:** 1 (not started)
-- **Plan:** 01-01 (next)
-- **Last activity:** 2026-06-06 — completed $gsd-new-project (PROJECT.md, REQUIREMENTS.md, ROADMAP.md, STATE.md, config.json)
+- **Phase:** 1 complete → next: 2 (not started)
+- **Plan:** — (all of phase 1 done)
+- **Last activity:** 2026-06-06 — completed $gsd-execute-phase 1 (3/3 plans + 3 SUMMARY.md)
 
 ## Session Continuity
 
@@ -40,25 +40,49 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 - **三沉淀层** = workspace-core / verl-workspace-adapter / datalake
 - **8 skill 1:1 映射** = 8 步最小循环
 
-### Files Created
+### Files Created (Phase 1)
 
-- `.planning/PROJECT.md` — project context
-- `.planning/REQUIREMENTS.md` — 88 REQ-IDs across 14 groups
-- `.planning/ROADMAP.md` — 14 phases, 38 plans total
-- `.planning/STATE.md` — this file
-- `.planning/config.json` — workflow preferences
+**plan 01-01 (仓根文档) — c1c755a + 2144ff6:**
+- `README.md` (39 行) — 极简宣言
+- `AGENTS.md` (97 行) — 单源真相
+- `CLAUDE.md` (symlink → AGENTS.md)
+- `LICENSE` (MIT)
+- `.gitignore` (Python / macOS / IDE / secrets / 项目特有)
+- `.planning/phases/01-repo-foundation-services/01-01-SUMMARY.md`
+
+**plan 01-02 (本地服务栈) — 270d25e + 79b5aab (fix) + 571716a:**
+- `services/README.md`
+- `services/archon/README.md` (D-05 锁定: 无 compose.yml)
+- `services/wandb/{compose.yml, README.md}` (wandb/local:0.17.5 端口 8080)
+- `services/prometheus/{compose.yml, prometheus.yml, README.md}` (self-scrape 端口 9090)
+- `services/grafana/{compose.yml, datasources.yml, README.md}` (双 datasource 端口 3000)
+- `.env.example` (4 端口变量)
+- `.planning/phases/01-repo-foundation-services/01-02-SUMMARY.md`
+
+**plan 01-03 (autoresearch services CLI) — 9ee922a + b03d682:**
+- `pyproject.toml` + `uv.lock`
+- `autoresearch/{__init__,__main__,cli}.py`
+- `autoresearch/services/{__init__,_common,status,start,stop}.py`
+- `tests/{__init__,test_cli,test_status,test_start_stop}.py` (11 个 pytest 测试全绿)
+- `.planning/phases/01-repo-foundation-services/01-03-SUMMARY.md`
 
 ### Open Questions
 
-None — all foundational decisions captured in PROJECT.md.
+None — Phase 1 范围内的所有决策都已锁定并落地。
+
+### Cross-Plan Issue Fixed
+
+- `01-01` 的 `.gitignore` 规则 `wandb/` 误把 `services/wandb/` 也排除
+  - 修复：`!services/wandb/` 反向放行
+  - 提交：`79b5aab` (独立 fix commit, 不混入 feat commit)
 
 ## Next Steps
 
-1. Run `$gsd-discuss-phase 1` to capture implementation decisions for Phase 1 (仓骨架与本地服务栈)
-2. Run `$gsd-plan-phase 1` to generate atomic plans
-3. Run `$gsd-execute-phase 1` to build Phase 1
-4. Run `$gsd-verify-work 1` to UAT-validate
-5. Run `$gsd-ship 1` to merge Phase 1 as PR
+1. **`$gsd-discuss-phase 2`** — 捕获 Phase 2 实施决策 (workspace-core 沉淀)
+2. **`$gsd-plan-phase 2`** — 生成 workspace-core 4 个 plan
+3. **`$gsd-execute-phase 2`** — 跑 workspace-core
+4. 重复 1-3 直到 Phase 14 (E2E smoke)
+5. **`$gsd-ship 14`** — PR 合并 v1.0
 
 ## Continuation Prompts
 
@@ -67,19 +91,28 @@ $gsd-progress
 ```
 
 ```
-$gsd-discuss-phase 1
+$gsd-discuss-phase 2
 ```
 
 ```
-$gsd-plan-phase 1
+$gsd-execute-phase 2
 ```
 
 ## Metrics
 
 - **Phases planned:** 14
-- **Plans planned:** 38
+- **Phases complete:** 1 (Phase 1: 仓骨架与本地服务栈)
+- **Plans planned:** 3 (Phase 1 only) / 38 (total)
+- **Plans complete:** 3 / 38 (7.9%)
 - **Requirements:** 88
-- **Estimated ship date:** TBD (depends on per-phase velocity)
+- **Phase 1 REQ 完成:** REPO-01..05 + SVC-01..04 + SVC-CHK-STAT-01..03 + SVC-CHK-START-01 + SVC-CHK-STOP-01 + SVC-CHK-DEPS-01 = 15 条
+- **Estimated ship date:** TBD
+
+## Branch & Commits
+
+- **Branch:** `codex/phase-01-repo-foundation-services`
+- **Latest commit:** `b03d682` docs(01): add plan 01-03 SUMMARY (autoresearch services CLI)
+- **Total commits (phase 1):** 7 (3 feat + 1 fix + 3 docs)
 
 ---
-*Last updated: 2026-06-06 after $gsd-new-project*
+*Last updated: 2026-06-06 after $gsd-execute-phase 1*
