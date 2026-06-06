@@ -71,5 +71,26 @@ def services_stop(lang: str) -> None:
     raise click.exceptions.Exit(run_stop(lang=lang))
 
 
+@main.command()
+@click.option(
+    "--server",
+    default=None,
+    help="server alias (走 config/config.yaml); 不传走 dummy server。",
+)
+@click.option(
+    "--lang",
+    default="zh",
+    type=click.Choice(["zh", "en"]),
+    help="输出语言 (zh/en).",
+)
+def ping(server: str | None, lang: str) -> None:
+    """SSH 端到端冒烟: echo ok + 反向代理通断 (D-18, D-19, D-20).
+
+    默认走 paramiko dummy server (无外部依赖). 传 --server <alias> 走真 SSH.
+    """
+    from autoresearch.ping import run_ping
+    raise click.exceptions.Exit(run_ping(server=server, lang=lang))
+
+
 if __name__ == "__main__":
     main()

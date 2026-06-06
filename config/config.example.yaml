@@ -1,0 +1,35 @@
+# config/config.example.yaml
+# 用途: autoresearch 配置文件模板. 复制为 config/config.yaml 后修改.
+# 真实 config/config.yaml 在 .gitignore 里, 不进 git.
+
+version: 1
+
+# === 远端服务器清单 (D-03 Bootstrap-then-Key) ===
+# 解开注释 + 填实际值即可; 不填则 autoresearch ping --server 走 dummy.
+servers:
+  # - name: nvidia-01
+  #   host: 192.168.13.154
+  #   port: 22
+  #   user: t00906153
+  #   identity_file: ~/.ssh/id_ed25519
+  #   # 首次连接一次性密码 (bootstrap 阶段用, 部署完 key 后可删)
+  #   bootstrap_password_secret: "<env:SSH_PASSWORD_NVIDIA_01>"
+
+# === 外网探针 (phase 6 启用) ===
+network:
+  enabled: true
+  targets:
+    - https://baidu.com
+    - https://huggingface.co
+    - https://github.com
+
+# === 日志 (D-16) ===
+log:
+  level: INFO
+  json: false
+  dir: ~/.autoresearch/logs
+
+# === wandb (phase 9 启用) ===
+wandb:
+  enabled: true
+  project: autoresearch
