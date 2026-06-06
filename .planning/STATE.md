@@ -1,3 +1,18 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: MinViable Loop
+status: unknown
+last_updated: "2026-06-06T07:33:48.903Z"
+last_activity: 2026-06-06 — completed $gsd-new-project (PROJECT.md, REQUIREMENTS.md, ROADMAP.md, STATE.md, config.json)
+progress:
+  total_phases: 14
+  completed_phases: 0
+  total_plans: 3
+  completed_plans: 0
+  percent: 0
+---
+
 # State: AutoResearch v1.0
 
 ## Project Reference
