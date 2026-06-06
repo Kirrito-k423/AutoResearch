@@ -1,0 +1,17 @@
+# services/prometheus/prometheus.yml
+# 用途: Prometheus 自监控 scrape config (D-03d)
+# 容器内: localhost:9090 是 Prometheus 自己
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    # self-scrape: 容器内 localhost 指容器自己
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels:
+          instance: prometheus-self
+
+  # M1 阶段只自监控；Phase 7 (REACH) 起加远程 pushgateway

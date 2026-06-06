@@ -1,0 +1,19 @@
+# services/wandb/compose.yml
+# 用途: 本地 wandb 服务（offline 模式可被 autoresearch collect 消费）
+# 端口: 8080 (固定, D-03c)
+
+services:
+  wandb:
+    image: wandb/local:0.17.5
+    container_name: ar-wandb
+    ports:
+      - "${PORT_WANDB:-8080}:8080"
+    environment:
+      - WANDB_BASE_URL=http://localhost:${PORT_WANDB:-8080}
+    volumes:
+      - wandb-data:/vol
+    restart: unless-stopped
+
+volumes:
+  wandb-data:
+    name: ar-wandb-data

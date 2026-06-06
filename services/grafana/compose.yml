@@ -1,0 +1,22 @@
+# services/grafana/compose.yml
+# 用途: 本地 Grafana（D-03e 预置 datasources；SVC-04）
+# 端口: 3000 (固定, D-03c)
+
+services:
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: ar-grafana
+    ports:
+      - "${PORT_GRAFANA:-3000}:3000"
+    volumes:
+      - ./datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    restart: unless-stopped
+
+volumes:
+  grafana-data:
+    name: ar-grafana-data

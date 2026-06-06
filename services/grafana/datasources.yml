@@ -1,0 +1,22 @@
+# services/grafana/datasources.yml
+# 用途: Grafana provisioning datasources（D-03e：Prometheus + 本地 wandb）
+# 关键: 用 host.docker.internal 连 Mac 上的 wandb（RESEARCH Pitfall 1）
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: "15s"
+
+  - name: wandb
+    type: grafana-simple-json-datasource
+    access: proxy
+    # 容器内 localhost 是容器自己；用 host.docker.internal 指 Mac 主机
+    url: http://host.docker.internal:${PORT_WANDB:-8080}
+    editable: false
