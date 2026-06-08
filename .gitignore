@@ -67,3 +67,7 @@ runs/
 wandb/
 !services/wandb/
 __experiment_logs__/
+
+# --- 真实配置 (含明文密码, 不能进 git) ---
+config/config.yaml
+config/*.local.yaml
