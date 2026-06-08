@@ -34,9 +34,10 @@ def test_keyring_get_missing_returns_1():
 
 
 def test_keyring_delete_not_found_returns_1():
+    import keyring
     mock_kr = MagicMock()
-    err_cls = getattr(__import__("keyring").errors, "PasswordDeleteError", Exception)
-    mock_kr.delete_password.side_effect = err_cls("not found")
+    # keyring 25.x 必有 PasswordDeleteError; 不再用 Exception 兜底
+    mock_kr.delete_password.side_effect = keyring.errors.PasswordDeleteError("not found")
     with patch("autoresearch.config.keyring_cli._backend_or_die", return_value=mock_kr):
         rc = run_keyring(action="delete", name="NOPE", lang="zh")
     assert rc == 1
