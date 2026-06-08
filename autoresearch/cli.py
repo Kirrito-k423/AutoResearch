@@ -130,5 +130,49 @@ def config_show(cfg_path: str | None, as_json: bool, lang: str) -> None:
     raise click.exceptions.Exit(run_show(config=cfg_path, lang=lang, as_json=as_json))
 
 
+# === Phase 3 / Skill 01: keyring sub-group ===
+
+@config.group()
+def keyring_grp() -> None:
+    """macOS Keychain / 系统 keyring 集成 (D-05)."""
+    pass
+
+
+@keyring_grp.command(name="set")
+@click.argument("name")
+@click.option("--value", required=True, help="要存的密码值.")
+@click.option("--lang", default="zh", type=click.Choice(["zh", "en"]))
+def config_keyring_set(name: str, value: str, lang: str) -> None:
+    """存密码到 keyring: autoresearch/<name>."""
+    from autoresearch.config import run_keyring
+    raise click.exceptions.Exit(run_keyring(action="set", name=name, value=value, lang=lang))
+
+
+@keyring_grp.command(name="get")
+@click.argument("name")
+@click.option("--lang", default="zh", type=click.Choice(["zh", "en"]))
+def config_keyring_get(name: str, lang: str) -> None:
+    """从 keyring 读密码: autoresearch/<name>."""
+    from autoresearch.config import run_keyring
+    raise click.exceptions.Exit(run_keyring(action="get", name=name, lang=lang))
+
+
+@keyring_grp.command(name="delete")
+@click.argument("name")
+@click.option("--lang", default="zh", type=click.Choice(["zh", "en"]))
+def config_keyring_delete(name: str, lang: str) -> None:
+    """从 keyring 删密码."""
+    from autoresearch.config import run_keyring
+    raise click.exceptions.Exit(run_keyring(action="delete", name=name, lang=lang))
+
+
+@keyring_grp.command(name="list")
+@click.option("--lang", default="zh", type=click.Choice(["zh", "en"]))
+def config_keyring_list(lang: str) -> None:
+    """提示 keyring 无原生 list API (Phase 2 D-09 已说明)."""
+    from autoresearch.config import run_keyring
+    raise click.exceptions.Exit(run_keyring(action="list", name="", lang=lang))
+
+
 if __name__ == "__main__":
     main()
