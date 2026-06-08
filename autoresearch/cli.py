@@ -92,5 +92,43 @@ def ping(server: str | None, lang: str) -> None:
     raise click.exceptions.Exit(run_ping(server=server, lang=lang))
 
 
+# === Phase 3 / Skill 01: customer-config ===
+
+@main.group()
+def config() -> None:
+    """管理配置: 模板生成 / 校验 / 脱敏查看 (Skill 01)."""
+    pass
+
+
+@config.command(name="init")
+@click.option("--force", is_flag=True, help="覆盖现有 config/config.yaml.")
+@click.option("--config", "cfg_path", default=None, help="写到指定路径 (默认 ./config/config.yaml).")
+@click.option("--lang", default="zh", type=click.Choice(["zh", "en"]))
+def config_init(force: bool, cfg_path: str | None, lang: str) -> None:
+    """生成 config/config.yaml 模板 (复制 config.example.yaml)."""
+    from autoresearch.config import run_init
+    raise click.exceptions.Exit(run_init(force=force, config=cfg_path, lang=lang))
+
+
+@config.command(name="validate")
+@click.option("--config", "cfg_path", default=None, help="校验指定文件 (默认 ./config/config.yaml).")
+@click.option("--json", "as_json", is_flag=True, help="JSON 输出.")
+@click.option("--lang", default="zh", type=click.Choice(["zh", "en"]))
+def config_validate(cfg_path: str | None, as_json: bool, lang: str) -> None:
+    """校验现有 config 走 Pydantic + 中文错误."""
+    from autoresearch.config import run_validate
+    raise click.exceptions.Exit(run_validate(config=cfg_path, lang=lang, as_json=as_json))
+
+
+@config.command(name="show")
+@click.option("--config", "cfg_path", default=None, help="查看指定文件 (默认 ./config/config.yaml).")
+@click.option("--json", "as_json", is_flag=True, help="JSON 输出 (敏感字段已脱敏).")
+@click.option("--lang", default="zh", type=click.Choice(["zh", "en"]))
+def config_show(cfg_path: str | None, as_json: bool, lang: str) -> None:
+    """打印配置, 敏感字段显示为 *** (CFG-SHOW-01)."""
+    from autoresearch.config import run_show
+    raise click.exceptions.Exit(run_show(config=cfg_path, lang=lang, as_json=as_json))
+
+
 if __name__ == "__main__":
     main()
