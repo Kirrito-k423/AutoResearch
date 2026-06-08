@@ -114,3 +114,37 @@ def test_dummy_ssh_server_unknown_command_returns_nonzero():
             exit_code, out, err = c.exec("ls -la /", timeout=5.0)
     assert exit_code != 0
     assert "unknown" in out.lower()
+
+# === D-04 fix / phase 2 gap: identity_file 路径含 ~ 时必须 expanduser ===
+
+def test_resolve_server_host_expands_tilde_in_identity_file(tmp_path, monkeypatch):
+    """ping 接收的 identity_file 路径含 ~ 时必须 expanduser 成 home 目录.
+
+    走真 server 路径需要 config + 真 SSH; 这里只测 _resolve_server_host 的
+    路径展开行为: 写一份 config 让 identity_file = ~/.ssh/id_ed25519, 调
+    _resolve_server_host, 断言 host.identity_file 是绝对路径 (Path('~/.ssh/x').is_absolute() 为 False).
+    """
+    import yaml
+    from autoresearch import ping as ping_mod
+
+    # 写一份 config 到 isolated dir
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(yaml.safe_dump({
+        "version": 1,
+        "servers": [{
+            "name": "tilde-test",
+            "host": "192.0.2.1",  # RFC5737 doc IP, 不会真连
+            "port": 22,
+            "user": "u",
+            "identity_file": "~/.ssh/id_ed25519",
+        }],
+    }), encoding="utf-8")
+    monkeypatch.setenv("AUTORESEARCH_CONFIG", str(config_file))
+
+    host = ping_mod._resolve_server_host("tilde-test")
+    # 关键断言: identity_file 被 expanduser() 展成绝对路径
+    assert host.identity_file.is_absolute(), \
+        f"identity_file not expanded: {host.identity_file!r} (still has ~ or relative?)"
+    assert "~" not in str(host.identity_file), f"~ still in path: {host.identity_file!r}"
+    assert str(host.identity_file).endswith(".ssh/id_ed25519"), \
+        f"unexpected suffix: {host.identity_file!r}"

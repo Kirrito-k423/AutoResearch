@@ -189,7 +189,7 @@ def _resolve_server_host(server_name: str) -> HostSpec:
             host=host.host,
             port=host.port,
             user=host.user,
-            identity_file=Path(server.identity_file),
+            identity_file=Path(server.identity_file).expanduser(),
         )
     return host
 
