@@ -1,12 +1,12 @@
 ---
-status: partial
+status: complete
 phase: 01-repo-foundation-services
 source:
   - 01-01-SUMMARY.md
   - 01-02-SUMMARY.md
   - 01-03-SUMMARY.md
 started: 2026-06-08T01:46:15Z
-updated: 2026-06-08T02:11:17Z
+updated: 2026-06-08T02:19:37Z
 ---
 
 ## Current Test
@@ -53,15 +53,14 @@ result: pass
 
 ### 10. autoresearch services start --lang en 切英文错误
 expected: 缺 docker 时, --lang en 切英文错误 (如 "docker not found")
-result: issue
-reported: "PATH=/usr/bin:/bin .venv/bin/python -m autoresearch services start --lang en → 仍输出中文『错误：找不到  命令。请先安装 Docker Desktop（macOS）。』; --lang en 没切到错误文案"
-severity: major
+result: pass
+verified: "二次验收 (2026-06-08): PATH=/usr/bin:/bin .venv/bin/python -m autoresearch services start --lang en → 'Error: docker command not found. Please install Docker Desktop (macOS).' + exit 2. 默认中文 regression 通过. stop --lang en 同样切英文. 修复 commit 01-04."
 
 ## Summary
 
 total: 10
-passed: 9
-issues: 1
+passed: 10
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
@@ -69,10 +68,4 @@ blocked: 0
 
 ## Gaps
 
-- truth: "autoresearch services start 缺 docker 时, --lang en 应切英文错误 (如 'docker not found')"
-  status: failed
-  reason: "User reported: PATH=/usr/bin:/bin .venv/bin/python -m autoresearch services start --lang en → 仍输出中文『错误：找不到  命令。请先安装 Docker Desktop（macOS）。』; --lang en 没切到错误文案. 跟 01-03 SUMMARY 声明的 '全 3 子命令统一 default zh, --lang en 切英文' 不符."
-  severity: major
-  test: 10
-  artifacts: []
-  missing: []
+[none — Test 10 issue 已通过 01-04 修复]

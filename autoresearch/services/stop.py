@@ -16,10 +16,14 @@ COMPOSE_DIR = ROOT / "services"
 COMPOSE_SERVICES = ["wandb", "prometheus", "grafana"]
 
 
-def _check_docker() -> str | None:
-    """检查 docker CLI 是否可用。"""
+def _check_docker(lang: str) -> str | None:
+    """检查 docker CLI 是否可用; 返回错误消息 (按 lang 切中/英) 或 None."""
     if shutil.which("docker") is None:
-        return "错误：找不到 `docker` 命令。"
+        return (
+            "错误：找不到 `docker` 命令。"
+            if lang == "zh"
+            else "Error: `docker` command not found."
+        )
     return None
 
 
@@ -46,7 +50,8 @@ def _run_compose_down(svc: str, lang: str) -> bool:
             text=True,
         )
     except FileNotFoundError:
-        print("错误：找不到 docker 命令。", file=sys.stderr)
+        msg = "错误：找不到 docker 命令。" if lang == "zh" else "Error: docker command not found."
+        print(msg, file=sys.stderr)
         return False
 
     if result.returncode != 0:
@@ -64,7 +69,7 @@ def run_stop(*, lang: str) -> int:
 
     Returns exit code: 0 = all stopped, 1 = any failed, 2 = docker missing.
     """
-    err = _check_docker()
+    err = _check_docker(lang)
     if err is not None:
         print(err, file=sys.stderr)
         return 2
