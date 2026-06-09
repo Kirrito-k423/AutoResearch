@@ -285,6 +285,24 @@ def _parse_plain_int(value: str | None) -> int | None:
     return int(match.group(1)) if match is not None else None
 
 
+def parse_driver_version_info(text: str) -> DriverVersions:
+    """Parse supported keys from Ascend driver ``version.info``."""
+    values = DriverVersions(npu_smi=None, driver=None, package=None)
+    for line in text.splitlines():
+        match = re.fullmatch(r"\s*([^=#]+?)\s*=\s*(.*?)\s*", line)
+        if match is None:
+            continue
+        key = match.group(1).strip().lower()
+        value = match.group(2).strip()
+        if not value:
+            continue
+        if key == "version":
+            values["driver"] = value
+        elif key == "package_version":
+            values["package"] = value
+    return values
+
+
 def parse_npu_smi_info(text: str) -> HardwareParseResult:
     """Parse table-oriented ``npu-smi info`` output without side effects."""
     devices: list[NPUDevice] = []
@@ -358,10 +376,19 @@ def parse_npu_smi_info(text: str) -> HardwareParseResult:
     if not devices:
         error = "npu-smi output contained no recognizable device records"
 
+    version_match = re.search(
+        r"\bnpu-smi\s+([A-Za-z0-9][A-Za-z0-9._-]*)",
+        text,
+        flags=re.IGNORECASE,
+    )
     return HardwareParseResult(
         devices=devices,
         processes=[],
-        driver_versions=DriverVersions(npu_smi=None, driver=None, package=None),
+        driver_versions=DriverVersions(
+            npu_smi=version_match.group(1) if version_match is not None else None,
+            driver=None,
+            package=None,
+        ),
         warnings=warnings,
         field_errors=field_errors,
         error=error,

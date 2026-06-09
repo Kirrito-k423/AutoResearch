@@ -1,7 +1,11 @@
 """Tests for the pure Ascend npu-smi parser."""
 from pathlib import Path
 
-from autoresearch.hw.parser import parse_npu_smi_info, parse_typed_metric_output
+from autoresearch.hw.parser import (
+    parse_driver_version_info,
+    parse_npu_smi_info,
+    parse_typed_metric_output,
+)
 
 
 FIXTURES = Path(__file__).parent / "fixtures" / "hw"
@@ -18,6 +22,7 @@ def test_baseline_parses_eight_ascend_devices_with_core_metrics():
 
     assert result["error"] is None
     assert result["field_errors"] == []
+    assert result["driver_versions"]["npu_smi"] == "25.3.rc1"
     assert len(result["devices"]) == 8
     assert {device["name"] for device in result["devices"]} == {"Ascend 910B2"}
     assert {device["memory_total_mib"] for device in result["devices"]} == {65536}
@@ -101,3 +106,13 @@ def test_typed_metric_parser_returns_only_recognized_values():
     assert temp == {"temperature_c": 42}
     assert usages == {"utilization_pct": 71}
     assert parse_typed_metric_output("unsupported", "temp", 3) == {}
+
+
+def test_driver_version_info_parses_driver_and_package_versions():
+    versions = parse_driver_version_info(_fixture("driver_version_info.txt"))
+
+    assert versions == {
+        "npu_smi": None,
+        "driver": "25.3.rc1",
+        "package": "25.3.rc1",
+    }

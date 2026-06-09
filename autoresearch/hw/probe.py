@@ -12,10 +12,16 @@ from workspace_core.result import CheckResult, CheckSeverity
 from workspace_core.ssh import HostSpec, SSHClient, SSHError, resolve_host
 
 from .models import DriverVersions, HardwareData
-from .parser import core_field_errors, parse_npu_smi_info, parse_typed_metric_output
+from .parser import (
+    core_field_errors,
+    parse_driver_version_info,
+    parse_npu_smi_info,
+    parse_typed_metric_output,
+)
 
 
 NPU_SMI_INFO_COMMAND = "npu-smi info"
+DRIVER_VERSION_COMMAND = "cat /usr/local/Ascend/driver/version.info"
 TYPED_QUERY_TYPES = ("memory", "temp", "usages")
 SSHClientFactory = Callable[[HostSpec], SSHClient]
 
@@ -86,6 +92,25 @@ def _supplement_typed_metrics(client: SSHClient, data: HardwareData) -> None:
     if used_supplement:
         data["warnings"].append("typed supplement used for missing core metrics")
     data["field_errors"] = core_field_errors(data["devices"])
+
+
+def _collect_driver_versions(client: SSHClient, data: HardwareData) -> None:
+    exit_code, stdout, stderr = client.exec(DRIVER_VERSION_COMMAND)
+    if exit_code != 0:
+        detail = stderr.strip() or "file unavailable"
+        data["warnings"].append(
+            f"driver version.info unavailable (exit code {exit_code}): {detail}"
+        )
+        return
+
+    versions = parse_driver_version_info(stdout)
+    if versions["driver"] is None and versions["package"] is None:
+        data["warnings"].append(
+            "driver version.info contained no recognized version fields"
+        )
+        return
+    data["driver_versions"]["driver"] = versions["driver"]
+    data["driver_versions"]["package"] = versions["package"]
 
 
 def resolve_server_host(
@@ -189,6 +214,8 @@ def probe_server(
 
         if parsed["error"] is None and data["field_errors"]:
             _supplement_typed_metrics(client, data)
+
+        _collect_driver_versions(client, data)
 
         if exit_code != 0:
             detail = stderr.strip() or "no stderr"

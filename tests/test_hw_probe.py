@@ -7,6 +7,7 @@ import pytest
 import yaml
 
 from autoresearch.hw.probe import (
+    DRIVER_VERSION_COMMAND,
     NPU_SMI_INFO_COMMAND,
     probe_server,
     resolve_server_host,
@@ -25,6 +26,7 @@ PARTIAL = (FIXTURES / "npu_smi_missing_metric.txt").read_text(
     encoding="utf-8"
 )
 UNKNOWN = (FIXTURES / "npu_smi_unknown_format.txt").read_text(encoding="utf-8")
+DRIVER = (FIXTURES / "driver_version_info.txt").read_text(encoding="utf-8")
 
 
 def _config(tmp_path: Path) -> Path:
@@ -86,12 +88,16 @@ def _factory(
     connect_error: Exception | None = None,
 ):
     clients: list[FakeSSHClient] = []
+    command_responses = {
+        DRIVER_VERSION_COMMAND: (0, DRIVER, ""),
+        **(responses or {}),
+    }
 
     def create(host):
         client = FakeSSHClient(
             host,
             response=response,
-            responses=responses,
+            responses=command_responses,
             connect_error=connect_error,
         )
         clients.append(client)
@@ -100,7 +106,7 @@ def _factory(
     return create, clients
 
 
-def test_single_server_happy_path_uses_only_fixed_command(tmp_path):
+def test_single_server_happy_path_uses_only_fixed_commands(tmp_path):
     factory, clients = _factory()
 
     result = probe_server(
@@ -112,7 +118,10 @@ def test_single_server_happy_path_uses_only_fixed_command(tmp_path):
     assert result["ok"] is True
     assert result["severity"] == CheckSeverity.OK
     assert len(result["data"]["devices"]) == 8
-    assert clients[0].commands == [NPU_SMI_INFO_COMMAND]
+    assert clients[0].commands == [
+        NPU_SMI_INFO_COMMAND,
+        DRIVER_VERSION_COMMAND,
+    ]
     assert clients[0].connect_timeouts == [5.0]
     assert clients[0].closed is True
     assert set(result["data"]["server"]) == {"name", "host", "port"}
@@ -239,10 +248,16 @@ def test_typed_queries_fill_only_missing_values_with_integer_ids(tmp_path):
     assert device["temperature_c"] == 43
     assert device["utilization_pct"] == 20
     assert result["data"]["field_errors"] == []
+    typed_commands = [
+        command
+        for command in clients[0].commands
+        if command.startswith("npu-smi info -t ")
+    ]
     assert all(
         command.rsplit(" ", 1)[-1].isdigit()
-        for command in clients[0].commands[1:]
+        for command in typed_commands
     )
+    assert len(typed_commands) == 3
     assert any("conflict" in warning for warning in result["data"]["warnings"])
     assert any(
         "typed supplement used" in warning
@@ -290,3 +305,54 @@ def test_unknown_output_is_parse_failure_without_fake_devices(tmp_path):
     assert result["ok"] is False
     assert result["data"]["devices"] == []
     assert "parse failed" in result["error"]
+
+
+def test_driver_versions_merge_header_and_fixed_read_only_file(tmp_path):
+    factory, clients = _factory()
+
+    result = probe_server(
+        "a2-test",
+        config_path=_config(tmp_path),
+        ssh_client_factory=factory,
+    )
+
+    assert clients[0].commands[-1] == (
+        "cat /usr/local/Ascend/driver/version.info"
+    )
+    assert result["data"]["driver_versions"] == {
+        "npu_smi": "25.3.rc1",
+        "driver": "25.3.rc1",
+        "package": "25.3.rc1",
+    }
+    serialized = repr(result)
+    assert "component=driver" not in serialized
+    assert "build_time=" not in serialized
+
+
+def test_missing_driver_file_warns_without_failing_complete_core_metrics(
+    tmp_path,
+):
+    factory, _ = _factory(
+        responses={
+            DRIVER_VERSION_COMMAND: (1, "", "No such file or directory"),
+        }
+    )
+
+    result = probe_server(
+        "a2-test",
+        config_path=_config(tmp_path),
+        ssh_client_factory=factory,
+    )
+
+    assert result["ok"] is True
+    assert result["severity"] == CheckSeverity.WARN
+    assert result["data"]["driver_versions"] == {
+        "npu_smi": "25.3.rc1",
+        "driver": None,
+        "package": None,
+    }
+    assert "build_time" not in repr(result)
+    assert any(
+        "version.info unavailable" in warning
+        for warning in result["data"]["warnings"]
+    )
