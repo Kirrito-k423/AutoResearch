@@ -121,7 +121,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 05-02: SSH 反向代理通道 (paramiko)
+- [x] 05-02: SSH 反向代理通道 (paramiko)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -294,7 +294,7 @@ Phases execute in numeric order: 1 → 2 → 3 → ... → 13
 | 2. workspace-core 沉淀 | 4/4 | Complete   | 2026-06-09 |
 | 3. Skill 01: customer-config | 2/2 | Complete   | 2026-06-09 |
 | 4. Skill 03: server-hardware-probe | 2/3 | In Progress|  |
-| 5. Skill 04: network-check | 1/3 | In Progress|  |
+| 5. Skill 04: network-check | 2/3 | In Progress|  |
 | 6. Skill 05: service-reachability | 0/2 | Not started | - |
 | 7. Skill 06: train-stack-health | 0/3 | Not started | - |
 | 8. Skill 07: data-collection | 0/4 | Not started | - |

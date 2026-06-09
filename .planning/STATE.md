@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: MinViable Loop
 status: Phase 5 in progress; Phase 4 real-server UAT still blocked
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-06-09T12:56:44.989Z"
-last_activity: 2026-06-09 — Phase 5 Plan 01 direct network matrix complete; Phase 4 real-server UAT still blocked
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-06-09T13:14:56.413Z"
+last_activity: 2026-06-09 — Phase 5 Plan 02 remote proxy retry complete; real ssh-R UAT still exits early
 progress:
   total_phases: 13
   completed_phases: 3
   total_plans: 16
-  completed_plans: 13
+  completed_plans: 14
   percent: 31
 ---
 
@@ -27,15 +27,15 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 ## Position
 
 - **Milestone:** v1.0 MinViable Loop
-- **Phase:** 5 network-check → 05-01 complete, 05-02 next
-- **Plan:** 05-01 direct local/remote network matrix complete; 05-02 remote proxy fallback next
-- **Last activity:** 2026-06-09 — Phase 5 Plan 01 direct network matrix complete; Phase 4 real-server UAT still blocked
+- **Phase:** 5 network-check → 05-01 and 05-02 complete, 05-03 next
+- **Plan:** 05-02 remote proxy retry implemented; real A2 ssh-R UAT exits early and remains final-gate evidence
+- **Last activity:** 2026-06-09 — Phase 5 Plan 02 remote proxy retry complete; real ssh-R UAT still exits early
 
 ## Session Continuity
 
-- **Last session:** 2026-06-09T12:56:44.986Z
-- **Stopped At:** Completed 05-01-PLAN.md
-- **Resume File:** .planning/phases/05-skill-04-network-check/05-02-PLAN.md
+- **Last session:** 2026-06-09T13:14:56.408Z
+- **Stopped At:** Completed 05-02-PLAN.md
+- **Resume File:** .planning/phases/05-skill-04-network-check/05-03-PLAN.md
 
 ### Decisions Made This Session
 
