@@ -1,7 +1,9 @@
 """Single-server Ascend hardware probe orchestration."""
 from __future__ import annotations
 
+import json
 from pathlib import Path
+import sys
 from typing import Callable
 
 from workspace_core.config import ConfigError, ServerSpec, from_path
@@ -214,3 +216,66 @@ def probe_server(
     finally:
         if client is not None:
             client.close()
+
+
+def _cli_failure(server_name: str | None, message: str, error: str) -> CheckResult:
+    data = HardwareData(
+        server={"name": server_name} if server_name else {},
+        devices=[],
+        processes=[],
+        driver_versions=DriverVersions(
+            npu_smi=None,
+            driver=None,
+            package=None,
+        ),
+        warnings=[],
+        field_errors=[],
+        fallback=None,
+        raw_log_path=None,
+    )
+    return _result(
+        ok=False,
+        severity=CheckSeverity.FAIL,
+        data=data,
+        message=message,
+        error=error,
+    )
+
+
+def run_probe(
+    server: str | None,
+    all_servers: bool = False,
+    config: str | Path | None = None,
+    lang: str = "zh",
+) -> int:
+    """CLI boundary: print exactly one CheckResult JSON and return 0/1/2."""
+    result: CheckResult
+    exit_code: int
+    emit_progress("hw.probe.start", server=server)
+
+    try:
+        if all_servers:
+            raise ConfigError("--all 将在 Plan 04-03 开放")
+        if not server:
+            raise ConfigError("必须提供 --server NAME")
+        result = probe_server(server, config_path=config)
+        exit_code = 0 if result["ok"] else 1
+    except ConfigError as exc:
+        label = "配置错误" if lang == "zh" else "Config error"
+        result = _cli_failure(server, label, str(exc))
+        exit_code = 2
+    except Exception as exc:
+        label = "硬件探测失败" if lang == "zh" else "Hardware probe failed"
+        result = _cli_failure(server, label, str(exc))
+        exit_code = 1
+
+    if result["error"]:
+        print(f"{result['message']}: {result['error']}", file=sys.stderr)
+    emit_progress(
+        "hw.probe.result",
+        level="info" if result["ok"] else "error",
+        server=server,
+        severity=result["severity"].value,
+    )
+    print(json.dumps(result, ensure_ascii=False))
+    return exit_code

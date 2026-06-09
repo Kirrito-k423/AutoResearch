@@ -92,6 +92,40 @@ def ping(server: str | None, lang: str) -> None:
     raise click.exceptions.Exit(run_ping(server=server, lang=lang))
 
 
+# === Phase 4 / Skill 03: server-hardware-probe ===
+
+@main.group()
+def hw() -> None:
+    """探测远程 Ascend 服务器硬件。"""
+    pass
+
+
+@hw.command(name="probe")
+@click.option(
+    "--server",
+    required=True,
+    help="config 中的服务器名称。",
+)
+@click.option(
+    "--config",
+    "cfg_path",
+    default=None,
+    help="配置文件路径 (默认 ./config/config.yaml)。",
+)
+@click.option(
+    "--lang",
+    default="zh",
+    type=click.Choice(["zh", "en"]),
+    help="输出语言 (zh/en)。",
+)
+def hw_probe(server: str, cfg_path: str | None, lang: str) -> None:
+    """通过 SSH 执行 npu-smi 并输出核心 NPU 指标 JSON。"""
+    from autoresearch.hw.probe import run_probe
+    raise click.exceptions.Exit(
+        run_probe(server=server, config=cfg_path, lang=lang)
+    )
+
+
 # === Phase 3 / Skill 01: customer-config ===
 
 @main.group()
