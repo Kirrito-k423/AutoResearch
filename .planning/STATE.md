@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: MinViable Loop
-status: Executing Phase 04
-last_updated: "2026-06-09T04:17:38.535Z"
+status: Blocked on Phase 04 Plan 01 real-server verification
+last_updated: "2026-06-09T04:28:09.127Z"
 last_activity: 2026-06-09
 progress:
   total_phases: 13
@@ -73,6 +73,14 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 - Phase 4 规划问题已全部解决；执行期唯一外部风险是当前 5 台服务器的 LAN/VPN/SSH 可达性。
 
+### Active Blockers
+
+- **04-01 A2-AK-225 真机验收阻塞（2026-06-09）**
+  - `192.168.9.225:22` 无法读取 SSH protocol banner，4 次尝试后返回 `No existing session`
+  - `uv run autoresearch hw probe --server A2-AK-225` 正确输出单一 FAIL JSON 并 exit 1
+  - 恢复 LAN/VPN/SSH 后必须重跑；在 8 张设备四项核心指标均非 null 前，Plan 04-01 保持 0/3 未完成
+  - 证据：`.planning/phases/04-skill-03-server-hardware-probe/04-01-SUMMARY.md`
+
 ### Cross-Plan Issue Fixed
 
 - `01-01` 的 `.gitignore` 规则 `wandb/` 误把 `services/wandb/` 也排除
@@ -81,7 +89,7 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 ## Next Steps
 
-1. 执行 Phase 4 的 3 个计划，04-01 先交付 A2-AK-225 单服务器真实纵向探测。
+1. 恢复 A2-AK-225 的 LAN/VPN/SSH 后，重跑 `uv run autoresearch hw probe --server A2-AK-225` 完成 04-01 真机门槛。
 2. 04-03 对 config 中全部服务器做完整真机验收；任一服务器失败都不能关闭 Phase 4。
 3. 后续阶段按“每阶段都增加一段可真实运行的用户闭环”推进。
 
