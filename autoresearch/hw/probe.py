@@ -14,12 +14,13 @@ from workspace_core.progress import emit_progress
 from workspace_core.result import CheckResult, CheckSeverity
 from workspace_core.ssh import HostSpec, SSHClient, SSHError, resolve_host
 
-from .models import CommandRecord, DriverVersions, HardwareData
+from .models import CommandRecord, DriverVersions, HardwareData, NPUProcess
 from .parser import (
     core_field_errors,
     parse_driver_version_info,
     parse_lspci_devices,
     parse_npu_smi_info,
+    parse_ps_output,
     parse_typed_metric_output,
 )
 
@@ -42,6 +43,59 @@ def typed_query_command(metric_type: str, device_id: int) -> str:
     ):
         raise ValueError("device_id must be a non-negative integer")
     return f"npu-smi info -t {metric_type} -i {device_id}"
+
+
+def enrich_processes(
+    client: SSHClient,
+    processes: list[NPUProcess],
+    command_records: list[CommandRecord] | None = None,
+) -> list[str]:
+    """Enrich parsed numeric PIDs with user and executable basename."""
+    pids = sorted(
+        {
+            process["pid"]
+            for process in processes
+            if isinstance(process["pid"], int)
+            and not isinstance(process["pid"], bool)
+            and process["pid"] >= 0
+        }
+    )
+    if not pids:
+        return []
+
+    command = (
+        "ps -o pid=,user=,comm= -p "
+        + ",".join(str(pid) for pid in pids)
+    )
+    try:
+        if command_records is None:
+            exit_code, stdout, stderr = client.exec(command)
+        else:
+            exit_code, stdout, stderr = _exec_recorded(
+                client,
+                command,
+                command_records,
+            )
+    except Exception as exc:
+        return [f"process enrichment failed: {exc}"]
+
+    if exit_code != 0:
+        detail = stderr.strip() or "no stderr"
+        return [
+            f"process enrichment failed with exit code {exit_code}: {detail}"
+        ]
+
+    details = parse_ps_output(stdout)
+    warnings: list[str] = []
+    for process in processes:
+        detail = details.get(process["pid"])
+        if detail is None:
+            warnings.append(
+                f"process {process['pid']} exited or could not be inspected"
+            )
+            continue
+        process["user"], process["process_name"] = detail
+    return warnings
 
 
 def _missing_query_types(device) -> list[str]:
@@ -321,6 +375,10 @@ def probe_server(
 
         if parsed["error"] is None and data["field_errors"]:
             _supplement_typed_metrics(client, data, command_records)
+        if parsed["error"] is None:
+            data["warnings"].extend(
+                enrich_processes(client, data["processes"], command_records)
+            )
 
         _collect_driver_versions(client, data, command_records)
 

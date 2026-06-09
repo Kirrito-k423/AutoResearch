@@ -5,6 +5,8 @@ from autoresearch.hw.parser import (
     parse_driver_version_info,
     parse_lspci_devices,
     parse_npu_smi_info,
+    parse_processes,
+    parse_ps_output,
     parse_typed_metric_output,
 )
 
@@ -40,6 +42,36 @@ def test_no_process_marker_produces_empty_process_list():
     )
 
     assert result["processes"] == []
+
+
+def test_process_fixture_parses_only_strict_numeric_records():
+    text = _fixture("npu_smi_with_processes.txt")
+    warnings: list[str] = []
+
+    processes = parse_processes(text, warnings)
+
+    assert processes == [
+        {
+            "npu_id": 0,
+            "chip_id": 0,
+            "pid": 4102,
+            "user": None,
+            "process_name": None,
+            "memory_used_mib": 2048,
+        }
+    ]
+    assert len(warnings) == 2
+    assert "87;touch" not in repr(processes)
+
+
+def test_ps_parser_uses_only_pid_user_and_executable_name():
+    details = parse_ps_output(
+        " 4102 trainer /usr/bin/python3\n"
+        "bad root /bin/sh\n"
+        "4103 missing-field\n"
+    )
+
+    assert details == {4102: ("trainer", "/usr/bin/python3")}
 
 
 def test_missing_and_invalid_metrics_are_null_with_field_errors():

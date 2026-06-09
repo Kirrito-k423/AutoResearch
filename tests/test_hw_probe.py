@@ -10,6 +10,7 @@ from autoresearch.hw.probe import (
     DRIVER_VERSION_COMMAND,
     LSPCI_COMMAND,
     NPU_SMI_INFO_COMMAND,
+    enrich_processes,
     probe_server,
     resolve_server_host,
     typed_query_command,
@@ -30,6 +31,9 @@ PARTIAL = (FIXTURES / "npu_smi_missing_metric.txt").read_text(
 UNKNOWN = (FIXTURES / "npu_smi_unknown_format.txt").read_text(encoding="utf-8")
 DRIVER = (FIXTURES / "driver_version_info.txt").read_text(encoding="utf-8")
 LSPCI = (FIXTURES / "lspci_ascend.txt").read_text(encoding="utf-8")
+PROCESSES = (FIXTURES / "npu_smi_with_processes.txt").read_text(
+    encoding="utf-8"
+)
 
 
 @pytest.fixture(autouse=True)
@@ -138,6 +142,122 @@ def test_single_server_happy_path_uses_only_fixed_commands(tmp_path):
     assert result["data"]["raw_log_path"] is None
     assert result["data"]["raw_output_summary"] is None
     assert not (tmp_path / "logs").exists()
+
+
+def test_process_enrichment_uses_sorted_numeric_pids_and_comm_only():
+    client = FakeSSHClient(
+        None,
+        response=(0, "4102 trainer python3\n4200 root bash\n", ""),
+    )
+    processes = [
+        {
+            "npu_id": 0,
+            "chip_id": 0,
+            "pid": 4200,
+            "user": None,
+            "process_name": None,
+            "memory_used_mib": 64,
+        },
+        {
+            "npu_id": 0,
+            "chip_id": 0,
+            "pid": 4102,
+            "user": None,
+            "process_name": None,
+            "memory_used_mib": 2048,
+        },
+        {
+            "npu_id": 1,
+            "chip_id": 0,
+            "pid": 4102,
+            "user": None,
+            "process_name": None,
+            "memory_used_mib": 1024,
+        },
+    ]
+
+    warnings = enrich_processes(client, processes)
+
+    assert warnings == []
+    assert client.commands == [
+        "ps -o pid=,user=,comm= -p 4102,4200"
+    ]
+    assert all("args" not in command for command in client.commands)
+    assert [process["process_name"] for process in processes] == [
+        "bash",
+        "python3",
+        "python3",
+    ]
+
+
+def test_process_race_keeps_pid_and_returns_warning(tmp_path):
+    factory, clients = _factory(
+        response=(0, PROCESSES, ""),
+        responses={
+            "ps -o pid=,user=,comm= -p 4102": (0, "", ""),
+        },
+    )
+
+    result = probe_server(
+        "a2-test",
+        config_path=_config(tmp_path),
+        ssh_client_factory=factory,
+    )
+
+    assert result["ok"] is True
+    assert result["severity"] == CheckSeverity.WARN
+    assert result["data"]["processes"][0]["pid"] == 4102
+    assert result["data"]["processes"][0]["user"] is None
+    assert result["data"]["processes"][0]["process_name"] is None
+    assert any("exited" in warning for warning in result["data"]["warnings"])
+    assert clients[0].commands[1] == (
+        "ps -o pid=,user=,comm= -p 4102"
+    )
+
+
+def test_process_permission_error_warns_without_core_failure(tmp_path):
+    factory, _ = _factory(
+        response=(0, PROCESSES, ""),
+        responses={
+            "ps -o pid=,user=,comm= -p 4102": (
+                1,
+                "",
+                "permission denied",
+            ),
+        },
+    )
+
+    result = probe_server(
+        "a2-test",
+        config_path=_config(tmp_path),
+        ssh_client_factory=factory,
+    )
+
+    process = result["data"]["processes"][0]
+    assert result["ok"] is True
+    assert result["severity"] == CheckSeverity.WARN
+    assert process["pid"] == 4102
+    assert process["user"] is None
+    assert process["process_name"] is None
+    assert any(
+        "permission denied" in warning
+        for warning in result["data"]["warnings"]
+    )
+
+
+def test_no_processes_skip_ps_command(tmp_path):
+    factory, clients = _factory()
+
+    result = probe_server(
+        "a2-test",
+        config_path=_config(tmp_path),
+        ssh_client_factory=factory,
+    )
+
+    assert result["ok"] is True
+    assert not any(
+        command.startswith("ps ") for command in clients[0].commands
+    )
 
 
 def test_timeout_becomes_fail_without_config_secrets(tmp_path):

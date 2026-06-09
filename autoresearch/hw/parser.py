@@ -8,6 +8,7 @@ from .models import (
     FieldError,
     HardwareParseResult,
     NPUDevice,
+    NPUProcess,
 )
 
 
@@ -52,6 +53,19 @@ COLUMN_ALIASES = {
 
 PRIMARY_HEADER_FIELDS = {"identity", "health", "temperature"}
 DETAIL_HEADER_FIELDS = {"chip_device", "bus_id", "utilization", "memory"}
+PROCESS_COLUMN_ALIASES = {
+    "npu_id": {"npu", "npuid"},
+    "chip_id": {"chip", "chipid"},
+    "npu_chip": {"npuchip", "chipdevice", "npuchipid"},
+    "pid": {"pid", "processid"},
+    "memory": {
+        "processmemory",
+        "processmemorymb",
+        "processmemorymib",
+        "memorymb",
+        "memorymib",
+    },
+}
 
 
 def _cells(line: str) -> list[str]:
@@ -286,6 +300,121 @@ def _parse_plain_int(value: str | None) -> int | None:
     return int(match.group(1)) if match is not None else None
 
 
+def _process_column_map(cells: list[str]) -> dict[str, int]:
+    columns: dict[str, int] = {}
+    for index, cell in enumerate(cells):
+        key = _header_key(cell)
+        for canonical, aliases in PROCESS_COLUMN_ALIASES.items():
+            if key in aliases:
+                columns[canonical] = index
+                break
+    return columns
+
+
+def _process_column(
+    cells: list[str],
+    columns: dict[str, int],
+    canonical: str,
+) -> str | None:
+    index = columns.get(canonical)
+    if index is None or index >= len(cells):
+        return None
+    return cells[index]
+
+
+def parse_processes(
+    text: str,
+    warnings: list[str] | None = None,
+) -> list[NPUProcess]:
+    """Parse process occupancy rows without retaining untrusted PID text."""
+    process_warnings = warnings if warnings is not None else []
+    processes: list[NPUProcess] = []
+    columns: dict[str, int] | None = None
+
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        cells = _cells(line)
+        if not cells:
+            continue
+        candidate_columns = _process_column_map(cells)
+        if (
+            "pid" in candidate_columns
+            and "memory" in candidate_columns
+            and (
+                "npu_chip" in candidate_columns
+                or {
+                    "npu_id",
+                    "chip_id",
+                }.issubset(candidate_columns)
+            )
+        ):
+            columns = candidate_columns
+            continue
+        if columns is None:
+            continue
+
+        pid = _parse_plain_int(_process_column(cells, columns, "pid"))
+        memory = _parse_plain_int(
+            _process_column(cells, columns, "memory")
+        )
+        if "npu_chip" in columns:
+            identity = _process_column(cells, columns, "npu_chip")
+            identity_match = re.fullmatch(
+                r"\s*(\d+)\s+(\d+)\s*",
+                identity or "",
+            )
+            npu_id = (
+                int(identity_match.group(1))
+                if identity_match is not None
+                else None
+            )
+            chip_id = (
+                int(identity_match.group(2))
+                if identity_match is not None
+                else None
+            )
+        else:
+            npu_id = _parse_plain_int(
+                _process_column(cells, columns, "npu_id")
+            )
+            chip_id = _parse_plain_int(
+                _process_column(cells, columns, "chip_id")
+            )
+
+        if None in (npu_id, chip_id, pid, memory):
+            process_warnings.append(
+                f"ignored invalid process record at line {line_number}"
+            )
+            continue
+        processes.append(
+            NPUProcess(
+                npu_id=npu_id,
+                chip_id=chip_id,
+                pid=pid,
+                user=None,
+                process_name=None,
+                memory_used_mib=memory,
+            )
+        )
+
+    return processes
+
+
+def parse_ps_output(text: str) -> dict[int, tuple[str, str]]:
+    """Parse ``ps`` pid/user/comm rows, ignoring malformed PID values."""
+    details: dict[int, tuple[str, str]] = {}
+    for line in text.splitlines():
+        parts = line.strip().split(maxsplit=2)
+        if len(parts) != 3:
+            continue
+        pid = _parse_plain_int(parts[0])
+        if pid is None:
+            continue
+        user, process_name = parts[1], parts[2]
+        if user and process_name:
+            details[pid] = (user, process_name)
+    return details
+
+
 def parse_driver_version_info(text: str) -> DriverVersions:
     """Parse supported keys from Ascend driver ``version.info``."""
     values = DriverVersions(npu_smi=None, driver=None, package=None)
@@ -350,10 +479,17 @@ def parse_npu_smi_info(text: str) -> HardwareParseResult:
     primary_columns: dict[str, int] | None = None
     detail_columns: dict[str, int] | None = None
     current: NPUDevice | None = None
+    in_process_table = False
 
     for line in text.splitlines():
         cells = _cells(line)
         if not cells:
+            continue
+        process_columns = _process_column_map(cells)
+        if "pid" in process_columns and "memory" in process_columns:
+            in_process_table = True
+            continue
+        if in_process_table:
             continue
         columns = _column_map(cells)
         if PRIMARY_HEADER_FIELDS.intersection(columns):
@@ -420,9 +556,10 @@ def parse_npu_smi_info(text: str) -> HardwareParseResult:
         text,
         flags=re.IGNORECASE,
     )
+    processes = parse_processes(text, warnings)
     return HardwareParseResult(
         devices=devices,
-        processes=[],
+        processes=processes,
         driver_versions=DriverVersions(
             npu_smi=version_match.group(1) if version_match is not None else None,
             driver=None,
