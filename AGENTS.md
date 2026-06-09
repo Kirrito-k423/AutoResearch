@@ -18,13 +18,13 @@
 | # | Skill | CLI group | Phase | REQ 组 |
 |---|-------|-----------|-------|--------|
 | 1 | customer-config | `autoresearch config` | 3 | CFG-* |
-| 2 | local-services-health | `autoresearch services` | 1, 4 | SVC-* / SVC-CHK-* |
-| 3 | server-hardware-probe | `autoresearch hw` | 5 | HW-* |
-| 4 | network-check | `autoresearch net` | 6 | NET-* |
-| 5 | service-reachability | `autoresearch reach` | 7 | REACH-* |
-| 6 | train-stack-health | `autoresearch stack` | 8 | STACK-* |
-| 7 | data-collection | `autoresearch collect` | 9 | COLL-* |
-| 8 | experiment-report | `autoresearch report` | 10 | RPT-* |
+| 2 | local-services-health | `autoresearch services` | 1 | SVC-* / SVC-CHK-* |
+| 3 | server-hardware-probe | `autoresearch hw` | 4 | HW-* |
+| 4 | network-check | `autoresearch net` | 5 | NET-* |
+| 5 | service-reachability | `autoresearch reach` | 6 | REACH-* |
+| 6 | train-stack-health | `autoresearch stack` | 7 | STACK-* |
+| 7 | data-collection | `autoresearch collect` | 8 | COLL-* |
+| 8 | experiment-report | `autoresearch report` | 9 | RPT-* |
 
 ## 三沉淀层
 
@@ -77,7 +77,7 @@ autoresearch/      # Python 包
     start.py
     stop.py
   config/          # Phase 3
-  hw/              # Phase 5
+  hw/              # Phase 4
   ...
 services/          # Docker Compose
   archon/          # 只有 README

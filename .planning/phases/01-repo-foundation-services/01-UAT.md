@@ -37,7 +37,8 @@ result: pass
 
 ### 6. autoresearch services status 不依赖 docker 也跑通
 expected: 即使本地没起服务, autoresearch services status 不 crash, 输出 4 行 (archon/wandb/prom/grafana), 健康状态正确显示
-result: pending
+result: pass
+verified: "2026-06-09: 本地服务未启动时仍输出 4 行，正确报告 0/4 healthy；exit 1 表示存在不健康服务"
 
 ### 7. autoresearch services status --json 输出 JSON
 expected: stdout 是合法 JSON 含 services 字段

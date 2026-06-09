@@ -1,5 +1,5 @@
 ---
-status: testing
+status: complete
 phase: 02-workspace-core
 source:
   - 02-01-SUMMARY.md
@@ -7,7 +7,7 @@ source:
   - 02-03-SUMMARY.md
   - 02-04-SUMMARY.md
 started: 2026-06-08T02:30:00Z
-updated: 2026-06-08T04:03:48Z
+updated: 2026-06-09T01:32:21Z
 ---
 
 ## Auto-Verified Tests (15 项, agent 跑)
@@ -77,33 +77,24 @@ result: pass
 ### U1. autoresearch ping --server nvidia-01 走真 SSH
 expected: config.yaml 配 nvidia-01, SSH_PASSWORD_NVIDIA_01 env 设; 命令返 ssh=true, latency_ms 合理
 blocked_by: third-party
-result: issue
-reported: "ping --server A2-AK-225 报 'SSH 错误: 连接失败 host=192.168.9.225:22 (attempt=4/4): [Errno 2] No such file or directory: ~/.ssh/id_ed25519'. Root cause: autoresearch/ping.py:191 用 Path(server.identity_file) 不展开 ~, 应改 Path(server.identity_file).expanduser()"
-severity: blocker
+result: pass
+verified: "2026-06-09: uv run autoresearch ping --server A2-AK-225 → ssh=true, exit_code=0, stdout=ok, latency_ms=4331"
 
 ### U2. 反向代理: 同命令里 reverse_tunnel=true
 expected: 真服务器上 reverse_tunnel 通; 5 秒内能 curl http://localhost:8080 (或类似验证)
 blocked_by: third-party
-result: blocked
-blocked_by: prior-test
+result: pass
+verified: "2026-06-09: 同一次真实 ping 建立 remote_port=8080 → local_port=8080，返回 reverse_tunnel=true 后正常停止"
 
 ## Summary
 
 total: 17
-passed: 15
-issues: 1
+passed: 17
+issues: 0
 pending: 0
 skipped: 0
-blocked: 1
+blocked: 0
 
 ## Gaps
 
-- truth: "autoresearch ping --server <alias> 走真 SSH 时, config.identity_file 里的 ~ 必须展开成 home 目录"
-  status: failed
-  reason: "User reported: ping --server A2-AK-225 报 'No such file or directory: ~/.ssh/id_ed25519'. Root cause: autoresearch/ping.py:191 Path(server.identity_file) 不展开 ~. 影响: 真 SSH 全流程断了."
-  severity: blocker
-  test: U1
-  artifacts:
-    - autoresearch/ping.py (line 191: Path(server.identity_file) → Path(server.identity_file).expanduser())
-  missing:
-    - 测试: identity_file 含 ~ 时 expand 后能用作 key_filename
+[none — identity_file `~` 展开修复已由单测覆盖，并在 A2-AK-225 真机 SSH + 反向隧道验收通过]

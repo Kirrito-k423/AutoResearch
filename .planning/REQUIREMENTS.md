@@ -8,50 +8,50 @@
 
 ## REPO — 仓库本体
 
-- [ ] **REPO-01** — 仓根有 `README.md`，含项目哲学、quickstart、8 步循环概览
-- [ ] **REPO-02** — 仓根有 `AGENTS.md`，给 AI 协作者的"如何在这个仓工作"指南
-- [ ] **REPO-03** — 仓根有 `CLAUDE.md`，与 AGENTS.md 互补（Claude Code 专用）
-- [ ] **REPO-04** — 仓根有 `LICENSE` (MIT)
-- [ ] **REPO-05** — 仓根有 `.gitignore`（Python、macOS、IDE、secrets）
+- [x] **REPO-01** — 仓根有 `README.md`，含项目哲学、quickstart、8 步循环概览
+- [x] **REPO-02** — 仓根有 `AGENTS.md`，给 AI 协作者的"如何在这个仓工作"指南
+- [x] **REPO-03** — 仓根有 `CLAUDE.md`，与 AGENTS.md 互补（Claude Code 专用）
+- [x] **REPO-04** — 仓根有 `LICENSE` (MIT)
+- [x] **REPO-05** — 仓根有 `.gitignore`（Python、macOS、IDE、secrets）
 
 ## SVC — 本地服务栈
 
-- [ ] **SVC-01** — `docker-compose.yml` 起 Archon server（web UI + API）
-- [ ] **SVC-02** — `docker-compose.yml` 起本地 wandb（`wandb local` 模式）
-- [ ] **SVC-03** — `docker-compose.yml` 起 Prometheus（带自监控 scrape config）
-- [ ] **SVC-04** — `docker-compose.yml` 起 Grafana（预置 datasources: prometheus + 本地 wandb）
+- [x] **SVC-01** — `docker-compose.yml` 起 Archon server（web UI + API）
+- [x] **SVC-02** — `docker-compose.yml` 起本地 wandb（`wandb local` 模式）
+- [x] **SVC-03** — `docker-compose.yml` 起 Prometheus（带自监控 scrape config）
+- [x] **SVC-04** — `docker-compose.yml` 起 Grafana（预置 datasources: prometheus + 本地 wandb）
 
 ## CORE — workspace-core 沉淀
 
-- [ ] **CORE-SSH-01** — 提供 `paramiko` 封装的 SSHClient，支持 connect/exec/sftp/reverse_tunnel
-- [ ] **CORE-SSH-02** — 支持按 `~/.ssh/config` 别名解析目标
-- [ ] **CORE-SSH-03** — SSH 操作统一有超时、重试、错误信息带主机名
-- [ ] **CORE-SEC-01** — 敏感字段（密码、token）使用系统 keyring 加密
-- [ ] **CORE-SEC-02** — 配置文件中敏感字段用占位符 `<keyring:xxx>` 引用
-- [ ] **CORE-CFG-01** — Pydantic schema 校验 config/config.yaml
-- [ ] **CORE-CFG-02** — 配置加载失败时给可读错误（哪个字段、为什么错）
-- [ ] **CORE-PROTO-01** — 进度协议：stderr 输出 `__AR_PROGRESS__=<json>` 标记
-- [ ] **CORE-PROTO-02** — 最终 stdout 必须是**唯一一个** JSON 对象
-- [ ] **CORE-LOG-01** — 统一日志格式：时间戳、level、host、msg、ctx
-- [ ] **CORE-LAYOUT-01** — 固定目录约定：`~/.autoresearch/runs/<run-id>/{logs,wandb,prom,manifest.json}`
+- [x] **CORE-SSH-01** — 提供 `paramiko` 封装的 SSHClient，支持 connect/exec/sftp/reverse_tunnel
+- [x] **CORE-SSH-02** — 支持按 `~/.ssh/config` 别名解析目标
+- [x] **CORE-SSH-03** — SSH 操作统一有超时、重试、错误信息带主机名
+- [x] **CORE-SEC-01** — 敏感字段（密码、token）使用系统 keyring 加密
+- [x] **CORE-SEC-02** — 配置文件中敏感字段用占位符 `<keyring:xxx>` 引用
+- [x] **CORE-CFG-01** — Pydantic schema 校验 config/config.yaml
+- [x] **CORE-CFG-02** — 配置加载失败时给可读错误（哪个字段、为什么错）
+- [x] **CORE-PROTO-01** — 进度协议：stderr 输出 `__AR_PROGRESS__=<json>` 标记
+- [x] **CORE-PROTO-02** — 最终 stdout 必须是**唯一一个** JSON 对象
+- [x] **CORE-LOG-01** — 统一日志格式：时间戳、level、host、msg、ctx
+- [x] **CORE-LAYOUT-01** — 固定目录约定：`~/.autoresearch/runs/<run-id>/{logs,wandb,prom,manifest.json}`
 
 ## CFG — Skill 01: customer-config
 
-- [ ] **CFG-INIT-01** — `ar-config init` 生成 `config/config.yaml` 模板
-- [ ] **CFG-INIT-02** — 模板含中文注释，每个字段都有说明
-- [ ] **CFG-INIT-03** — 已存在 config 时拒绝覆盖（除非 `--force`）
-- [ ] **CFG-VAL-01** — `ar-config validate` 校验现有配置
-- [ ] **CFG-VAL-02** — 校验失败指出哪个字段、什么问题、怎么修
-- [ ] **CFG-SHOW-01** — `ar-config show` 打印配置（敏感字段脱敏）
+- [x] **CFG-INIT-01** — `ar-config init` 生成 `config/config.yaml` 模板
+- [x] **CFG-INIT-02** — 模板含中文注释，每个字段都有说明
+- [x] **CFG-INIT-03** — 已存在 config 时拒绝覆盖（除非 `--force`）
+- [x] **CFG-VAL-01** — `ar-config validate` 校验现有配置
+- [x] **CFG-VAL-02** — 校验失败指出哪个字段、什么问题、怎么修
+- [x] **CFG-SHOW-01** — `ar-config show` 打印配置（敏感字段脱敏）
 
 ## SVC-CHK — Skill 02: local-services-health
 
-- [ ] **SVC-CHK-STAT-01** — `ar-services status` 4 服务并发生存活性检查
-- [ ] **SVC-CHK-STAT-02** — 输出每个服务：name / url / healthy / latency_ms
-- [ ] **SVC-CHK-STAT-03** — `--json` 输出可机读
-- [ ] **SVC-CHK-START-01** — `ar-services start` 调 docker compose up
-- [ ] **SVC-CHK-STOP-01** — `ar-services stop` 调 docker compose down
-- [ ] **SVC-CHK-DEPS-01** — 缺 docker / docker compose 时给可读错误
+- [x] **SVC-CHK-STAT-01** — `ar-services status` 4 服务并发生存活性检查
+- [x] **SVC-CHK-STAT-02** — 输出每个服务：name / url / healthy / latency_ms
+- [x] **SVC-CHK-STAT-03** — `--json` 输出可机读
+- [x] **SVC-CHK-START-01** — `ar-services start` 调 docker compose up
+- [x] **SVC-CHK-STOP-01** — `ar-services stop` 调 docker compose down
+- [x] **SVC-CHK-DEPS-01** — 缺 docker / docker compose 时给可读错误
 
 ## HW — Skill 03: server-hardware-probe
 
@@ -146,16 +146,16 @@
 | SVC | 4 | 01 |
 | CORE | 11 | 02 |
 | CFG | 6 | 03 |
-| SVC-CHK | 6 | 04 |
-| HW | 8 | 05 |
-| NET | 8 | 06 |
-| REACH | 4 | 07 |
-| STACK | 6 | 08 |
-| COLL | 9 | 09 |
-| RPT | 5 | 10 |
-| ARCH | 7 | 11 |
-| ORCH | 5 | 12 |
-| E2E | 4 | 13 |
-| **合计** | **88** | 14 阶段（+ M1 归档） |
+| SVC-CHK | 6 | 01 |
+| HW | 8 | 04 |
+| NET | 8 | 05 |
+| REACH | 4 | 06 |
+| STACK | 6 | 07 |
+| COLL | 9 | 08 |
+| RPT | 5 | 09 |
+| ARCH | 7 | 10 |
+| ORCH | 5 | 11 |
+| E2E | 4 | 12 |
+| **合计** | **88** | 13 阶段（含 M1 归档） |
 
 > 阶段映射详见 ROADMAP.md。

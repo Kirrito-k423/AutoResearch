@@ -35,5 +35,5 @@
     "preserve_session_log": true,
     "auto_resume_on_clear": true
   },
-  "notes": "GSD core defaults, customized for AutoResearch single-user single-machine setup. M1 = 14 phases. Each phase = 1 PR."
+  "notes": "GSD core defaults, customized for AutoResearch single-user single-machine setup. M1 = 13 phases after merging duplicate local-services-health work into Phase 1. Each phase = 1 PR."
 }

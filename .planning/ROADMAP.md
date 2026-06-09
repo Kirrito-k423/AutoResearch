@@ -2,13 +2,13 @@
 
 ## Milestones
 
-- 🚧 **v1.0 MinViable Loop** — Phases 1-14 (in progress)
+- 🚧 **v1.0 MinViable Loop** — Phases 1-13 (in progress)
 - 📋 **v1.1 Stable** — error resilience, multi-server, CI (planned)
 - 📋 **v2.0 Distribute** — multi-node, scheduler, multi-cloud (planned)
 
 ## Milestone Goal (v1.0)
 
-8 个 skill 全部独立可跑，能串成 `autoresearch check all` 和 `autoresearch run smoke` 一键完成"健康检查 + 跑最小实验 + 出报告"；同一套 skill 也能通过 `archon workflow run ar-min-loop` 触发。14 阶段、88 条 REQ 全部完成、E2E smoke < 30 min。
+8 个 skill 全部独立可跑，能串成 `autoresearch check all` 和 `autoresearch run smoke` 一键完成"健康检查 + 跑最小实验 + 出报告"；同一套 skill 也能通过 `archon workflow run ar-min-loop` 触发。13 阶段、88 条 REQ 全部完成、E2E smoke < 30 min。
 
 ## Phases
 
@@ -24,12 +24,13 @@
   3. 4 个服务 `/healthz` 端点全 200
   4. `autoresearch services status` 输出 4 行全 healthy
 
-**Plans**: 3 plans
+**Plans**: 4 plans
 Plans:
 
 - [x] 01-01: 仓根文档（README + AGENTS + CLAUDE + LICENSE + .gitignore）
 - [x] 01-02: docker-compose.yml 4 服务 + .env.example + 启动脚本
 - [x] 01-03: `autoresearch services` CLI 子命令（status / start / stop）
+- [x] 01-04: UAT gap closure（start / stop 的 `--lang en` 错误文案）
 
 ### Phase 2: workspace-core 沉淀
 
@@ -48,10 +49,10 @@ Plans:
 
 Plans:
 
-- [ ] 02-01: workspace-core/ssh/ (paramiko 客户端 + reverse tunnel)
-- [ ] 02-02: workspace-core/secrets/ + workspace-core/config/ (keyring + Pydantic)
-- [ ] 02-03: workspace-core/progress/ + log/ + layout/ (协议 + 格式 + 目录)
-- [ ] 02-04: `ar-ping` CLI 端到端冒烟
+- [x] 02-01: workspace-core/ssh/ (paramiko 客户端 + reverse tunnel)
+- [x] 02-02: workspace-core/secrets/ + workspace-core/config/ (keyring + Pydantic)
+- [x] 02-03: workspace-core/progress/ + log/ + layout/ (协议 + 格式 + 目录)
+- [x] 02-04: `ar-ping` CLI 端到端冒烟（A2-AK-225 真机 SSH + 反向隧道已验收）
 
 ### Phase 3: Skill 01 — customer-config
 
@@ -69,29 +70,10 @@ Plans:
 
 Plans:
 
-- [ ] 03-01: `ar-config init` + `ar-config validate`
-- [ ] 03-02: `ar-config show` + keyring 集成
+- [x] 03-01: `ar-config init` + `ar-config validate`
+- [x] 03-02: `ar-config show` + keyring 集成
 
-### Phase 4: Skill 02 — local-services-health
-
-**Goal**: 能并发探 4 个服务、JSON 输出、可被下游 skill 消费。
-**Depends on**: Phase 2
-**Requirements**: SVC-CHK-STAT-01..03, SVC-CHK-START-01, SVC-CHK-STOP-01, SVC-CHK-DEPS-01
-**Success Criteria**:
-
-  1. `ar-services status` 并发查 4 服务 healthz
-  2. `--json` 输出可机读
-  3. `ar-services start/stop` 调 docker compose
-  4. 缺 docker 给可读错误
-
-**Plans**: 2 plans
-
-Plans:
-
-- [ ] 04-01: `ar-services status` + `--json` + 并发
-- [ ] 04-02: `ar-services start/stop` + docker 探测
-
-### Phase 5: Skill 03 — server-hardware-probe
+### Phase 4: Skill 03 — server-hardware-probe
 
 **Goal**: 给定服务器名，输出 NPU 列表 + 显存 + 占用方 + 驱动版本。
 **Depends on**: Phase 2
@@ -108,11 +90,11 @@ Plans:
 
 Plans:
 
-- [ ] 05-01: 复用 workspace-core SSH 跑 npu-smi
-- [ ] 05-02: 解析器 + lspci fallback
-- [ ] 05-03: 占用方解析 + 驱动版本
+- [ ] 04-01: 复用 workspace-core SSH 跑 npu-smi
+- [ ] 04-02: 解析器 + lspci fallback
+- [ ] 04-03: 占用方解析 + 驱动版本
 
-### Phase 6: Skill 04 — network-check
+### Phase 5: Skill 04 — network-check
 
 **Goal**: 本地和远程两边的网络矩阵都查，自动建反向代理，隧道可重试。
 **Depends on**: Phase 2
@@ -129,29 +111,29 @@ Plans:
 
 Plans:
 
-- [ ] 06-01: 本机 + 远程测速 (curl)
-- [ ] 06-02: SSH 反向代理通道 (paramiko)
-- [ ] 06-03: 隧道心跳 + 重试
+- [ ] 05-01: 本机 + 远程测速 (curl)
+- [ ] 05-02: SSH 反向代理通道 (paramiko)
+- [ ] 05-03: 隧道心跳 + 重试
 
-### Phase 7: Skill 05 — service-reachability
+### Phase 6: Skill 05 — service-reachability
 
 **Goal**: 验证远程服务器能通过隧道访问本地 wandb / Prometheus。
-**Depends on**: Phase 6
+**Depends on**: Phase 5
 **Requirements**: REACH-WB-01..02, REACH-PROM-01..02
 **Success Criteria**:
 
   1. 远程 curl 本地 wandb /health 200
   2. 远程通过 pushgateway push 一个测试 metric
-  3. 隧道挂了给可读错误并提示先跑 06
+  3. 隧道挂了给可读错误并提示先跑 05
 
 **Plans**: 2 plans
 
 Plans:
 
-- [ ] 07-01: 远程 → 本地 wandb 探活
-- [ ] 07-02: 远程 → 本地 Prometheus pushgateway 探活
+- [ ] 06-01: 远程 → 本地 wandb 探活
+- [ ] 06-02: 远程 → 本地 Prometheus pushgateway 探活
 
-### Phase 8: Skill 06 — train-stack-health
+### Phase 7: Skill 06 — train-stack-health
 
 **Goal**: 远程服务器 verl + veomni 各自的 conda env 健康，能跑 1-step 干跑。
 **Depends on**: Phase 2
@@ -167,14 +149,14 @@ Plans:
 
 Plans:
 
-- [ ] 08-01: 复用 workspace-core SSH + conda env 探测
-- [ ] 08-02: verl 1-step 干跑
-- [ ] 08-03: veomni 1-step 干跑
+- [ ] 07-01: 复用 workspace-core SSH + conda env 探测
+- [ ] 07-02: verl 1-step 干跑
+- [ ] 07-03: veomni 1-step 干跑
 
-### Phase 9: Skill 07 — data-collection
+### Phase 8: Skill 07 — data-collection
 
 **Goal**: 在远程跑一次最小实验，3 路数据（wandb/log/prom）都落到本地固定目录。
-**Depends on**: Phase 7 + Phase 8
+**Depends on**: Phase 6 + Phase 7
 **Requirements**: COLL-RUN-01..02, COLL-WB-01..02, COLL-LOG-01..02, COLL-PROM-01..02, COLL-MANIFEST-01
 **Success Criteria**:
 
@@ -188,15 +170,15 @@ Plans:
 
 Plans:
 
-- [ ] 09-01: minimal-runner 抽象 + verl/veomni 实例
-- [ ] 09-02: datalake/wandb/sync.py 离线→本地
-- [ ] 09-03: datalake/logs/collector.py 实时拉
-- [ ] 09-04: datalake/prometheus/push_gateway.py + manifest 写入
+- [ ] 08-01: minimal-runner 抽象 + verl/veomni 实例
+- [ ] 08-02: datalake/wandb/sync.py 离线→本地
+- [ ] 08-03: datalake/logs/collector.py 实时拉
+- [ ] 08-04: datalake/prometheus/push_gateway.py + manifest 写入
 
-### Phase 10: Skill 08 — experiment-report
+### Phase 9: Skill 08 — experiment-report
 
 **Goal**: 给定 run-id，出一份单页 HTML，能看到 log / wandb / prom 三视图。
-**Depends on**: Phase 9
+**Depends on**: Phase 8
 **Requirements**: RPT-MANIFEST-01, RPT-PAGE-01..03, RPT-LINK-01
 **Success Criteria**:
 
@@ -209,13 +191,13 @@ Plans:
 
 Plans:
 
-- [ ] 10-01: 读 manifest + 收集三路数据
-- [ ] 10-02: HTML 模板 + 嵌入图表 + 浏览器打开
+- [ ] 09-01: 读 manifest + 收集三路数据
+- [ ] 09-02: HTML 模板 + 嵌入图表 + 浏览器打开
 
-### Phase 11: Archon 适配层
+### Phase 10: Archon 适配层
 
 **Goal**: 8 skill 各自有 Archon workflow YAML；主 workflow `ar-min-loop.yaml` 串联 8 skill。
-**Depends on**: Phase 10
+**Depends on**: Phase 9
 **Requirements**: ARCH-WF-01..03, ARCH-WF-MAIN-01..02, ARCH-RUN-01..02
 **Success Criteria**:
 
@@ -229,14 +211,14 @@ Plans:
 
 Plans:
 
-- [ ] 11-01: 8 skill 各自打包成 Archon workflow YAML
-- [ ] 11-02: 主 workflow ar-min-loop.yaml 串联
-- [ ] 11-03: 在 Archon Web UI 验证可触发 + 可观察
+- [ ] 10-01: 8 skill 各自打包成 Archon workflow YAML
+- [ ] 10-02: 主 workflow ar-min-loop.yaml 串联
+- [ ] 10-03: 在 Archon Web UI 验证可触发 + 可观察
 
-### Phase 12: 顶层 CLI 编排
+### Phase 11: 顶层 CLI 编排
 
 **Goal**: `autoresearch check all` 和 `autoresearch run smoke` 一键完成多 skill 串联。
-**Depends on**: Phase 11
+**Depends on**: Phase 10
 **Requirements**: ORCH-CHECK-01..02, ORCH-RUN-01..02, ORCH-LOG-01
 **Success Criteria**:
 
@@ -249,13 +231,13 @@ Plans:
 
 Plans:
 
-- [ ] 12-01: `autoresearch check all` 编排器
-- [ ] 12-02: `autoresearch run smoke` 编排器 + 失败诊断
+- [ ] 11-01: `autoresearch check all` 编排器
+- [ ] 11-02: `autoresearch run smoke` 编排器 + 失败诊断
 
-### Phase 13: E2E 端到端 smoke
+### Phase 12: E2E 端到端 smoke
 
 **Goal**: 一次性从空 config 跑完整循环，报告能完整看到 log + wandb + prom 三视图。
-**Depends on**: Phase 12
+**Depends on**: Phase 11
 **Requirements**: E2E-01..04
 **Success Criteria**:
 
@@ -268,13 +250,13 @@ Plans:
 
 Plans:
 
-- [ ] 13-01: E2E 测试脚本（脚本化整个 M1 流程）
-- [ ] 13-02: 报告完整性检查（断言 3 视图都齐）
+- [ ] 12-01: E2E 测试脚本（脚本化整个 M1 流程）
+- [ ] 12-02: 报告完整性检查（断言 3 视图都齐）
 
-### Phase 14: M1 归档
+### Phase 13: M1 归档
 
 **Goal**: 跑完 `gsd-complete-milestone` 归档当前里程碑，更新 STATE.md。
-**Depends on**: Phase 13
+**Depends on**: Phase 12
 **Requirements**: 无新增 REQ
 **Success Criteria**:
 
@@ -287,26 +269,25 @@ Plans:
 
 Plans:
 
-- [ ] 14-01: 跑 `gsd-complete-milestone`，准备 v1.1
+- [ ] 13-01: 跑 `gsd-complete-milestone`，准备 v1.1
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → ... → 14
+Phases execute in numeric order: 1 → 2 → 3 → ... → 13
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. 仓骨架与本地服务栈 | 0/3 | Not started | - |
-| 2. workspace-core 沉淀 | 0/4 | Not started | - |
-| 3. Skill 01: customer-config | 0/2 | Not started | - |
-| 4. Skill 02: local-services-health | 0/2 | Not started | - |
-| 5. Skill 03: server-hardware-probe | 0/3 | Not started | - |
-| 6. Skill 04: network-check | 0/3 | Not started | - |
-| 7. Skill 05: service-reachability | 0/2 | Not started | - |
-| 8. Skill 06: train-stack-health | 0/3 | Not started | - |
-| 9. Skill 07: data-collection | 0/4 | Not started | - |
-| 10. Skill 08: experiment-report | 0/2 | Not started | - |
-| 11. Archon 适配层 | 0/3 | Not started | - |
-| 12. 顶层 CLI 编排 | 0/2 | Not started | - |
-| 13. E2E 端到端 smoke | 0/2 | Not started | - |
-| 14. M1 归档 | 0/1 | Not started | - |
+| 1. 仓骨架与本地服务栈 | 4/4 | Complete   | 2026-06-09 |
+| 2. workspace-core 沉淀 | 4/4 | Complete   | 2026-06-09 |
+| 3. Skill 01: customer-config | 2/2 | Complete   | 2026-06-09 |
+| 4. Skill 03: server-hardware-probe | 0/3 | Not started | - |
+| 5. Skill 04: network-check | 0/3 | Not started | - |
+| 6. Skill 05: service-reachability | 0/2 | Not started | - |
+| 7. Skill 06: train-stack-health | 0/3 | Not started | - |
+| 8. Skill 07: data-collection | 0/4 | Not started | - |
+| 9. Skill 08: experiment-report | 0/2 | Not started | - |
+| 10. Archon 适配层 | 0/3 | Not started | - |
+| 11. 顶层 CLI 编排 | 0/2 | Not started | - |
+| 12. E2E 端到端 smoke | 0/2 | Not started | - |
+| 13. M1 归档 | 0/1 | Not started | - |
