@@ -114,11 +114,17 @@ Plans:
   5. 隧道心跳保活，断了重连
 
 **Plans**: 3 plans
-
 Plans:
+**Wave 1**
 
 - [ ] 05-01: 本机 + 远程测速 (curl)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 05-02: SSH 反向代理通道 (paramiko)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 05-03: 隧道心跳 + 重试
 
 ### Phase 6: Skill 05 — service-reachability
