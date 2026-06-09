@@ -20,18 +20,18 @@ Click hw probe
        + raw failure log under LOGS_DIR
 ```
 
-## Closest Analogs
+## File Classification
 
-| New responsibility | Closest existing analog | Pattern to preserve |
+| New/modified file | Role | Closest existing analog | Pattern to preserve |
 |---|---|---|
-| `hw probe` Click wiring | `autoresearch/cli.py` ping/config commands | command function imports `run_*` lazily and raises `click.exceptions.Exit` |
-| Config server resolution | `autoresearch/ping.py::_resolve_server_host` | `from_path` → exact server name lookup → `resolve_host` → identity file override |
-| SSH command execution | `workspace-core/ssh/client.py::SSHClient` | context manager, fixed 5s connect default, tuple result from `exec` |
-| Final structured status | `workspace-core/result/check.py` | `CheckResult` with `ok/severity/data/message/error`, lower-case severity values |
-| Progress | `workspace-core/progress/emitter.py` | `__AR_PROGRESS__=<json>` to stderr, never stdout |
-| Failure logs | `workspace-core/log/logger.py` + `workspace-core/layout/paths.py` | local `LOGS_DIR`, UTF-8 file, parent mkdir |
-| Bounded fan-out | `autoresearch/services/_common.py::check_all` | `ThreadPoolExecutor`, deterministic returned order |
-| CLI assertions | `tests/test_ping.py` | parse `result.stdout` as JSON; inspect `result.stderr` for progress |
+| `autoresearch/hw/models.py` | Hardware domain types | `autoresearch/services/_common.py::HealthResult`, `workspace-core/result/check.py::CheckResult` | TypedDict-style serializable records; lower-case severity strings |
+| `autoresearch/hw/parser.py` | Pure vendor-output transforms | No direct vendor analog; follow pure business helpers in existing tests | No SSH/Click/filesystem imports; fixture-driven exact assertions |
+| `autoresearch/hw/probe.py` | Config/SSH/parser orchestration | `autoresearch/ping.py`, `workspace-core/ssh/client.py` | config lookup → HostSpec → independent SSHClient → fixed commands → CheckResult |
+| `autoresearch/cli.py` | `hw probe` Click wiring | existing ping/config commands in the same file | lazy import `run_*`; raise `click.exceptions.Exit` |
+| `tests/test_hw_parser.py` | Parser unit tests | `tests/workspace-core/test_config.py` | direct business assertions and parametrized invalid inputs |
+| `tests/test_hw_probe.py` | Orchestration tests | `tests/test_ping.py`, `tests/workspace-core/test_ssh_client.py` | fake/mocked command boundaries; assert cleanup and exact commands |
+| `tests/test_hw_cli.py` | Click contract tests | `tests/test_ping.py` | parse `result.stdout` as JSON; inspect `result.stderr` for progress |
+| `tests/fixtures/hw/*.txt` | Sanitized vendor samples | No existing fixture directory | stable text fixtures with no host/IP/user/secret data |
 
 ## New Files and Roles
 
@@ -88,6 +88,7 @@ Click hw probe
 - `SSHClient.exec(command, timeout=30.0) -> tuple[int, str, str]`
 - `CheckSeverity.OK/WARN/FAIL` serialize to `"ok"`, `"warn"`, `"fail"`
 - `CheckResult` includes `message`; do not emit a four-field near-copy.
+- Hardware `WARN` means core probe succeeded: construct `ok=true/severity=warn`; do not reuse current `fail(..., WARN)` or `merge()` behavior.
 - `emit_progress(stage, level=..., **fields)` writes stderr.
 - `from_path()` respects explicit path/env/default precedence.
 
