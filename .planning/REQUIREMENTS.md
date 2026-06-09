@@ -57,12 +57,12 @@
 
 - [ ] **HW-CONN-01** — `ar-hw probe --server X` 通过 SSH 连上目标
 - [ ] **HW-CONN-02** — 5s connect timeout，超时给可读错误
-- [ ] **HW-NPU-01** — 解析 `npu-smi info` 输出，列出所有 NPU 卡
-- [ ] **HW-NPU-02** — 每张卡含 id / name / memory_total / memory_used / temperature / utilization
-- [ ] **HW-NPU-03** — 解析失败 fallback 到 `lspci` 列出 NPU 设备
+- [x] **HW-NPU-01** — 解析 `npu-smi info` 输出，列出所有 NPU 卡
+- [x] **HW-NPU-02** — 每张卡含 id / name / memory_total / memory_used / temperature / utilization
+- [x] **HW-NPU-03** — 解析失败 fallback 到 `lspci` 列出 NPU 设备
 - [ ] **HW-OCC-01** — 解析 `npu-smi info` 中的 Processes 列，列出占用方
 - [ ] **HW-OCC-02** — 占用方信息含 pid / user / process_name / memory_used
-- [ ] **HW-DRV-01** — 报告驱动版本（CANN / npu driver）
+- [x] **HW-DRV-01** — 报告驱动版本（CANN / npu driver）
 
 ## NET — Skill 04: network-check
 

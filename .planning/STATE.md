@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: MinViable Loop
 status: Blocked on Phase 04 Plan 01 real-server verification
-last_updated: "2026-06-09T04:28:09.127Z"
-last_activity: 2026-06-09
+last_updated: "2026-06-09T07:17:15.948Z"
+last_activity: 2026-06-09 — completed 04-02; A2 SSH banner UAT pending
 progress:
   total_phases: 13
   completed_phases: 3
   total_plans: 13
-  completed_plans: 10
+  completed_plans: 12
   percent: 23
 ---
 
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 - **Milestone:** v1.0 MinViable Loop
 - **Phase:** 4 planned (server-hardware-probe) → ready to execute
-- **Plan:** 0/3 complete (04-01 → 04-02 → 04-03)
-- **Last activity:** 2026-06-09
+- **Plan:** 04-02 complete; 04-01 real-server UAT blocked; 04-03 next
+- **Last activity:** 2026-06-09 — completed 04-02; A2 SSH banner UAT pending
 
 ## Session Continuity
 
@@ -119,3 +119,15 @@ $gsd-execute-phase 4
 
 ---
 *Last updated: 2026-06-09 after Phase 4 planning*
+
+## Performance Metrics
+
+| Phase | Plan | Duration | Notes |
+|-------|------|----------|-------|
+| Phase 04 P02 | 9min | 3 tasks | 9 files |
+
+## Decisions
+
+- [Phase 04]: 默认表有效值优先；typed query 只填 None，冲突保留主表并记录 warning。
+- [Phase 04]: driver version.info 只用固定 cat 命令读取，缺失降级为 WARN。
+- [Phase 04]: lspci 只证明设备存在，动态字段保持 null，结果无条件 FAIL。

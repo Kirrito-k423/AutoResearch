@@ -90,11 +90,11 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 04-01: 单服务器纵向切片（SSH → npu-smi → 核心指标 → JSON CLI）
+- [x] 04-01: 单服务器纵向切片（SSH → npu-smi → 核心指标 → JSON CLI）
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 04-02: 多版本解析、驱动信息、lspci fallback 与失败诊断
+- [x] 04-02: 多版本解析、驱动信息、lspci fallback 与失败诊断
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -287,7 +287,7 @@ Phases execute in numeric order: 1 → 2 → 3 → ... → 13
 | 1. 仓骨架与本地服务栈 | 4/4 | Complete   | 2026-06-09 |
 | 2. workspace-core 沉淀 | 4/4 | Complete   | 2026-06-09 |
 | 3. Skill 01: customer-config | 2/2 | Complete   | 2026-06-09 |
-| 4. Skill 03: server-hardware-probe | 0/3 | Not started | - |
+| 4. Skill 03: server-hardware-probe | 2/3 | In Progress|  |
 | 5. Skill 04: network-check | 0/3 | Not started | - |
 | 6. Skill 05: service-reachability | 0/2 | Not started | - |
 | 7. Skill 06: train-stack-health | 0/3 | Not started | - |
