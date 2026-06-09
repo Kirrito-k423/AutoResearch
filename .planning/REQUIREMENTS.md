@@ -75,6 +75,8 @@
 - [ ] **NET-TUNNEL-01** — 远程无外网时自动建 `ssh -R` 反向代理
 - [ ] **NET-TUNNEL-02** — 隧道健康检查（每 30s 发心跳，重连可重试）
 
+> 2026-06-09: 05-03 代码和自动测试已覆盖 NET-TUNNEL-01..02 的实现路径，但全部配置服务器真实网络/隧道 UAT 尚未通过，因此这两个 REQ 保持未完成。
+
 ## REACH — Skill 05: service-reachability
 
 - [ ] **REACH-WB-01** — `ar-reach test --server X` 测远程到本地 wandb 连通

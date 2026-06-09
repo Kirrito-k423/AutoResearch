@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: MinViable Loop
-status: Phase 5 in progress; Phase 4 real-server UAT still blocked
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-06-09T13:14:56.413Z"
-last_activity: 2026-06-09 — Phase 5 Plan 02 remote proxy retry complete; real ssh-R UAT still exits early
+status: Phase 5 blocked on real-server network/tunnel UAT; Phase 4 real-server UAT still blocked
+stopped_at: Blocked after 05-03-PLAN.md real-server UAT
+last_updated: "2026-06-09T13:26:01Z"
+last_activity: 2026-06-09 — Phase 5 Plan 03 tunnel heartbeat/ensure code complete; 3/5 configured servers still block real UAT
 progress:
   total_phases: 13
   completed_phases: 3
@@ -27,15 +27,15 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 ## Position
 
 - **Milestone:** v1.0 MinViable Loop
-- **Phase:** 5 network-check → 05-01 and 05-02 complete, 05-03 next
-- **Plan:** 05-02 remote proxy retry implemented; real A2 ssh-R UAT exits early and remains final-gate evidence
-- **Last activity:** 2026-06-09 — Phase 5 Plan 02 remote proxy retry complete; real ssh-R UAT still exits early
+- **Phase:** 5 network-check → 05-01 and 05-02 complete, 05-03 code complete but real UAT blocked
+- **Plan:** 05-03 tunnel heartbeat and `net tunnel ensure` implemented; 3/5 configured servers still need SSH/proxy repair before Phase 5 can close
+- **Last activity:** 2026-06-09 — Phase 5 Plan 03 tunnel heartbeat/ensure code complete; all-server `net probe` exit 1
 
 ## Session Continuity
 
-- **Last session:** 2026-06-09T13:14:56.408Z
-- **Stopped At:** Completed 05-02-PLAN.md
-- **Resume File:** .planning/phases/05-skill-04-network-check/05-03-PLAN.md
+- **Last session:** 2026-06-09T13:26:01Z
+- **Stopped At:** Blocked after 05-03-PLAN.md real-server UAT
+- **Resume File:** .planning/phases/05-skill-04-network-check/05-03-SUMMARY.md
 
 ### Decisions Made This Session
 
@@ -80,6 +80,16 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 ### Active Blockers
 
+- **05-03 Phase 5 real network/tunnel UAT blocked (2026-06-09)**
+  - `uv run autoresearch net probe --local-only` passed with 3 local rows.
+  - `uv run autoresearch net tunnel ensure --server A2-AK-225 --remote-proxy-port 17890` passed and recorded `last_heartbeat_ok=true`.
+  - A2-AK-225 and A3-AK-182 produced WARN-only remote rows with proxy retry assistance.
+  - A3-AX-153 is blocked by sanitized category `ssh_host_key_mismatch`.
+  - A3-AX-176 is blocked by sanitized category `ssh_auth`.
+  - A2-AK-176 is blocked by sanitized category `proxy_unavailable_auth`.
+  - Default `uv run autoresearch net probe` returned exit 1 with 18 rows; Phase 5 and NET-TUNNEL requirements remain open.
+  - Evidence: `.planning/phases/05-skill-04-network-check/05-03-SUMMARY.md`
+
 - **04-01 A2-AK-225 真机验收阻塞（2026-06-09）**
   - `192.168.9.225:22` 无法读取 SSH protocol banner，4 次尝试后返回 `No existing session`
   - `uv run autoresearch hw probe --server A2-AK-225` 正确输出单一 FAIL JSON 并 exit 1
@@ -100,9 +110,11 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 ## Next Steps
 
-1. 恢复全部 5 台配置服务器的 LAN/VPN/SSH banner 可达性。
-2. 逐台重跑 `uv run autoresearch hw probe --server NAME`，确认设备非空且四项核心指标均为整数。
-3. 重跑 `uv run autoresearch hw probe --all`，要求 exit 0、`ok=true`、`failed_servers=[]` 后再关闭 Phase 4。
+1. 修复 Phase 5 的三项真实网络阻塞：A3-AX-153 host key、A3-AX-176 SSH auth、A2-AK-176 proxy tunnel auth/startup。
+2. 重跑 `uv run autoresearch net probe --server NAME` 覆盖上述 3 台，再重跑默认 `uv run autoresearch net probe`。
+3. 恢复全部 5 台配置服务器的 LAN/VPN/SSH banner 可达性。
+4. 逐台重跑 `uv run autoresearch hw probe --server NAME`，确认设备非空且四项核心指标均为整数。
+5. 重跑 `uv run autoresearch hw probe --all`，要求 exit 0、`ok=true`、`failed_servers=[]` 后再关闭 Phase 4。
 
 ## Continuation Prompts
 
@@ -111,7 +123,7 @@ $gsd-progress
 ```
 
 ```
-$gsd-execute-phase 4
+$gsd-execute-phase 5
 ```
 
 ## Metrics
@@ -149,3 +161,4 @@ $gsd-execute-phase 4
 ### Blockers
 
 - Phase 04 Plan 03 real-server UAT blocked: 5/5 configured servers failed with sanitized category ssh_banner; aggregate exit 1.
+- Phase 05 Plan 03 real-server UAT blocked: default `net probe` exit 1; A3-AX-153 `ssh_host_key_mismatch`, A3-AX-176 `ssh_auth`, A2-AK-176 `proxy_unavailable_auth`.

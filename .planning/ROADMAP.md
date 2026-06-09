@@ -126,6 +126,7 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [ ] 05-03: 隧道心跳 + 重试
+  - 2026-06-09 阻塞：代码和测试已完成，但真实全服务器 `net probe` UAT 仍有 A3-AX-153 host key、A3-AX-176 SSH auth、A2-AK-176 proxy tunnel auth/startup 三项外部阻塞。
 
 ### Phase 6: Skill 05 — service-reachability
 
@@ -294,7 +295,7 @@ Phases execute in numeric order: 1 → 2 → 3 → ... → 13
 | 2. workspace-core 沉淀 | 4/4 | Complete   | 2026-06-09 |
 | 3. Skill 01: customer-config | 2/2 | Complete   | 2026-06-09 |
 | 4. Skill 03: server-hardware-probe | 2/3 | In Progress|  |
-| 5. Skill 04: network-check | 2/3 | In Progress|  |
+| 5. Skill 04: network-check | 2/3 | Blocked |  |
 | 6. Skill 05: service-reachability | 0/2 | Not started | - |
 | 7. Skill 06: train-stack-health | 0/3 | Not started | - |
 | 8. Skill 07: data-collection | 0/4 | Not started | - |
