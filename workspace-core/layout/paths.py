@@ -17,6 +17,7 @@ RUNS_DIR: Final[Path] = ROOT_DIR / "runs"
 LOGS_DIR: Final[Path] = ROOT_DIR / "logs"
 CACHE_DIR: Final[Path] = ROOT_DIR / "cache"
 SSH_KEYS_DIR: Final[Path] = ROOT_DIR / "ssh_keys"
+TUNNELS_DIR: Final[Path] = ROOT_DIR / "tunnels"
 
 
 # === run-id 校验 ===
@@ -81,8 +82,8 @@ def ensure_run_dir(run_id: str) -> RunPaths:
 
 
 def ensure_root() -> Path:
-    """确保 ~/.autoresearch/{runs,logs,cache,ssh_keys}/ 4 个目录都建."""
-    for d in (RUNS_DIR, LOGS_DIR, CACHE_DIR, SSH_KEYS_DIR):
+    """确保 ~/.autoresearch/ 下的固定目录都建."""
+    for d in (RUNS_DIR, LOGS_DIR, CACHE_DIR, SSH_KEYS_DIR, TUNNELS_DIR):
         d.mkdir(parents=True, exist_ok=True)
     return ROOT_DIR
 

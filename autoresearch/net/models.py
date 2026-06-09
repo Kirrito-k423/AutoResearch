@@ -48,6 +48,8 @@ class NetworkGroupSummary(TypedDict):
     warned: int
     failed: int
     needs_proxy: bool
+    proxy_used: int
+    proxy_failed: int
     failed_targets: list[str]
 
 
@@ -59,6 +61,8 @@ class NetworkSummary(TypedDict):
     warned: int
     failed: int
     needs_proxy: bool
+    proxy_used: int
+    proxy_failed: int
     failed_targets: list[str]
     local: NetworkGroupSummary
     remotes: dict[str, NetworkGroupSummary]
@@ -72,3 +76,18 @@ class NetworkData(TypedDict):
     summary: NetworkSummary
     warnings: list[str]
     metadata: dict[str, Any]
+
+
+class TunnelState(TypedDict):
+    """Local JSON state for a reusable reverse proxy tunnel."""
+
+    server: str
+    pid: int
+    remote_port: int
+    local_proxy_url: str
+    remote_proxy_url: str
+    started_at: str
+    log_path: str | None
+    last_heartbeat_at: str | None
+    last_heartbeat_ok: bool
+    error: str | None

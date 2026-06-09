@@ -3,7 +3,7 @@ import pytest
 
 from workspace_core.layout import ensure_run_dir, run_dir, clean_run, ensure_root
 from workspace_core.layout.paths import (
-    RUNS_DIR, LOGS_DIR, CACHE_DIR, SSH_KEYS_DIR, ROOT_DIR,
+    RUNS_DIR, LOGS_DIR, CACHE_DIR, SSH_KEYS_DIR, TUNNELS_DIR, ROOT_DIR,
     RunIDError, _validate_run_id, RunPaths,
 )
 import workspace_core.layout.paths as layout_paths
@@ -18,6 +18,7 @@ def fake_home(monkeypatch, tmp_path):
     monkeypatch.setattr(layout_paths, "LOGS_DIR", fake / "logs")
     monkeypatch.setattr(layout_paths, "CACHE_DIR", fake / "cache")
     monkeypatch.setattr(layout_paths, "SSH_KEYS_DIR", fake / "ssh_keys")
+    monkeypatch.setattr(layout_paths, "TUNNELS_DIR", fake / "tunnels")
     yield fake
 
 
@@ -75,6 +76,12 @@ def test_ensure_root_creates_all_4_dirs(fake_home):
     assert (fake_home / "logs").exists()
     assert (fake_home / "cache").exists()
     assert (fake_home / "ssh_keys").exists()
+
+
+def test_ensure_root_creates_tunnels_dir(fake_home):
+    ensure_root()
+    assert (fake_home / "tunnels").exists()
+    assert TUNNELS_DIR.name == "tunnels"
 
 
 def test_clean_run_removes_directory(fake_home):
