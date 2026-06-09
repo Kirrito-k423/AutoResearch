@@ -1,0 +1,3 @@
+Ascend device diagnostic report
+firmware channel: stable
+device inventory is not exposed in this format

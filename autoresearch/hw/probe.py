@@ -12,11 +12,80 @@ from workspace_core.result import CheckResult, CheckSeverity
 from workspace_core.ssh import HostSpec, SSHClient, SSHError, resolve_host
 
 from .models import DriverVersions, HardwareData
-from .parser import parse_npu_smi_info
+from .parser import core_field_errors, parse_npu_smi_info, parse_typed_metric_output
 
 
 NPU_SMI_INFO_COMMAND = "npu-smi info"
+TYPED_QUERY_TYPES = ("memory", "temp", "usages")
 SSHClientFactory = Callable[[HostSpec], SSHClient]
+
+
+def typed_query_command(metric_type: str, device_id: int) -> str:
+    """Build one allowlisted typed command from a parsed integer id."""
+    if metric_type not in TYPED_QUERY_TYPES:
+        raise ValueError(f"unsupported typed query type: {metric_type}")
+    if (
+        not isinstance(device_id, int)
+        or isinstance(device_id, bool)
+        or device_id < 0
+    ):
+        raise ValueError("device_id must be a non-negative integer")
+    return f"npu-smi info -t {metric_type} -i {device_id}"
+
+
+def _missing_query_types(device) -> list[str]:
+    query_types: list[str] = []
+    if (
+        device["memory_used_mib"] is None
+        or device["memory_total_mib"] is None
+    ):
+        query_types.append("memory")
+    if device["temperature_c"] is None:
+        query_types.append("temp")
+    if device["utilization_pct"] is None:
+        query_types.append("usages")
+    return query_types
+
+
+def _supplement_typed_metrics(client: SSHClient, data: HardwareData) -> None:
+    used_supplement = False
+    for device in data["devices"]:
+        device_id = device["id"]
+        if not isinstance(device_id, int) or isinstance(device_id, bool):
+            data["warnings"].append(
+                "typed query skipped: parsed device id is not an integer"
+            )
+            continue
+        for metric_type in _missing_query_types(device):
+            command = typed_query_command(metric_type, device_id)
+            exit_code, stdout, stderr = client.exec(command)
+            if exit_code != 0:
+                detail = stderr.strip() or "no stderr"
+                data["warnings"].append(
+                    f"typed query {metric_type} for device {device_id} "
+                    f"failed with exit code {exit_code}: {detail}"
+                )
+                continue
+            values = parse_typed_metric_output(stdout, metric_type, device_id)
+            if not values:
+                data["warnings"].append(
+                    f"typed query {metric_type} for device {device_id} "
+                    "returned an unknown format"
+                )
+                continue
+            for field, value in values.items():
+                current = device[field]
+                if current is None:
+                    device[field] = value
+                    used_supplement = True
+                elif current != value:
+                    data["warnings"].append(
+                        f"typed query {metric_type} conflict for device "
+                        f"{device_id} field {field}: kept primary value {current}"
+                    )
+    if used_supplement:
+        data["warnings"].append("typed supplement used for missing core metrics")
+    data["field_errors"] = core_field_errors(data["devices"])
 
 
 def resolve_server_host(
@@ -117,6 +186,9 @@ def probe_server(
         data["driver_versions"] = parsed["driver_versions"]
         data["warnings"] = list(parsed["warnings"])
         data["field_errors"] = parsed["field_errors"]
+
+        if parsed["error"] is None and data["field_errors"]:
+            _supplement_typed_metrics(client, data)
 
         if exit_code != 0:
             detail = stderr.strip() or "no stderr"

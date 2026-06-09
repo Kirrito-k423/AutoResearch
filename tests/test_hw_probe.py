@@ -10,6 +10,7 @@ from autoresearch.hw.probe import (
     NPU_SMI_INFO_COMMAND,
     probe_server,
     resolve_server_host,
+    typed_query_command,
 )
 from workspace_core.config import ConfigError
 from workspace_core.result import CheckSeverity
@@ -23,6 +24,7 @@ BASELINE = (FIXTURES / "npu_smi_25_3_rc1_no_processes.txt").read_text(
 PARTIAL = (FIXTURES / "npu_smi_missing_metric.txt").read_text(
     encoding="utf-8"
 )
+UNKNOWN = (FIXTURES / "npu_smi_unknown_format.txt").read_text(encoding="utf-8")
 
 
 def _config(tmp_path: Path) -> Path:
@@ -53,10 +55,12 @@ class FakeSSHClient:
         host,
         *,
         response: tuple[int, str, str],
+        responses: dict[str, tuple[int, str, str]] | None = None,
         connect_error: Exception | None = None,
     ) -> None:
         self.host = host
         self.response = response
+        self.responses = responses or {}
         self.connect_error = connect_error
         self.connect_timeouts: list[float] = []
         self.commands: list[str] = []
@@ -69,7 +73,7 @@ class FakeSSHClient:
 
     def exec(self, command: str):
         self.commands.append(command)
-        return self.response
+        return self.responses.get(command, self.response)
 
     def close(self) -> None:
         self.closed = True
@@ -78,6 +82,7 @@ class FakeSSHClient:
 def _factory(
     *,
     response: tuple[int, str, str] = (0, BASELINE, ""),
+    responses: dict[str, tuple[int, str, str]] | None = None,
     connect_error: Exception | None = None,
 ):
     clients: list[FakeSSHClient] = []
@@ -86,6 +91,7 @@ def _factory(
         client = FakeSSHClient(
             host,
             response=response,
+            responses=responses,
             connect_error=connect_error,
         )
         clients.append(client)
@@ -178,3 +184,109 @@ def test_unknown_server_fails_before_client_creation(tmp_path):
         resolve_server_host("missing-server", _config(tmp_path))
 
     assert clients == []
+
+
+@pytest.mark.parametrize(
+    ("metric_type", "device_id"),
+    [
+        ("shell", 0),
+        ("temp", "0"),
+        ("temp", -1),
+        ("temp", True),
+    ],
+)
+def test_typed_command_rejects_non_allowlisted_or_non_integer_input(
+    metric_type,
+    device_id,
+):
+    with pytest.raises(ValueError):
+        typed_query_command(metric_type, device_id)
+
+
+def test_typed_queries_fill_only_missing_values_with_integer_ids(tmp_path):
+    factory, clients = _factory(
+        response=(0, PARTIAL, ""),
+        responses={
+            "npu-smi info -t memory -i 0": (
+                0,
+                "| NPU ID | Memory Usage (MiB) |\n| 0 | 9999 / 65536 |\n",
+                "",
+            ),
+            "npu-smi info -t temp -i 0": (
+                0,
+                "| Device ID | Temperature (C) |\n| 0 | 43 |\n",
+                "",
+            ),
+            "npu-smi info -t usages -i 0": (
+                0,
+                "| ID | AI Core Usage (%) |\n| 0 | 20 |\n",
+                "",
+            ),
+        },
+    )
+
+    result = probe_server(
+        "a2-test",
+        config_path=_config(tmp_path),
+        ssh_client_factory=factory,
+    )
+
+    device = result["data"]["devices"][0]
+    assert result["ok"] is True
+    assert result["severity"] == CheckSeverity.WARN
+    assert device["memory_used_mib"] == 3467
+    assert device["memory_total_mib"] == 65536
+    assert device["temperature_c"] == 43
+    assert device["utilization_pct"] == 20
+    assert result["data"]["field_errors"] == []
+    assert all(
+        command.rsplit(" ", 1)[-1].isdigit()
+        for command in clients[0].commands[1:]
+    )
+    assert any("conflict" in warning for warning in result["data"]["warnings"])
+    assert any(
+        "typed supplement used" in warning
+        for warning in result["data"]["warnings"]
+    )
+
+
+def test_typed_query_nonzero_preserves_primary_values_and_warns(tmp_path):
+    factory, clients = _factory(
+        response=(0, PARTIAL, ""),
+        responses={
+            "npu-smi info -t memory -i 0": (8, "", "not supported"),
+            "npu-smi info -t temp -i 0": (8, "", "not supported"),
+            "npu-smi info -t usages -i 0": (8, "", "not supported"),
+        },
+    )
+
+    result = probe_server(
+        "a2-test",
+        config_path=_config(tmp_path),
+        ssh_client_factory=factory,
+    )
+
+    assert result["ok"] is False
+    assert result["data"]["devices"][0]["memory_used_mib"] == 3467
+    assert len(
+        [
+            warning
+            for warning in result["data"]["warnings"]
+            if "exit code 8" in warning
+        ]
+    ) == 3
+    assert clients[0].closed is True
+
+
+def test_unknown_output_is_parse_failure_without_fake_devices(tmp_path):
+    factory, _ = _factory(response=(0, UNKNOWN, ""))
+
+    result = probe_server(
+        "a2-test",
+        config_path=_config(tmp_path),
+        ssh_client_factory=factory,
+    )
+
+    assert result["ok"] is False
+    assert result["data"]["devices"] == []
+    assert "parse failed" in result["error"]
