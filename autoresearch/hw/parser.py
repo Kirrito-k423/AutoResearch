@@ -32,6 +32,7 @@ COLUMN_ALIASES = {
     "chip_device": {
         "chip",
         "chipdevice",
+        "chipphyid",
         "chipid",
         "device",
         "chipdeviceid",
@@ -393,6 +394,8 @@ def parse_processes(
     columns: dict[str, int] | None = None
 
     for line_number, line in enumerate(text.splitlines(), start=1):
+        if "No running processes found" in line:
+            continue
         cells = _cells(line)
         if not cells:
             continue

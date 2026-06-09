@@ -132,6 +132,41 @@ def test_compound_columns_from_real_25_3_output_parse_core_metrics():
     assert result["devices"][0]["memory_used_mib"] == 3468
 
 
+def test_dual_chip_25_5_output_parses_each_physical_device():
+    result = parse_npu_smi_info(
+        _fixture("npu_smi_25_5_1_dual_chip.txt")
+    )
+
+    assert result["error"] is None
+    assert result["field_errors"] == []
+    assert result["warnings"] == []
+    assert len(result["devices"]) == 4
+    assert [device["id"] for device in result["devices"]] == [0, 0, 1, 1]
+    assert [device["chip_id"] for device in result["devices"]] == [0, 1, 2, 3]
+    assert [device["memory_used_mib"] for device in result["devices"]] == [
+        29726,
+        29498,
+        3088,
+        2882,
+    ]
+    assert [device["temperature_c"] for device in result["devices"]] == [
+        44,
+        41,
+        42,
+        43,
+    ]
+    assert result["processes"] == [
+        {
+            "npu_id": 0,
+            "chip_id": 0,
+            "pid": 4102,
+            "user": None,
+            "process_name": None,
+            "memory_used_mib": 26672,
+        }
+    ]
+
+
 def test_typed_metric_parser_returns_only_recognized_values():
     memory = parse_typed_metric_output(
         "| NPU ID | Memory Usage (MiB) |\n| 3 | 1234 / 65536 |\n",
