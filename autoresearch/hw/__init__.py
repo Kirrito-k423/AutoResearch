@@ -9,6 +9,7 @@ from .models import (
     NPUProcess,
 )
 from .parser import parse_npu_smi_info
+from .probe import probe_server, resolve_server_host
 
 __all__ = [
     "DriverVersions",
@@ -18,4 +19,6 @@ __all__ = [
     "NPUDevice",
     "NPUProcess",
     "parse_npu_smi_info",
+    "probe_server",
+    "resolve_server_host",
 ]
