@@ -2,19 +2,23 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
+import re
 import sys
 from typing import Callable
 
 from workspace_core.config import ConfigError, ServerSpec, from_path
+from workspace_core.layout import LOGS_DIR
 from workspace_core.progress import emit_progress
 from workspace_core.result import CheckResult, CheckSeverity
 from workspace_core.ssh import HostSpec, SSHClient, SSHError, resolve_host
 
-from .models import DriverVersions, HardwareData
+from .models import CommandRecord, DriverVersions, HardwareData
 from .parser import (
     core_field_errors,
     parse_driver_version_info,
+    parse_lspci_devices,
     parse_npu_smi_info,
     parse_typed_metric_output,
 )
@@ -22,6 +26,7 @@ from .parser import (
 
 NPU_SMI_INFO_COMMAND = "npu-smi info"
 DRIVER_VERSION_COMMAND = "cat /usr/local/Ascend/driver/version.info"
+LSPCI_COMMAND = "lspci -Dnn"
 TYPED_QUERY_TYPES = ("memory", "temp", "usages")
 SSHClientFactory = Callable[[HostSpec], SSHClient]
 
@@ -53,7 +58,28 @@ def _missing_query_types(device) -> list[str]:
     return query_types
 
 
-def _supplement_typed_metrics(client: SSHClient, data: HardwareData) -> None:
+def _exec_recorded(
+    client: SSHClient,
+    command: str,
+    command_records: list[CommandRecord],
+) -> tuple[int, str, str]:
+    exit_code, stdout, stderr = client.exec(command)
+    command_records.append(
+        CommandRecord(
+            command=command,
+            exit_code=exit_code,
+            stdout=stdout,
+            stderr=stderr,
+        )
+    )
+    return exit_code, stdout, stderr
+
+
+def _supplement_typed_metrics(
+    client: SSHClient,
+    data: HardwareData,
+    command_records: list[CommandRecord],
+) -> None:
     used_supplement = False
     for device in data["devices"]:
         device_id = device["id"]
@@ -64,7 +90,11 @@ def _supplement_typed_metrics(client: SSHClient, data: HardwareData) -> None:
             continue
         for metric_type in _missing_query_types(device):
             command = typed_query_command(metric_type, device_id)
-            exit_code, stdout, stderr = client.exec(command)
+            exit_code, stdout, stderr = _exec_recorded(
+                client,
+                command,
+                command_records,
+            )
             if exit_code != 0:
                 detail = stderr.strip() or "no stderr"
                 data["warnings"].append(
@@ -94,8 +124,16 @@ def _supplement_typed_metrics(client: SSHClient, data: HardwareData) -> None:
     data["field_errors"] = core_field_errors(data["devices"])
 
 
-def _collect_driver_versions(client: SSHClient, data: HardwareData) -> None:
-    exit_code, stdout, stderr = client.exec(DRIVER_VERSION_COMMAND)
+def _collect_driver_versions(
+    client: SSHClient,
+    data: HardwareData,
+    command_records: list[CommandRecord],
+) -> None:
+    exit_code, stdout, stderr = _exec_recorded(
+        client,
+        DRIVER_VERSION_COMMAND,
+        command_records,
+    )
     if exit_code != 0:
         detail = stderr.strip() or "file unavailable"
         data["warnings"].append(
@@ -111,6 +149,69 @@ def _collect_driver_versions(client: SSHClient, data: HardwareData) -> None:
         return
     data["driver_versions"]["driver"] = versions["driver"]
     data["driver_versions"]["package"] = versions["package"]
+
+
+def write_raw_failure_log(
+    server_name: str,
+    command_records: list[CommandRecord],
+) -> Path:
+    """Write failed command output under the local hardware log directory."""
+    safe_server = re.sub(r"[^A-Za-z0-9_.-]", "_", server_name) or "unknown"
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    path = LOGS_DIR / f"hw-{safe_server}-{timestamp}.log"
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    sections: list[str] = []
+    for record in command_records:
+        sections.extend(
+            [
+                f"$ {record['command']}",
+                f"exit_code={record['exit_code']}",
+                "--- stdout ---",
+                record["stdout"],
+                "--- stderr ---",
+                record["stderr"],
+                "",
+            ]
+        )
+    path.write_text("\n".join(sections), encoding="utf-8")
+    return path
+
+
+def _raw_output_summary(command_records: list[CommandRecord]) -> str:
+    parts: list[str] = []
+    for record in command_records:
+        if record["command"] == DRIVER_VERSION_COMMAND:
+            parts.append(
+                f"{record['command']}: exit code {record['exit_code']}"
+            )
+            continue
+        output = "\n".join(
+            value for value in (record["stdout"], record["stderr"]) if value
+        )
+        if output:
+            parts.append(f"{record['command']}: {output}")
+        else:
+            parts.append(
+                f"{record['command']}: exit code {record['exit_code']}"
+            )
+    return " ".join(" ".join(parts).split())[:512]
+
+
+def _attach_failure_diagnostics(
+    data: HardwareData,
+    server_name: str,
+    command_records: list[CommandRecord],
+) -> None:
+    if not command_records:
+        return
+    data["raw_output_summary"] = _raw_output_summary(command_records)
+    try:
+        data["raw_log_path"] = str(
+            write_raw_failure_log(server_name, command_records)
+        )
+    except OSError as exc:
+        data["warnings"].append(f"failed to write local raw log: {exc}")
 
 
 def resolve_server_host(
@@ -159,6 +260,7 @@ def _empty_data(server: ServerSpec) -> HardwareData:
         field_errors=[],
         fallback=None,
         raw_log_path=None,
+        raw_output_summary=None,
     )
 
 
@@ -188,6 +290,7 @@ def probe_server(
     server, host = resolve_server_host(server_name, config_path)
     data = _empty_data(server)
     client: SSHClient | None = None
+    command_records: list[CommandRecord] = []
     stage = "connect"
 
     try:
@@ -201,7 +304,11 @@ def probe_server(
             server=server.name,
             command=NPU_SMI_INFO_COMMAND,
         )
-        exit_code, stdout, stderr = client.exec(NPU_SMI_INFO_COMMAND)
+        exit_code, stdout, stderr = _exec_recorded(
+            client,
+            NPU_SMI_INFO_COMMAND,
+            command_records,
+        )
 
         stage = "parse"
         emit_progress("hw.parse", server=server.name)
@@ -213,9 +320,53 @@ def probe_server(
         data["field_errors"] = parsed["field_errors"]
 
         if parsed["error"] is None and data["field_errors"]:
-            _supplement_typed_metrics(client, data)
+            _supplement_typed_metrics(client, data, command_records)
 
-        _collect_driver_versions(client, data)
+        _collect_driver_versions(client, data, command_records)
+
+        if parsed["error"] is not None:
+            lspci_exit, lspci_stdout, lspci_stderr = _exec_recorded(
+                client,
+                LSPCI_COMMAND,
+                command_records,
+            )
+            fallback_devices = (
+                parse_lspci_devices(lspci_stdout)
+                if lspci_exit == 0
+                else []
+            )
+            data["devices"] = fallback_devices
+            data["field_errors"] = core_field_errors(fallback_devices)
+            data["fallback"] = "lspci"
+            if lspci_exit != 0:
+                detail = lspci_stderr.strip() or "no stderr"
+                data["warnings"].append(
+                    f"lspci fallback failed with exit code "
+                    f"{lspci_exit}: {detail}"
+                )
+            elif not fallback_devices:
+                data["warnings"].append(
+                    "lspci fallback found no supported Ascend accelerators"
+                )
+            else:
+                data["warnings"].append(
+                    "lspci fallback proves device presence only; "
+                    "dynamic metrics are unavailable"
+                )
+            _attach_failure_diagnostics(data, server.name, command_records)
+            emit_progress(
+                "hw.fail",
+                level="error",
+                server=server.name,
+                failed_stage=stage,
+            )
+            return _result(
+                ok=False,
+                severity=CheckSeverity.FAIL,
+                data=data,
+                message="NPU 输出解析失败，已执行 lspci 降级",
+                error=f"npu-smi parse failed: {parsed['error']}",
+            )
 
         if exit_code != 0:
             detail = stderr.strip() or "no stderr"
@@ -226,27 +377,13 @@ def probe_server(
                 server=server.name,
                 failed_stage=stage,
             )
+            _attach_failure_diagnostics(data, server.name, command_records)
             return _result(
                 ok=False,
                 severity=CheckSeverity.FAIL,
                 data=data,
                 message="NPU 命令执行失败",
                 error=error,
-            )
-
-        if parsed["error"] is not None:
-            emit_progress(
-                "hw.fail",
-                level="error",
-                server=server.name,
-                failed_stage=stage,
-            )
-            return _result(
-                ok=False,
-                severity=CheckSeverity.FAIL,
-                data=data,
-                message="NPU 输出解析失败",
-                error=f"npu-smi parse failed: {parsed['error']}",
             )
 
         if data["field_errors"]:
@@ -256,6 +393,7 @@ def probe_server(
                 server=server.name,
                 failed_stage=stage,
             )
+            _attach_failure_diagnostics(data, server.name, command_records)
             return _result(
                 ok=False,
                 severity=CheckSeverity.FAIL,
@@ -291,6 +429,7 @@ def probe_server(
             server=server.name,
             failed_stage=stage,
         )
+        _attach_failure_diagnostics(data, server.name, command_records)
         return _result(
             ok=False,
             severity=CheckSeverity.FAIL,
@@ -305,6 +444,7 @@ def probe_server(
             server=server.name,
             failed_stage=stage,
         )
+        _attach_failure_diagnostics(data, server.name, command_records)
         return _result(
             ok=False,
             severity=CheckSeverity.FAIL,
@@ -331,6 +471,7 @@ def _cli_failure(server_name: str | None, message: str, error: str) -> CheckResu
         field_errors=[],
         fallback=None,
         raw_log_path=None,
+        raw_output_summary=None,
     )
     return _result(
         ok=False,

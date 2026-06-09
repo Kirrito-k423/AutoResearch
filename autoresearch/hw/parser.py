@@ -178,6 +178,7 @@ def _new_device(device_id: int | None, name: str | None) -> NPUDevice:
         name=name,
         health=None,
         bus_id=None,
+        description=None,
         memory_total_mib=None,
         memory_used_mib=None,
         temperature_c=None,
@@ -301,6 +302,44 @@ def parse_driver_version_info(text: str) -> DriverVersions:
         elif key == "package_version":
             values["package"] = value
     return values
+
+
+def parse_lspci_devices(text: str) -> list[NPUDevice]:
+    """Parse presence-only Ascend accelerators from ``lspci -Dnn``."""
+    devices: list[NPUDevice] = []
+    excluded = ("bridge", "ethernet", "network", "management", "controller")
+    for line in text.splitlines():
+        stripped = line.strip()
+        match = re.match(
+            r"^(?P<address>[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:"
+            r"[0-9a-fA-F]{2}\.[0-7])\s+(?P<description>.+)$",
+            stripped,
+        )
+        if match is None:
+            continue
+        description = match.group("description")
+        lowered = description.lower()
+        if "processing accelerators" not in lowered or "huawei" not in lowered:
+            continue
+        if any(term in lowered for term in excluded):
+            continue
+        if "ascend" not in lowered and "d802" not in lowered:
+            continue
+        devices.append(
+            NPUDevice(
+                id=len(devices),
+                chip_id=None,
+                name="Huawei Ascend accelerator",
+                health=None,
+                bus_id=match.group("address"),
+                description=stripped,
+                memory_total_mib=None,
+                memory_used_mib=None,
+                temperature_c=None,
+                utilization_pct=None,
+            )
+        )
+    return devices
 
 
 def parse_npu_smi_info(text: str) -> HardwareParseResult:

@@ -1,0 +1,6 @@
+0000:31:00.0 Processing accelerators [1200]: Huawei Technologies Co., Ltd. Ascend 910 [19e5:d802] (rev 20)
+0000:32:00.0 Processing accelerators [1200]: Huawei Technologies Co., Ltd. Device [19e5:d802] (rev 20)
+0000:33:00.0 Bridge [0680]: Huawei Technologies Co., Ltd. Device [19e5:d801]
+0000:34:00.0 Ethernet controller [0200]: Huawei Technologies Co., Ltd. Device [19e5:a222]
+0000:35:00.0 Processing accelerators [1200]: Huawei Technologies Co., Ltd. Management Controller [19e5:d803]
+0000:36:00.0 Processing accelerators [1200]: Example Vendor Device [1234:d802]

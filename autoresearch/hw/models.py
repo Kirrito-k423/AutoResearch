@@ -12,6 +12,7 @@ class NPUDevice(TypedDict):
     name: str | None
     health: str | None
     bus_id: str | None
+    description: str | None
     memory_total_mib: int | None
     memory_used_mib: int | None
     temperature_c: int | None
@@ -45,6 +46,15 @@ class FieldError(TypedDict):
     reason: str
 
 
+class CommandRecord(TypedDict):
+    """One fixed remote command and its captured output."""
+
+    command: str
+    exit_code: int
+    stdout: str
+    stderr: str
+
+
 class HardwareData(TypedDict):
     """Stable payload carried in a hardware CheckResult."""
 
@@ -56,6 +66,7 @@ class HardwareData(TypedDict):
     field_errors: list[FieldError]
     fallback: str | None
     raw_log_path: str | None
+    raw_output_summary: str | None
 
 
 class HardwareParseResult(TypedDict):

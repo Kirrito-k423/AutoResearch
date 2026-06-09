@@ -3,6 +3,7 @@ from pathlib import Path
 
 from autoresearch.hw.parser import (
     parse_driver_version_info,
+    parse_lspci_devices,
     parse_npu_smi_info,
     parse_typed_metric_output,
 )
@@ -116,3 +117,26 @@ def test_driver_version_info_parses_driver_and_package_versions():
         "driver": "25.3.rc1",
         "package": "25.3.rc1",
     }
+
+
+def test_lspci_parser_keeps_only_huawei_ascend_processing_accelerators():
+    devices = parse_lspci_devices(_fixture("lspci_ascend.txt"))
+
+    assert [device["bus_id"] for device in devices] == [
+        "0000:31:00.0",
+        "0000:32:00.0",
+    ]
+    assert all(
+        "Processing accelerators" in device["description"]
+        for device in devices
+    )
+    assert all(
+        device[field] is None
+        for device in devices
+        for field in (
+            "memory_total_mib",
+            "memory_used_mib",
+            "temperature_c",
+            "utilization_pct",
+        )
+    )
