@@ -29,7 +29,13 @@ COLUMN_ALIASES = {
     },
     "health": {"health", "status"},
     "temperature": {"tempc", "temperaturec", "temp", "temperature"},
-    "chip_device": {"chipdevice", "chipid", "device", "chipdeviceid"},
+    "chip_device": {
+        "chip",
+        "chipdevice",
+        "chipid",
+        "device",
+        "chipdeviceid",
+    },
     "bus_id": {"busid", "pcibusid", "pcibus"},
     "utilization": {
         "aicore",
@@ -104,6 +110,39 @@ def _column(
     if index is not None and index < len(cells):
         return cells[index]
     return None
+
+
+def _compound_column(cells: list[str], *required_keys: str) -> int | None:
+    for index, cell in enumerate(cells):
+        key = _header_key(cell)
+        if all(required_key in key for required_key in required_keys):
+            return index
+    return None
+
+
+def _compound_primary_values(value: str | None) -> str | None:
+    match = re.fullmatch(
+        r"\s*\S+\s+(?P<temperature>\d+)\s+\d+\s*/\s*\d+\s*",
+        value or "",
+    )
+    return match.group("temperature") if match is not None else None
+
+
+def _compound_detail_values(
+    value: str | None,
+) -> tuple[str | None, str | None]:
+    match = re.fullmatch(
+        r"\s*(?P<utilization>\d+)\s+"
+        r"\d+\s*/\s*\d+\s+"
+        r"(?P<used>\d+)\s*/\s*(?P<total>\d+)\s*",
+        value or "",
+    )
+    if match is None:
+        return None, None
+    return (
+        match.group("utilization"),
+        f"{match.group('used')} / {match.group('total')}",
+    )
 
 
 def _parse_int(
@@ -241,6 +280,28 @@ def parse_typed_metric_output(
         or device_id < 0
     ):
         raise ValueError("device_id must be a non-negative integer")
+
+    key_values: dict[str, str] = {}
+    for line in text.splitlines():
+        match = re.fullmatch(r"\s*([^:]+?)\s*:\s*(.*?)\s*", line)
+        if match is not None:
+            key_values[_header_key(match.group(1))] = match.group(2)
+
+    if key_values:
+        row_id = _parse_plain_int(key_values.get("npuid"))
+        if row_id != device_id:
+            return {}
+        if metric_type == "memory":
+            total = _parse_plain_int(key_values.get("hbmcapacitymb"))
+            return {"memory_total_mib": total} if total is not None else {}
+        if metric_type == "temp":
+            value = _parse_plain_int(key_values.get("nputemperaturec"))
+            return {"temperature_c": value} if value is not None else {}
+
+        value = _parse_plain_int(key_values.get("aicoreusagerate"))
+        if value is None:
+            value = _parse_plain_int(key_values.get("npuutilization"))
+        return {"utilization_pct": value} if value is not None else {}
 
     header_columns: dict[str, int] | None = None
     for line in text.splitlines():
@@ -479,6 +540,8 @@ def parse_npu_smi_info(text: str) -> HardwareParseResult:
     warnings: list[str] = []
     primary_columns: dict[str, int] | None = None
     detail_columns: dict[str, int] | None = None
+    primary_compound_index: int | None = None
+    detail_compound_index: int | None = None
     current: NPUDevice | None = None
     in_process_table = False
 
@@ -495,9 +558,19 @@ def parse_npu_smi_info(text: str) -> HardwareParseResult:
         columns = _column_map(cells)
         if PRIMARY_HEADER_FIELDS.intersection(columns):
             primary_columns = columns
+            primary_compound_index = _compound_column(
+                cells,
+                "tempc",
+                "hugepages",
+            )
             continue
         if DETAIL_HEADER_FIELDS.intersection(columns):
             detail_columns = columns
+            detail_compound_index = _compound_column(
+                cells,
+                "aicore",
+                "hbmusage",
+            )
             continue
         if "No running processes found" in line:
             continue
@@ -513,8 +586,21 @@ def parse_npu_smi_info(text: str) -> HardwareParseResult:
                 current["health"] = _column(
                     cells, primary_columns, "health"
                 )
+                temperature = _column(
+                    cells,
+                    primary_columns,
+                    "temperature",
+                )
+                if (
+                    temperature is None
+                    and primary_compound_index is not None
+                    and primary_compound_index < len(cells)
+                ):
+                    temperature = _compound_primary_values(
+                        cells[primary_compound_index]
+                    )
                 current["temperature_c"] = _parse_int(
-                    _column(cells, primary_columns, "temperature"),
+                    temperature,
                     device_id=device_id,
                     field="temperature_c",
                     field_errors=field_errors,
@@ -530,14 +616,30 @@ def parse_npu_smi_info(text: str) -> HardwareParseResult:
                 continue
             current["chip_id"] = int(chip_match.group(2) or chip_match.group(1))
             current["bus_id"] = _column(cells, detail_columns, "bus_id")
+            utilization = _column(
+                cells,
+                detail_columns,
+                "utilization",
+            )
+            memory = _column(cells, detail_columns, "memory")
+            if (
+                (utilization is None or memory is None)
+                and detail_compound_index is not None
+                and detail_compound_index < len(cells)
+            ):
+                compound_utilization, compound_memory = (
+                    _compound_detail_values(cells[detail_compound_index])
+                )
+                utilization = utilization or compound_utilization
+                memory = memory or compound_memory
             current["utilization_pct"] = _parse_int(
-                _column(cells, detail_columns, "utilization"),
+                utilization,
                 device_id=current["id"],
                 field="utilization_pct",
                 field_errors=field_errors,
             )
             memory_used, memory_total = _parse_memory(
-                _column(cells, detail_columns, "memory"),
+                memory,
                 device_id=current["id"],
                 field_errors=field_errors,
             )

@@ -115,6 +115,23 @@ def test_variant_headers_parse_without_fixed_column_widths():
     assert result["devices"][1]["utilization_pct"] == 5
 
 
+def test_compound_columns_from_real_25_3_output_parse_core_metrics():
+    result = parse_npu_smi_info(
+        _fixture("npu_smi_25_3_rc1_compound_columns.txt")
+    )
+
+    assert result["error"] is None
+    assert result["field_errors"] == []
+    assert len(result["devices"]) == 8
+    assert {device["name"] for device in result["devices"]} == {"910B2"}
+    assert {device["memory_total_mib"] for device in result["devices"]} == {
+        65536
+    }
+    assert result["devices"][0]["temperature_c"] == 36
+    assert result["devices"][0]["utilization_pct"] == 0
+    assert result["devices"][0]["memory_used_mib"] == 3468
+
+
 def test_typed_metric_parser_returns_only_recognized_values():
     memory = parse_typed_metric_output(
         "| NPU ID | Memory Usage (MiB) |\n| 3 | 1234 / 65536 |\n",
@@ -139,6 +156,34 @@ def test_typed_metric_parser_returns_only_recognized_values():
     assert temp == {"temperature_c": 42}
     assert usages == {"utilization_pct": 71}
     assert parse_typed_metric_output("unsupported", "temp", 3) == {}
+
+
+def test_typed_metric_parser_accepts_real_key_value_output():
+    memory = parse_typed_metric_output(
+        "NPU ID : 3\nHBM Capacity(MB) : 65536\nChip ID : 0\n",
+        "memory",
+        3,
+    )
+    temp = parse_typed_metric_output(
+        "NPU ID : 3\nNPU Temperature (C) : 42\nChip ID : 0\n",
+        "temp",
+        3,
+    )
+    usages = parse_typed_metric_output(
+        "NPU ID : 3\nAicore Usage Rate(%) : 71\n"
+        "NPU Utilization(%) : 44\n",
+        "usages",
+        3,
+    )
+
+    assert memory == {"memory_total_mib": 65536}
+    assert temp == {"temperature_c": 42}
+    assert usages == {"utilization_pct": 71}
+    assert parse_typed_metric_output(
+        "NPU ID : 4\nNPU Temperature (C) : 42\n",
+        "temp",
+        3,
+    ) == {}
 
 
 def test_driver_version_info_parses_driver_and_package_versions():
