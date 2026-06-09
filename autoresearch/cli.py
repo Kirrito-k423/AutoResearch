@@ -103,8 +103,14 @@ def hw() -> None:
 @hw.command(name="probe")
 @click.option(
     "--server",
-    required=True,
+    default=None,
     help="config 中的服务器名称。",
+)
+@click.option(
+    "--all",
+    "all_servers",
+    is_flag=True,
+    help="探测 config 中的全部服务器（最多 3 个并发）。",
 )
 @click.option(
     "--config",
@@ -118,11 +124,21 @@ def hw() -> None:
     type=click.Choice(["zh", "en"]),
     help="输出语言 (zh/en)。",
 )
-def hw_probe(server: str, cfg_path: str | None, lang: str) -> None:
+def hw_probe(
+    server: str | None,
+    all_servers: bool,
+    cfg_path: str | None,
+    lang: str,
+) -> None:
     """通过 SSH 执行 npu-smi 并输出核心 NPU 指标 JSON。"""
     from autoresearch.hw.probe import run_probe
     raise click.exceptions.Exit(
-        run_probe(server=server, config=cfg_path, lang=lang)
+        run_probe(
+            server=server,
+            all_servers=all_servers,
+            config=cfg_path,
+            lang=lang,
+        )
     )
 
 

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 import re
@@ -30,6 +31,7 @@ DRIVER_VERSION_COMMAND = "cat /usr/local/Ascend/driver/version.info"
 LSPCI_COMMAND = "lspci -Dnn"
 TYPED_QUERY_TYPES = ("memory", "temp", "usages")
 SSHClientFactory = Callable[[HostSpec], SSHClient]
+ProbeFunction = Callable[[str, str | Path | None], CheckResult]
 
 
 def typed_query_command(metric_type: str, device_id: int) -> str:
@@ -540,6 +542,91 @@ def _cli_failure(server_name: str | None, message: str, error: str) -> CheckResu
     )
 
 
+def probe_all(
+    config_path: str | Path | None = None,
+    max_workers: int = 3,
+    probe_fn: ProbeFunction = probe_server,
+) -> CheckResult:
+    """Probe every configured server with bounded, failure-isolated workers."""
+    config = from_path(config_path)
+    server_names = [server.name for server in config.servers]
+    if not server_names:
+        raise ConfigError("config.servers 不能为空")
+    if max_workers < 1:
+        raise ConfigError("max_workers 必须大于等于 1")
+
+    results_by_name: dict[str, CheckResult] = {}
+    worker_count = min(3, max_workers, len(server_names))
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        futures = {}
+        for server_name in server_names:
+            emit_progress("hw.all.begin", server=server_name)
+            future = executor.submit(probe_fn, server_name, config_path)
+            futures[future] = server_name
+
+        for future in as_completed(futures):
+            server_name = futures[future]
+            try:
+                result = future.result()
+            except Exception as exc:
+                result = _cli_failure(
+                    server_name,
+                    "硬件探测失败",
+                    f"worker failed: {exc}",
+                )
+            results_by_name[server_name] = result
+            emit_progress(
+                "hw.all.complete" if result["ok"] else "hw.all.fail",
+                level="info" if result["ok"] else "error",
+                server=server_name,
+                severity=result["severity"].value,
+            )
+
+    ordered_results = {
+        server_name: results_by_name[server_name]
+        for server_name in server_names
+    }
+    passed_servers = [
+        name for name, result in ordered_results.items() if result["ok"]
+    ]
+    failed_servers = [
+        name for name, result in ordered_results.items() if not result["ok"]
+    ]
+    warned = sum(
+        result["severity"] == CheckSeverity.WARN
+        for result in ordered_results.values()
+    )
+    if failed_servers:
+        severity = CheckSeverity.FAIL
+        ok = False
+        message = "部分服务器硬件探测失败"
+        error = "; ".join(
+            f"{name}: {ordered_results[name]['error'] or 'probe failed'}"
+            for name in failed_servers
+        )
+    else:
+        severity = CheckSeverity.WARN if warned else CheckSeverity.OK
+        ok = True
+        message = "全部服务器硬件探测完成"
+        error = None
+
+    return CheckResult(
+        ok=ok,
+        severity=severity,
+        data={
+            "results": ordered_results,
+            "total": len(server_names),
+            "passed": len(passed_servers),
+            "failed": len(failed_servers),
+            "warned": warned,
+            "passed_servers": passed_servers,
+            "failed_servers": failed_servers,
+        },
+        message=message,
+        error=error,
+    )
+
+
 def run_probe(
     server: str | None,
     all_servers: bool = False,
@@ -552,11 +639,12 @@ def run_probe(
     emit_progress("hw.probe.start", server=server)
 
     try:
+        if bool(server) == all_servers:
+            raise ConfigError("必须且只能提供 --server NAME 或 --all")
         if all_servers:
-            raise ConfigError("--all 将在 Plan 04-03 开放")
-        if not server:
-            raise ConfigError("必须提供 --server NAME")
-        result = probe_server(server, config_path=config)
+            result = probe_all(config_path=config)
+        else:
+            result = probe_server(server, config_path=config)
         exit_code = 0 if result["ok"] else 1
     except ConfigError as exc:
         label = "配置错误" if lang == "zh" else "Config error"

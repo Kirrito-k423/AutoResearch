@@ -45,14 +45,14 @@ def _result(*, ok: bool, severity: CheckSeverity) -> CheckResult:
     )
 
 
-def test_hw_probe_help_lists_single_server_options():
+def test_hw_probe_help_lists_server_and_all_options():
     result = CliRunner().invoke(main, ["hw", "probe", "--help"])
 
     assert result.exit_code == 0
     assert "--server" in result.stdout
     assert "--config" in result.stdout
     assert "--lang" in result.stdout
-    assert "--all" not in result.stdout
+    assert "--all" in result.stdout
 
 
 def test_hw_probe_happy_path_outputs_one_json_and_progress(monkeypatch):
@@ -131,3 +131,94 @@ def test_hw_probe_config_error_returns_exit_two_and_safe_json(monkeypatch):
         "private_key",
     ):
         assert sensitive_key not in serialized
+
+
+def test_hw_probe_requires_exactly_one_target_mode():
+    runner = CliRunner()
+
+    missing = runner.invoke(main, ["hw", "probe"])
+    conflicting = runner.invoke(
+        main,
+        ["hw", "probe", "--server", "a2-test", "--all"],
+    )
+
+    for result in (missing, conflicting):
+        assert result.exit_code == 2
+        payload = json.loads(result.stdout)
+        assert payload["ok"] is False
+        assert payload["severity"] == "fail"
+
+
+def test_hw_probe_all_happy_path_outputs_one_json_and_progress(monkeypatch):
+    from autoresearch.hw import probe as probe_module
+
+    def fake_probe_all(config_path=None):
+        for server_name in ("server-0", "server-1"):
+            probe_module.emit_progress("hw.all.begin", server=server_name)
+            probe_module.emit_progress("hw.all.complete", server=server_name)
+        return CheckResult(
+            ok=True,
+            severity=CheckSeverity.WARN,
+            data={
+                "results": {
+                    "server-0": _result(
+                        ok=True,
+                        severity=CheckSeverity.OK,
+                    ),
+                    "server-1": _result(
+                        ok=True,
+                        severity=CheckSeverity.WARN,
+                    ),
+                },
+                "total": 2,
+                "passed": 2,
+                "failed": 0,
+                "warned": 1,
+                "passed_servers": ["server-0", "server-1"],
+                "failed_servers": [],
+            },
+            message="done",
+            error=None,
+        )
+
+    monkeypatch.setattr(probe_module, "probe_all", fake_probe_all)
+
+    result = CliRunner().invoke(main, ["hw", "probe", "--all"])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["ok"] is True
+    assert payload["severity"] == "warn"
+    assert list(payload["data"]["results"]) == ["server-0", "server-1"]
+    assert result.stdout.count("\n") == 1
+    assert result.stderr.count('"stage": "hw.all.begin"') == 2
+    assert result.stderr.count('"stage": "hw.all.complete"') == 2
+
+
+def test_hw_probe_all_partial_failure_returns_exit_one(monkeypatch):
+    from autoresearch.hw import probe as probe_module
+
+    monkeypatch.setattr(
+        probe_module,
+        "probe_all",
+        lambda config_path=None: CheckResult(
+            ok=False,
+            severity=CheckSeverity.FAIL,
+            data={
+                "results": {},
+                "total": 2,
+                "passed": 1,
+                "failed": 1,
+                "warned": 0,
+                "passed_servers": ["server-0"],
+                "failed_servers": ["server-1"],
+            },
+            message="partial failure",
+            error="server-1 failed",
+        ),
+    )
+
+    result = CliRunner().invoke(main, ["hw", "probe", "--all"])
+
+    assert result.exit_code == 1
+    assert json.loads(result.stdout)["ok"] is False

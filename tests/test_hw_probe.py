@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+import threading
+import time
 
 import pytest
 import yaml
@@ -11,6 +13,7 @@ from autoresearch.hw.probe import (
     LSPCI_COMMAND,
     NPU_SMI_INFO_COMMAND,
     enrich_processes,
+    probe_all,
     probe_server,
     resolve_server_host,
     typed_query_command,
@@ -63,6 +66,42 @@ def _config(tmp_path: Path) -> Path:
         encoding="utf-8",
     )
     return path
+
+
+def _multi_config(tmp_path: Path, count: int = 5) -> Path:
+    path = tmp_path / "config-all.yaml"
+    path.write_text(
+        yaml.safe_dump(
+            {
+                "version": 1,
+                "servers": [
+                    {
+                        "name": f"server-{index}",
+                        "host": f"192.0.2.{index + 1}",
+                        "user": "hardware-user",
+                    }
+                    for index in range(count)
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def _aggregate_result(
+    server_name: str,
+    *,
+    ok: bool = True,
+    severity: CheckSeverity = CheckSeverity.OK,
+) -> dict:
+    return {
+        "ok": ok,
+        "severity": severity,
+        "data": {"server": {"name": server_name}},
+        "message": "done" if ok else "failed",
+        "error": None if ok else "probe failure",
+    }
 
 
 class FakeSSHClient:
@@ -591,3 +630,106 @@ def test_raw_log_write_error_preserves_original_failure(
         "failed to write local raw log" in warning
         for warning in result["data"]["warnings"]
     )
+
+
+def test_probe_all_bounds_concurrency_preserves_order_and_partial_results(
+    tmp_path,
+):
+    lock = threading.Lock()
+    active = 0
+    max_active = 0
+    completed: list[str] = []
+
+    def fake_probe(server_name, config_path):
+        nonlocal active, max_active
+        with lock:
+            active += 1
+            max_active = max(max_active, active)
+        time.sleep((5 - int(server_name.rsplit("-", 1)[1])) * 0.01)
+        with lock:
+            active -= 1
+            completed.append(server_name)
+        if server_name == "server-2":
+            return _aggregate_result(
+                server_name,
+                ok=False,
+                severity=CheckSeverity.FAIL,
+            )
+        return _aggregate_result(server_name)
+
+    result = probe_all(
+        config_path=_multi_config(tmp_path),
+        max_workers=9,
+        probe_fn=fake_probe,
+    )
+
+    assert max_active <= 3
+    assert len(completed) == 5
+    assert completed != [f"server-{index}" for index in range(5)]
+    assert list(result["data"]["results"]) == [
+        f"server-{index}" for index in range(5)
+    ]
+    assert result["ok"] is False
+    assert result["severity"] == CheckSeverity.FAIL
+    assert result["data"]["total"] == 5
+    assert result["data"]["passed"] == 4
+    assert result["data"]["failed"] == 1
+    assert result["data"]["failed_servers"] == ["server-2"]
+    assert result["data"]["passed_servers"] == [
+        "server-0",
+        "server-1",
+        "server-3",
+        "server-4",
+    ]
+
+
+def test_probe_all_converts_worker_exception_and_keeps_other_results(
+    tmp_path,
+):
+    attempted: list[str] = []
+
+    def fake_probe(server_name, config_path):
+        attempted.append(server_name)
+        if server_name == "server-1":
+            raise RuntimeError("isolated failure")
+        return _aggregate_result(
+            server_name,
+            severity=(
+                CheckSeverity.WARN
+                if server_name == "server-2"
+                else CheckSeverity.OK
+            ),
+        )
+
+    result = probe_all(
+        config_path=_multi_config(tmp_path, count=3),
+        probe_fn=fake_probe,
+    )
+
+    assert sorted(attempted) == ["server-0", "server-1", "server-2"]
+    assert list(result["data"]["results"]) == [
+        "server-0",
+        "server-1",
+        "server-2",
+    ]
+    assert result["data"]["warned"] == 1
+    assert result["data"]["failed_servers"] == ["server-1"]
+    assert "isolated failure" in result["data"]["results"]["server-1"]["error"]
+
+
+def test_probe_all_warn_only_is_success(tmp_path):
+    def fake_probe(server_name, config_path):
+        return _aggregate_result(
+            server_name,
+            severity=CheckSeverity.WARN,
+        )
+
+    result = probe_all(
+        config_path=_multi_config(tmp_path, count=2),
+        probe_fn=fake_probe,
+    )
+
+    assert result["ok"] is True
+    assert result["severity"] == CheckSeverity.WARN
+    assert result["data"]["warned"] == 2
+    assert result["data"]["failed_servers"] == []
