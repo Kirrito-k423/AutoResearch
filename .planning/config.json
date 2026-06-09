@@ -20,7 +20,9 @@
     "plan_before_execute": true,
     "execute_atomically": true,
     "verify_before_ship": true,
-    "ship_as_pr": true
+    "ship_as_pr": true,
+    "_auto_chain_active": false,
+    "use_worktrees": false
   },
   "milestones": {
     "current": "v1.0-minviable-loop",

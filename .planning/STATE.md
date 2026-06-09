@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: MinViable Loop
-status: phase-4-planned
-last_updated: "2026-06-09T04:07:41.000Z"
-last_activity: 2026-06-09 — Phase 4 hardware probe 已完成研究、验证策略和 3 份执行计划
+status: Executing Phase 04
+last_updated: "2026-06-09T04:17:38.535Z"
+last_activity: 2026-06-09
 progress:
   total_phases: 13
   completed_phases: 3
@@ -21,14 +21,14 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 **Core value:** "常实践，详记录，知得失，会设计，有整理"——每个 skill 跑一次都留下可被复盘、可被二次开发的产物。
 
-**Current focus:** v1.0 MinViable Loop — Phase 4 真实服务器硬件探针
+**Current focus:** Phase 04 — skill-03-server-hardware-probe
 
 ## Position
 
 - **Milestone:** v1.0 MinViable Loop
 - **Phase:** 4 planned (server-hardware-probe) → ready to execute
 - **Plan:** 0/3 complete (04-01 → 04-02 → 04-03)
-- **Last activity:** 2026-06-09 — Phase 4 hardware probe 已完成研究、验证策略和 3 份执行计划
+- **Last activity:** 2026-06-09
 
 ## Session Continuity
 
