@@ -87,12 +87,18 @@ Plans:
   5. `npu-smi` 解析失败时 fallback 到 lspci
 
 **Plans**: 3 plans
-
 Plans:
+**Wave 1**
 
-- [ ] 04-01: 复用 workspace-core SSH 跑 npu-smi
-- [ ] 04-02: 解析器 + lspci fallback
-- [ ] 04-03: 占用方解析 + 驱动版本
+- [ ] 04-01: 单服务器纵向切片（SSH → npu-smi → 核心指标 → JSON CLI）
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 04-02: 多版本解析、驱动信息、lspci fallback 与失败诊断
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 04-03: 占用进程、`--all` 有界并发与全部真实服务器验收
 
 ### Phase 5: Skill 04 — network-check
 

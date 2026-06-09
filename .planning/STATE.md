@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: MinViable Loop
-status: phase-3-complete
-last_updated: "2026-06-09T03:34:12.185Z"
-last_activity: 2026-06-09 — `autoresearch ping --server A2-AK-225` 真机 SSH 与反向隧道均通过
+status: phase-4-planned
+last_updated: "2026-06-09T04:07:41.000Z"
+last_activity: 2026-06-09 — Phase 4 hardware probe 已完成研究、验证策略和 3 份执行计划
 progress:
   total_phases: 13
   completed_phases: 3
-  total_plans: 10
+  total_plans: 13
   completed_plans: 10
   percent: 23
 ---
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 ## Position
 
 - **Milestone:** v1.0 MinViable Loop
-- **Phase:** 3 complete → next: 4 (server-hardware-probe)
-- **Plan:** — (Phase 1-3 共 10/10 plans 完成)
-- **Last activity:** 2026-06-09 — `autoresearch ping --server A2-AK-225` 真机 SSH 与反向隧道均通过
+- **Phase:** 4 planned (server-hardware-probe) → ready to execute
+- **Plan:** 0/3 complete (04-01 → 04-02 → 04-03)
+- **Last activity:** 2026-06-09 — Phase 4 hardware probe 已完成研究、验证策略和 3 份执行计划
 
 ## Session Continuity
 
@@ -71,7 +71,7 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 ### Open Questions
 
-- Phase 4 硬件探针需要确定真实 `npu-smi` 输出兼容策略、失败降级格式和首个验收服务器。
+- Phase 4 规划问题已全部解决；执行期唯一外部风险是当前 5 台服务器的 LAN/VPN/SSH 可达性。
 
 ### Cross-Plan Issue Fixed
 
@@ -81,8 +81,8 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 ## Next Steps
 
-1. 讨论 Phase 4 真实服务器硬件探针的输出与降级策略。
-2. 规划并执行 Phase 4，必须在真实服务器验收。
+1. 执行 Phase 4 的 3 个计划，04-01 先交付 A2-AK-225 单服务器真实纵向探测。
+2. 04-03 对 config 中全部服务器做完整真机验收；任一服务器失败都不能关闭 Phase 4。
 3. 后续阶段按“每阶段都增加一段可真实运行的用户闭环”推进。
 
 ## Continuation Prompts
@@ -92,18 +92,14 @@ $gsd-progress
 ```
 
 ```
-$gsd-discuss-phase 4
-```
-
-```
-$gsd-plan-phase 4
+$gsd-execute-phase 4
 ```
 
 ## Metrics
 
 - **Phases planned:** 13
 - **Phases complete:** 3 (Phase 1-3)
-- **Plans complete:** 10 / 35 (28.6%)
+- **Plans complete:** 10 / 35 (28.6%); Phase 4 另有 3 plans ready
 - **Requirements:** 88
 - **Phase 1-3:** 仓骨架、本地服务 CLI、workspace-core、真机 SSH/反向隧道、customer-config 已完成
 - **Estimated ship date:** TBD
@@ -114,4 +110,4 @@ $gsd-plan-phase 4
 - **Latest commit:** `2cf2f57` test(03): UAT phase 3
 
 ---
-*Last updated: 2026-06-09 after real-server Phase 2 UAT and Phase 3 completion*
+*Last updated: 2026-06-09 after Phase 4 planning*
