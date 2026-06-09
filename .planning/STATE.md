@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: MinViable Loop
-status: Blocked on Phase 04 Plan 03 all-server real-server verification
-stopped_at: Phase 5 context gathered
-last_updated: "2026-06-09T12:27:16.098Z"
-last_activity: 2026-06-09 — Phase 5 context gathered; Phase 4 real-server UAT still blocked
+status: Phase 5 in progress; Phase 4 real-server UAT still blocked
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-06-09T12:56:44.989Z"
+last_activity: 2026-06-09 — Phase 5 Plan 01 direct network matrix complete; Phase 4 real-server UAT still blocked
 progress:
   total_phases: 13
   completed_phases: 3
-  total_plans: 13
-  completed_plans: 12
-  percent: 23
+  total_plans: 16
+  completed_plans: 13
+  percent: 31
 ---
 
 # State: AutoResearch v1.0
@@ -22,20 +22,20 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 **Core value:** "常实践，详记录，知得失，会设计，有整理"——每个 skill 跑一次都留下可被复盘、可被二次开发的产物。
 
-**Current focus:** Phase 04 — skill-03-server-hardware-probe
+**Current focus:** Phase 05 — skill-04-network-check
 
 ## Position
 
 - **Milestone:** v1.0 MinViable Loop
-- **Phase:** 4 server-hardware-probe → blocked on real-server UAT
-- **Plan:** 04-03 code and automated verification complete; real-server acceptance blocked
-- **Last activity:** 2026-06-09 — Phase 5 context gathered; Phase 4 real-server UAT still blocked
+- **Phase:** 5 network-check → 05-01 complete, 05-02 next
+- **Plan:** 05-01 direct local/remote network matrix complete; 05-02 remote proxy fallback next
+- **Last activity:** 2026-06-09 — Phase 5 Plan 01 direct network matrix complete; Phase 4 real-server UAT still blocked
 
 ## Session Continuity
 
-- **Last session:** 2026-06-09T12:04:41.049Z
-- **Stopped At:** Phase 5 context gathered
-- **Resume File:** .planning/phases/05-skill-04-network-check/05-CONTEXT.md
+- **Last session:** 2026-06-09T12:56:44.986Z
+- **Stopped At:** Completed 05-01-PLAN.md
+- **Resume File:** .planning/phases/05-skill-04-network-check/05-02-PLAN.md
 
 ### Decisions Made This Session
 

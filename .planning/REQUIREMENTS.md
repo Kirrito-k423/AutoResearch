@@ -66,12 +66,12 @@
 
 ## NET — Skill 04: network-check
 
-- [ ] **NET-LOCAL-01** — `ar-net probe` 在本机测 baidu / huggingface / github 可达性
-- [ ] **NET-LOCAL-02** — 每个目标记录 status / http_code / latency_ms
-- [ ] **NET-LOCAL-03** — 可达性 + 测速（curl `--max-time 10 -w "%{speed_download}"`）
-- [ ] **NET-REMOTE-01** — `ar-net probe --server X` 在远程服务器上跑同样测速
-- [ ] **NET-REMOTE-02** — 远程测速时复用 workspace-core 的 SSH
-- [ ] **NET-REMOTE-03** — 输出"本地 vs 远程"对比矩阵
+- [x] **NET-LOCAL-01** — `ar-net probe` 在本机测 baidu / huggingface / github 可达性
+- [x] **NET-LOCAL-02** — 每个目标记录 status / http_code / latency_ms
+- [x] **NET-LOCAL-03** — 可达性 + 测速（curl `--max-time 10 -w "%{speed_download}"`）
+- [x] **NET-REMOTE-01** — `ar-net probe --server X` 在远程服务器上跑同样测速
+- [x] **NET-REMOTE-02** — 远程测速时复用 workspace-core 的 SSH
+- [x] **NET-REMOTE-03** — 输出"本地 vs 远程"对比矩阵
 - [ ] **NET-TUNNEL-01** — 远程无外网时自动建 `ssh -R` 反向代理
 - [ ] **NET-TUNNEL-02** — 隧道健康检查（每 30s 发心跳，重连可重试）
 
