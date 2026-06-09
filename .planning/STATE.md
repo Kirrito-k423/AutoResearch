@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: MinViable Loop
-status: Blocked on Phase 04 Plan 01 real-server verification
-last_updated: "2026-06-09T07:17:15.948Z"
-last_activity: 2026-06-09 — completed 04-02; A2 SSH banner UAT pending
+status: Blocked on Phase 04 Plan 03 all-server real-server verification
+last_updated: "2026-06-09T07:33:43.975Z"
+last_activity: 2026-06-09 — 04-03 code complete; all 5 servers blocked on SSH banner UAT
 progress:
   total_phases: 13
   completed_phases: 3
@@ -26,11 +26,15 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 ## Position
 
 - **Milestone:** v1.0 MinViable Loop
-- **Phase:** 4 planned (server-hardware-probe) → ready to execute
-- **Plan:** 04-02 complete; 04-01 real-server UAT blocked; 04-03 next
-- **Last activity:** 2026-06-09 — completed 04-02; A2 SSH banner UAT pending
+- **Phase:** 4 server-hardware-probe → blocked on real-server UAT
+- **Plan:** 04-03 code and automated verification complete; real-server acceptance blocked
+- **Last activity:** 2026-06-09 — all 5 configured servers attempted individually and with `--all`; 0/5 passed
 
 ## Session Continuity
+
+- **Last session:** 2026-06-09
+- **Stopped At:** Blocked after 04-03 real-server UAT (0/5 passed)
+- **Resume File:** `.planning/phases/04-skill-03-server-hardware-probe/04-03-SUMMARY.md`
 
 ### Decisions Made This Session
 
@@ -81,6 +85,12 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
   - 恢复 LAN/VPN/SSH 后必须重跑；在 8 张设备四项核心指标均非 null 前，Plan 04-01 保持 0/3 未完成
   - 证据：`.planning/phases/04-skill-03-server-hardware-probe/04-01-SUMMARY.md`
 
+- **04-03 全部配置服务器真机验收阻塞（2026-06-09）**
+  - A2-AK-225、A3-AX-153、A3-AK-182、A3-AX-176、A2-AK-176 均 exit 1
+  - 5 台均为 0 设备、severity fail，脱敏错误分类为 `ssh_banner`
+  - `--all` exit 1、`ok=false`、failed 5；结果顺序与 config 一致
+  - 证据：`.planning/phases/04-skill-03-server-hardware-probe/04-03-SUMMARY.md`
+
 ### Cross-Plan Issue Fixed
 
 - `01-01` 的 `.gitignore` 规则 `wandb/` 误把 `services/wandb/` 也排除
@@ -89,9 +99,9 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 ## Next Steps
 
-1. 恢复 A2-AK-225 的 LAN/VPN/SSH 后，重跑 `uv run autoresearch hw probe --server A2-AK-225` 完成 04-01 真机门槛。
-2. 04-03 对 config 中全部服务器做完整真机验收；任一服务器失败都不能关闭 Phase 4。
-3. 后续阶段按“每阶段都增加一段可真实运行的用户闭环”推进。
+1. 恢复全部 5 台配置服务器的 LAN/VPN/SSH banner 可达性。
+2. 逐台重跑 `uv run autoresearch hw probe --server NAME`，确认设备非空且四项核心指标均为整数。
+3. 重跑 `uv run autoresearch hw probe --all`，要求 exit 0、`ok=true`、`failed_servers=[]` 后再关闭 Phase 4。
 
 ## Continuation Prompts
 
@@ -115,19 +125,26 @@ $gsd-execute-phase 4
 ## Branch & Commits
 
 - **Branch:** `codex/phase-02-workspace-core`
-- **Latest commit:** `2cf2f57` test(03): UAT phase 3
+- **Latest task commit:** `fa9d6a2` fix(04-03): limit process names to executable basenames
 
 ---
-*Last updated: 2026-06-09 after Phase 4 planning*
+*Last updated: 2026-06-09 after blocked Phase 04 Plan 03 real-server UAT*
 
 ## Performance Metrics
 
 | Phase | Plan | Duration | Notes |
 |-------|------|----------|-------|
 | Phase 04 P02 | 9min | 3 tasks | 9 files |
+| Phase 04 P03 | 9min | 3 tasks | 8 files |
 
 ## Decisions
 
 - [Phase 04]: 默认表有效值优先；typed query 只填 None，冲突保留主表并记录 warning。
 - [Phase 04]: driver version.info 只用固定 cat 命令读取，缺失降级为 WARN。
 - [Phase 04]: lspci 只证明设备存在，动态字段保持 null，结果无条件 FAIL。
+- [Phase 04]: process_name 仅保留可执行文件 basename，禁止完整路径、args、cmdline 和 environ。 — 降低训练参数、路径和 token 泄露风险。
+- [Phase 04]: 真实服务器 UAT 任一失败时 04-03/Phase 4 保持 blocked，HW requirements 不标记完成。 — fixture 和自动测试不能替代真实硬件与 SSH 外部状态。
+
+### Blockers
+
+- Phase 04 Plan 03 real-server UAT blocked: 5/5 configured servers failed with sanitized category ssh_banner; aggregate exit 1.
