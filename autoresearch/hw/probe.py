@@ -30,7 +30,7 @@ NPU_SMI_INFO_COMMAND = "npu-smi info"
 DRIVER_VERSION_COMMAND = "cat /usr/local/Ascend/driver/version.info"
 LSPCI_COMMAND = "lspci -Dnn"
 TYPED_QUERY_TYPES = ("memory", "temp", "usages")
-SSHClientFactory = Callable[[HostSpec], SSHClient]
+SSHClientFactory = Callable[..., SSHClient]
 ProbeFunction = Callable[[str, str | Path | None], CheckResult]
 
 
@@ -287,14 +287,17 @@ def resolve_server_host(
         )
 
     host = resolve_host(f"{server.user}@{server.host}:{server.port}")
-    if server.identity_file:
-        host = HostSpec(
-            alias=host.alias,
-            host=host.host,
-            port=host.port,
-            user=host.user,
-            identity_file=Path(server.identity_file).expanduser(),
-        )
+    host = HostSpec(
+        alias=server.name,
+        host=host.host,
+        port=host.port,
+        user=host.user,
+        identity_file=(
+            Path(server.identity_file).expanduser()
+            if server.identity_file
+            else None
+        ),
+    )
     return server, host
 
 
@@ -350,7 +353,10 @@ def probe_server(
     stage = "connect"
 
     try:
-        client = ssh_client_factory(host)
+        client = ssh_client_factory(
+            host,
+            bootstrap_password=server.bootstrap_password_secret,
+        )
         emit_progress("hw.connect", server=server.name)
         client.connect(connect_timeout=5.0)
 

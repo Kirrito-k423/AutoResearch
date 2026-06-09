@@ -64,6 +64,21 @@ def test_ssh_client_fails_to_connect_unknown_host():
         c.connect(connect_timeout=0.3, retries=0)
 
 
+def test_configured_bootstrap_password_takes_precedence(monkeypatch):
+    host = HostSpec(
+        alias="test-server",
+        host="192.0.2.10",
+        port=22,
+        user="tester",
+        identity_file=None,
+    )
+    monkeypatch.setenv("SSH_PASSWORD_TEST-SERVER", "env-password")
+
+    client = SSHClient(host, bootstrap_password="configured-password")
+
+    assert client._bootstrap_password() == "configured-password"
+
+
 def test_exec_closes_channel_and_raises_when_command_times_out():
     class NeverReadyChannel:
         def __init__(self):

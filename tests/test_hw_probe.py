@@ -59,6 +59,7 @@ def _config(tmp_path: Path) -> Path:
                         "port": 2222,
                         "user": "hardware-user",
                         "identity_file": "~/.ssh/id_hardware",
+                        "bootstrap_password_secret": "test-bootstrap-password",
                     }
                 ],
             }
@@ -112,8 +113,10 @@ class FakeSSHClient:
         response: tuple[int, str, str],
         responses: dict[str, tuple[int, str, str]] | None = None,
         connect_error: Exception | None = None,
+        bootstrap_password: str | None = None,
     ) -> None:
         self.host = host
+        self.bootstrap_password = bootstrap_password
         self.response = response
         self.responses = responses or {}
         self.connect_error = connect_error
@@ -146,12 +149,13 @@ def _factory(
         **(responses or {}),
     }
 
-    def create(host):
+    def create(host, *, bootstrap_password=None):
         client = FakeSSHClient(
             host,
             response=response,
             responses=command_responses,
             connect_error=connect_error,
+            bootstrap_password=bootstrap_password,
         )
         clients.append(client)
         return client
@@ -176,6 +180,8 @@ def test_single_server_happy_path_uses_only_fixed_commands(tmp_path):
         DRIVER_VERSION_COMMAND,
     ]
     assert clients[0].connect_timeouts == [5.0]
+    assert clients[0].host.alias == "a2-test"
+    assert clients[0].bootstrap_password == "test-bootstrap-password"
     assert clients[0].closed is True
     assert set(result["data"]["server"]) == {"name", "host", "port"}
     assert result["data"]["raw_log_path"] is None
@@ -317,6 +323,7 @@ def test_timeout_becomes_fail_without_config_secrets(tmp_path):
     assert "hardware-user" not in serialized
     assert "id_hardware" not in serialized
     assert "bootstrap_password_secret" not in serialized
+    assert "test-bootstrap-password" not in serialized
     assert clients[0].commands == []
     assert clients[0].closed is True
 

@@ -23,8 +23,14 @@ class SSHClient:
     8 skill 只用本接口, 不直接 import paramiko.
     """
 
-    def __init__(self, host: HostSpec) -> None:
+    def __init__(
+        self,
+        host: HostSpec,
+        *,
+        bootstrap_password: str | None = None,
+    ) -> None:
         self.host = host
+        self._configured_password = bootstrap_password
         self._client: paramiko.SSHClient | None = None
 
     # ===== 登录 / 注销 =====
@@ -95,8 +101,10 @@ class SSHClient:
         return f"{self.host.user}@{self.host.host}".upper().replace(".", "_").replace("-", "_")
 
     def _bootstrap_password(self) -> str | None:
-        """读 env SSH_PASSWORD_<alias> 作为 bootstrap 密码."""
-        return os.environ.get(f"SSH_PASSWORD_{self._alias_key()}")
+        """优先使用配置已解析的密码，否则读兼容环境变量."""
+        return self._configured_password or os.environ.get(
+            f"SSH_PASSWORD_{self._alias_key()}"
+        )
 
     def close(self) -> None:
         if self._client is not None:
