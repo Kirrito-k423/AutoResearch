@@ -409,7 +409,8 @@ def parse_ps_output(text: str) -> dict[int, tuple[str, str]]:
         pid = _parse_plain_int(parts[0])
         if pid is None:
             continue
-        user, process_name = parts[1], parts[2]
+        user = parts[1]
+        process_name = parts[2].rsplit("/", 1)[-1]
         if user and process_name:
             details[pid] = (user, process_name)
     return details

@@ -71,7 +71,7 @@ def test_ps_parser_uses_only_pid_user_and_executable_name():
         "4103 missing-field\n"
     )
 
-    assert details == {4102: ("trainer", "/usr/bin/python3")}
+    assert details == {4102: ("trainer", "python3")}
 
 
 def test_missing_and_invalid_metrics_are_null_with_field_errors():

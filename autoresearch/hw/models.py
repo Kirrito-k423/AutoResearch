@@ -20,7 +20,7 @@ class NPUDevice(TypedDict):
 
 
 class NPUProcess(TypedDict):
-    """Process occupancy record, enriched in a later plan."""
+    """Process occupancy record with privacy-limited process metadata."""
 
     npu_id: int | None
     chip_id: int | None
