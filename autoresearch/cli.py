@@ -207,6 +207,62 @@ def net_probe(
     )
 
 
+@net.group(name="tunnel")
+def net_tunnel() -> None:
+    """管理远程反向代理隧道。"""
+    pass
+
+
+@net_tunnel.command(name="ensure")
+@click.option(
+    "--server",
+    required=True,
+    help="config 中的服务器名称。",
+)
+@click.option(
+    "--config",
+    "cfg_path",
+    default=None,
+    help="配置文件路径 (默认 ./config/config.yaml)。",
+)
+@click.option(
+    "--local-proxy-url",
+    default="http://127.0.0.1:7890",
+    help="本机代理地址。",
+)
+@click.option(
+    "--remote-proxy-port",
+    default=17890,
+    type=int,
+    help="远程 ssh -R 代理端口。",
+)
+@click.option(
+    "--lang",
+    default="zh",
+    type=click.Choice(["zh", "en"]),
+    help="输出语言 (zh/en)。",
+)
+def net_tunnel_ensure(
+    server: str,
+    cfg_path: str | None,
+    local_proxy_url: str,
+    remote_proxy_port: int,
+    lang: str,
+) -> None:
+    """确保指定服务器上的反向代理隧道可用。"""
+    from autoresearch.net.tunnel import run_tunnel_ensure
+
+    raise click.exceptions.Exit(
+        run_tunnel_ensure(
+            server=server,
+            config=cfg_path,
+            local_proxy_url=local_proxy_url,
+            remote_proxy_port=remote_proxy_port,
+            lang=lang,
+        )
+    )
+
+
 # === Phase 3 / Skill 01: customer-config ===
 
 @main.group()

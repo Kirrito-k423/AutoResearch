@@ -11,8 +11,10 @@ from autoresearch.net import tunnel as tunnel_module
 from autoresearch.net.tunnel import (
     delete_tunnel_state,
     ensure_tunnel,
+    heartbeat_tunnel,
     load_tunnel_state,
     redact_proxy_url,
+    run_tunnel_ensure,
     state_path_for,
     write_tunnel_state,
 )
@@ -139,6 +141,7 @@ def test_ensure_tunnel_opens_without_state_using_default_ports(tmp_path):
         "server-0",
         config_path=_config(tmp_path),
         tunnel_opener=opener,
+        heartbeat_fn=lambda *args, **kwargs: True,
     )
 
     assert state["pid"] == 456
@@ -158,6 +161,7 @@ def test_ensure_tunnel_reuses_alive_state(monkeypatch, tmp_path):
         "server-0",
         config_path=_config(tmp_path),
         tunnel_opener=opener,
+        heartbeat_fn=lambda *args, **kwargs: True,
     )
 
     assert state["pid"] == 123
@@ -174,6 +178,7 @@ def test_ensure_tunnel_rebuilds_dead_state(monkeypatch, tmp_path):
         "server-0",
         config_path=_config(tmp_path),
         tunnel_opener=opener,
+        heartbeat_fn=lambda *args, **kwargs: True,
     )
 
     assert state["pid"] == 789
@@ -202,9 +207,139 @@ def test_ensure_tunnel_start_error_is_bounded_and_redacted(tmp_path):
             config_path=_config(tmp_path),
             local_proxy_url="http://u:p@127.0.0.1:7890",
             tunnel_opener=fail_open,
+            max_retries=0,
         )
 
     message = str(exc.value)
     assert "u:p" not in message
     assert "http://***:***@127.0.0.1:7890" in message
     assert len(message) <= 500
+
+
+class FakeHeartbeatSSHClient:
+    def __init__(self, host, *, bootstrap_password=None, response=(0, "", "")):
+        self.host = host
+        self.bootstrap_password = bootstrap_password
+        self.response = response
+        self.commands: list[str] = []
+        self.closed = False
+
+    def connect(self, *, connect_timeout: float) -> None:
+        self.connect_timeout = connect_timeout
+
+    def exec(self, command: str, *, timeout: float = 30.0):
+        self.commands.append(command)
+        return self.response
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def _curl_stdout(code: int = 200) -> str:
+    return (
+        "\n__AR_CURL_BEGIN__\n"
+        f"http_code={code}\n"
+        "time_total=0.050\n"
+        "speed_download=1000\n"
+        "__AR_CURL_END__\n"
+    )
+
+
+def test_heartbeat_dead_pid_skips_remote_curl(monkeypatch, tmp_path):
+    calls = 0
+    monkeypatch.setattr(tunnel_module, "is_process_alive", lambda pid: False)
+
+    def factory(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        return FakeHeartbeatSSHClient(*args, **kwargs)
+
+    assert heartbeat_tunnel(
+        "server-0",
+        _state(pid=123),
+        config_path=_config(tmp_path),
+        ssh_client_factory=factory,
+    ) is False
+    assert calls == 0
+
+
+def test_heartbeat_alive_pid_runs_remote_proxy_curl(monkeypatch, tmp_path):
+    clients: list[FakeHeartbeatSSHClient] = []
+    monkeypatch.setattr(tunnel_module, "is_process_alive", lambda pid: True)
+
+    def factory(host, *, bootstrap_password=None):
+        client = FakeHeartbeatSSHClient(
+            host,
+            bootstrap_password=bootstrap_password,
+            response=(0, _curl_stdout(), ""),
+        )
+        clients.append(client)
+        return client
+
+    ok = heartbeat_tunnel(
+        "server-0",
+        _state(pid=123),
+        config_path=_config(tmp_path),
+        ssh_client_factory=factory,
+    )
+
+    assert ok is True
+    assert clients[0].closed is True
+    assert clients[0].commands
+    assert clients[0].commands[0].startswith(
+        "ALL_PROXY=http://127.0.0.1:17890"
+    )
+
+
+def test_heartbeat_remote_proxy_curl_error_returns_false(monkeypatch, tmp_path):
+    monkeypatch.setattr(tunnel_module, "is_process_alive", lambda pid: True)
+
+    ok = heartbeat_tunnel(
+        "server-0",
+        _state(pid=123),
+        config_path=_config(tmp_path),
+        ssh_client_factory=lambda host, *, bootstrap_password=None: FakeHeartbeatSSHClient(
+            host,
+            bootstrap_password=bootstrap_password,
+            response=(28, _curl_stdout(code=0), "timeout"),
+        ),
+    )
+
+    assert ok is False
+
+
+def test_ensure_retries_with_capped_backoff(monkeypatch, tmp_path):
+    opener, calls = _opener(pid=456)
+    sleeps: list[int] = []
+    monkeypatch.setattr(tunnel_module, "is_process_alive", lambda pid: True)
+
+    with pytest.raises(TunnelError):
+        ensure_tunnel(
+            "server-0",
+            config_path=_config(tmp_path),
+            tunnel_opener=opener,
+            heartbeat_fn=lambda *args, **kwargs: False,
+            sleep_fn=lambda delay: sleeps.append(delay),
+            max_retries=3,
+        )
+
+    assert len(calls) == 4
+    assert sleeps == [1, 2, 4]
+    state = load_tunnel_state("server-0")
+    assert state["last_heartbeat_ok"] is False
+
+
+def test_run_tunnel_ensure_outputs_json(monkeypatch, capsys):
+    monkeypatch.setattr(
+        tunnel_module,
+        "ensure_tunnel",
+        lambda *args, **kwargs: _state(pid=999),
+    )
+
+    exit_code = run_tunnel_ensure("server-0")
+
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    assert '"ok": true' in captured.out
+    assert "__AR_PROGRESS__=" not in captured.out
+    assert "__AR_PROGRESS__=" in captured.err

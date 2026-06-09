@@ -9,6 +9,7 @@ from click.testing import CliRunner
 from autoresearch.cli import main
 from workspace_core.config import ConfigError
 from workspace_core.result import CheckSeverity
+from workspace_core.ssh.exceptions import TunnelError
 
 
 def _config(targets=None):
@@ -47,6 +48,16 @@ def test_net_probe_help_lists_expected_options():
     assert "--lang" in result.stdout
 
 
+def test_net_tunnel_ensure_help_lists_expected_options():
+    result = CliRunner().invoke(main, ["net", "tunnel", "ensure", "--help"])
+
+    assert result.exit_code == 0
+    assert "--server" in result.stdout
+    assert "--config" in result.stdout
+    assert "--local-proxy-url" in result.stdout
+    assert "--remote-proxy-port" in result.stdout
+
+
 def test_net_probe_happy_path_outputs_one_json_and_progress(monkeypatch):
     from autoresearch.net import probe as probe_module
 
@@ -78,6 +89,97 @@ def test_net_probe_happy_path_outputs_one_json_and_progress(monkeypatch):
     assert "__AR_PROGRESS__=" in result.stderr
     assert "__AR_PROGRESS__=" not in result.stdout
     assert result.stdout.count("\n") == 1
+
+
+def test_net_probe_remote_proxy_port_is_passed(monkeypatch):
+    from autoresearch.net import probe as probe_module
+
+    captured = {}
+    monkeypatch.setattr(probe_module, "from_path", lambda config: _config())
+    monkeypatch.setattr(
+        probe_module,
+        "_validated_targets",
+        lambda targets: ["https://baidu.com"],
+    )
+    monkeypatch.setattr(
+        probe_module,
+        "probe_local",
+        lambda targets, local_proxy_url: _rows("ok"),
+    )
+
+    def fake_all(config, targets, **kwargs):
+        captured.update(kwargs)
+        return []
+
+    monkeypatch.setattr(probe_module, "probe_all_remotes", fake_all)
+
+    result = CliRunner().invoke(
+        main,
+        ["net", "probe", "--remote-proxy-port", "17891"],
+    )
+
+    assert result.exit_code == 0
+    assert captured["remote_proxy_port"] == 17891
+
+
+def test_net_tunnel_ensure_outputs_one_json_and_progress(monkeypatch):
+    from autoresearch.net import tunnel as tunnel_module
+
+    monkeypatch.setattr(
+        tunnel_module,
+        "ensure_tunnel",
+        lambda *args, **kwargs: {
+            "server": "server-0",
+            "pid": 123,
+            "remote_port": 17890,
+            "local_proxy_url": "http://127.0.0.1:7890",
+            "remote_proxy_url": "http://127.0.0.1:17890",
+            "started_at": "2026-06-09T00:00:00Z",
+            "log_path": None,
+            "last_heartbeat_at": "2026-06-09T00:00:00Z",
+            "last_heartbeat_ok": True,
+            "error": None,
+        },
+    )
+
+    result = CliRunner().invoke(
+        main,
+        ["net", "tunnel", "ensure", "--server", "server-0"],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["ok"] is True
+    assert payload["data"]["remote_proxy_url"] == "http://127.0.0.1:17890"
+    assert "__AR_PROGRESS__=" in result.stderr
+    assert "__AR_PROGRESS__=" not in result.stdout
+    assert result.stdout.count("\n") == 1
+
+
+def test_net_tunnel_ensure_redacts_proxy_credentials(monkeypatch):
+    from autoresearch.net import tunnel as tunnel_module
+
+    def fail_ensure(*args, **kwargs):
+        raise TunnelError("bad http://u:p@127.0.0.1:7890")
+
+    monkeypatch.setattr(tunnel_module, "ensure_tunnel", fail_ensure)
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "net",
+            "tunnel",
+            "ensure",
+            "--server",
+            "server-0",
+            "--local-proxy-url",
+            "http://u:p@127.0.0.1:7890",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "u:p" not in result.stdout + result.stderr
+    assert "http://***:***@127.0.0.1:7890" in result.stderr
 
 
 def test_net_probe_warn_only_exits_zero(monkeypatch):
