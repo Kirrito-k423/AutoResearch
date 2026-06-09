@@ -6,7 +6,7 @@ import time
 
 import paramiko
 
-from .exceptions import AuthError, ConnectError, SSHError
+from .exceptions import AuthError, CommandTimeoutError, ConnectError, SSHError
 from .host import HostSpec, resolve_host
 from . import keys as ssh_keys
 
@@ -124,12 +124,35 @@ class SSHClient:
         """执行命令, 返回 (exit_code, stdout, stderr)."""
         if self._client is None:
             raise SSHError(f"未连接; 先调 connect() — host={self.host.host}")
-        stdin, stdout, stderr = self._client.exec_command(command, timeout=timeout)
-        exit_code = stdout.channel.recv_exit_status()
+        _, stdout, _ = self._client.exec_command(command, timeout=timeout)
+        channel = stdout.channel
+        deadline = time.monotonic() + timeout
+        stdout_bytes = bytearray()
+        stderr_bytes = bytearray()
+        while True:
+            while channel.recv_ready():
+                stdout_bytes.extend(channel.recv(32768))
+            while channel.recv_stderr_ready():
+                stderr_bytes.extend(channel.recv_stderr(32768))
+            if channel.exit_status_ready():
+                while channel.recv_ready():
+                    stdout_bytes.extend(channel.recv(32768))
+                while channel.recv_stderr_ready():
+                    stderr_bytes.extend(channel.recv_stderr(32768))
+                break
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                channel.close()
+                raise CommandTimeoutError(
+                    f"命令超时 host={self.host.host}:{self.host.port} "
+                    f"timeout={timeout}s command={command!r}"
+                )
+            time.sleep(min(0.05, remaining))
+        exit_code = channel.recv_exit_status()
         return (
             exit_code,
-            stdout.read().decode("utf-8", errors="replace"),
-            stderr.read().decode("utf-8", errors="replace"),
+            stdout_bytes.decode("utf-8", errors="replace"),
+            stderr_bytes.decode("utf-8", errors="replace"),
         )
 
     # ===== SFTP =====

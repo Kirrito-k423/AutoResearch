@@ -8,7 +8,12 @@ import pytest
 
 from workspace_core.ssh.client import SSHClient
 from workspace_core.ssh.host import HostSpec, resolve_host
-from workspace_core.ssh.exceptions import AuthError, ConnectError, HostResolveError
+from workspace_core.ssh.exceptions import (
+    AuthError,
+    CommandTimeoutError,
+    ConnectError,
+    HostResolveError,
+)
 
 
 def _free_port() -> int:
@@ -57,3 +62,58 @@ def test_ssh_client_fails_to_connect_unknown_host():
     c = SSHClient(h)
     with pytest.raises(ConnectError):
         c.connect(connect_timeout=0.3, retries=0)
+
+
+def test_exec_closes_channel_and_raises_when_command_times_out():
+    class NeverReadyChannel:
+        def __init__(self):
+            self.closed = False
+
+        def exit_status_ready(self):
+            return False
+
+        def recv_ready(self):
+            return False
+
+        def recv_stderr_ready(self):
+            return False
+
+        def close(self):
+            self.closed = True
+
+        def recv_exit_status(self):
+            raise AssertionError("timed out channel must not read exit status")
+
+    class Stream:
+        def __init__(self, channel):
+            self.channel = channel
+
+        def read(self):
+            return b""
+
+    class ParamikoClient:
+        def __init__(self, channel):
+            self.channel = channel
+
+        def exec_command(self, command, timeout):
+            stream = Stream(self.channel)
+            return None, stream, stream
+
+    host = HostSpec(
+        alias=None,
+        host="192.0.2.10",
+        port=22,
+        user="tester",
+        identity_file=None,
+    )
+    client = SSHClient(host)
+    channel = NeverReadyChannel()
+    client._client = ParamikoClient(channel)
+
+    started = time.monotonic()
+    with pytest.raises(CommandTimeoutError) as exc:
+        client.exec("npu-smi info", timeout=0.02)
+
+    assert time.monotonic() - started < 0.5
+    assert channel.closed is True
+    assert "npu-smi info" in str(exc.value)

@@ -14,6 +14,10 @@ class ConnectError(SSHError):
     """网络层连接失败 (timeout / DNS / refused). 重试有意义."""
 
 
+class CommandTimeoutError(SSHError):
+    """远程命令超过执行时限，通道已关闭."""
+
+
 class AuthError(SSHError):
     """认证失败. 重试无意义, 需用户介入."""
 
