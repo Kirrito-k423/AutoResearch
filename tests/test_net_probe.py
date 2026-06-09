@@ -12,6 +12,7 @@ from autoresearch.net.probe import (
     probe_all_remotes,
     probe_local,
     probe_remote_direct,
+    probe_remote_with_proxy_fallback,
     summarize_rows,
 )
 
@@ -140,6 +141,103 @@ def test_probe_remote_direct_uses_safe_quoted_curl_and_closes_client(tmp_path):
     assert CURL_WRITE_OUT.strip().splitlines()[0] in command
 
 
+def test_remote_proxy_fallback_retries_failed_target_through_tunnel(tmp_path):
+    clients: list[FakeSSHClient] = []
+    ensured: list[dict] = []
+
+    class OneClient(FakeSSHClient):
+        def exec(self, command: str):
+            self.commands.append(command)
+            if "ALL_PROXY=http://127.0.0.1:17890" in command:
+                return (0, _stdout(), "")
+            return (28, _stdout(code=0), "timeout")
+
+    def factory(host, *, bootstrap_password=None):
+        client = OneClient(host, bootstrap_password=bootstrap_password)
+        clients.append(client)
+        return client
+
+    def fake_ensure(server_name, **kwargs):
+        ensured.append({"server": server_name, **kwargs})
+        return {
+            "server": server_name,
+            "pid": 123,
+            "remote_port": kwargs["remote_proxy_port"],
+            "local_proxy_url": "http://127.0.0.1:7890",
+            "remote_proxy_url": "http://127.0.0.1:17890",
+            "started_at": "2026-06-09T00:00:00Z",
+            "log_path": None,
+            "last_heartbeat_at": "2026-06-09T00:00:00Z",
+            "last_heartbeat_ok": True,
+            "error": None,
+        }
+
+    rows = probe_remote_with_proxy_fallback(
+        "server-0",
+        ["https://huggingface.co"],
+        config_path=_config(tmp_path),
+        ssh_client_factory=factory,
+        ensure_tunnel_fn=fake_ensure,
+    )
+
+    assert len(ensured) == 1
+    assert rows[0]["effective_mode"] == "proxy"
+    assert rows[0]["status"] == "warn"
+    assert len(rows[0]["attempts"]) == 2
+    assert any(
+        command.startswith("ALL_PROXY=http://127.0.0.1:17890")
+        for command in clients[0].commands
+    )
+
+
+def test_remote_direct_success_does_not_ensure_tunnel(tmp_path):
+    calls = 0
+
+    def fail_if_called(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        raise AssertionError("ensure_tunnel should not be called")
+
+    rows = probe_remote_with_proxy_fallback(
+        "server-0",
+        ["https://baidu.com"],
+        config_path=_config(tmp_path),
+        ssh_client_factory=lambda host, *, bootstrap_password=None: FakeSSHClient(
+            host,
+            bootstrap_password=bootstrap_password,
+        ),
+        ensure_tunnel_fn=fail_if_called,
+    )
+
+    assert calls == 0
+    assert rows[0]["status"] == "ok"
+
+
+def test_remote_proxy_unavailable_keeps_direct_and_proxy_attempt(tmp_path):
+    class FailingDirectClient(FakeSSHClient):
+        def exec(self, command: str):
+            self.commands.append(command)
+            return (28, _stdout(code=0), "timeout")
+
+    rows = probe_remote_with_proxy_fallback(
+        "server-0",
+        ["https://huggingface.co"],
+        config_path=_config(tmp_path),
+        ssh_client_factory=lambda host, *, bootstrap_password=None: FailingDirectClient(
+            host,
+            bootstrap_password=bootstrap_password,
+        ),
+        ensure_tunnel_fn=lambda *args, **kwargs: (_ for _ in ()).throw(
+            RuntimeError("proxy secret http://u:p@127.0.0.1:7890")
+        ),
+    )
+
+    assert rows[0]["status"] == "fail"
+    assert len(rows[0]["attempts"]) == 2
+    assert "proxy_unavailable" in rows[0]["attempts"][1]["error"]
+    assert "u:p" not in rows[0]["attempts"][1]["error"]
+
+
 def test_probe_all_remotes_bounds_concurrency_and_preserves_config_order(
     tmp_path,
 ):
@@ -251,7 +349,7 @@ def test_summarize_rows_groups_local_remote_and_totals():
             "http_code": 200,
             "latency_ms": 20,
             "speed_download_bps": 200,
-            "attempts": [],
+            "attempts": [{"mode": "proxy"}],
             "error": None,
         },
         {
@@ -264,7 +362,7 @@ def test_summarize_rows_groups_local_remote_and_totals():
             "http_code": None,
             "latency_ms": None,
             "speed_download_bps": None,
-            "attempts": [],
+            "attempts": [{"mode": "proxy"}],
             "error": "timeout",
         },
     ]
@@ -278,3 +376,5 @@ def test_summarize_rows_groups_local_remote_and_totals():
     assert summary["local"]["passed"] == 1
     assert summary["remotes"]["server-0"]["failed_targets"] == ["huggingface"]
     assert summary["needs_proxy"] is True
+    assert summary["proxy_used"] == 1
+    assert summary["proxy_failed"] == 1

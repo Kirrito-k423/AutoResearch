@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+import re
 import shlex
 import subprocess
 import sys
@@ -20,21 +21,24 @@ from .curl import (
     target_label,
     validate_target_url,
 )
+from .tunnel import (
+    DEFAULT_LOCAL_PROXY_URL,
+    DEFAULT_REMOTE_PROXY_PORT,
+    ensure_tunnel,
+    redact_proxy_url,
+)
 from .models import CurlAttempt, NetworkGroupSummary, NetworkRow, NetworkSummary
 
 
 RunCommand = Callable[..., subprocess.CompletedProcess[str]]
 SSHClientFactory = Callable[..., SSHClient]
-RemoteProbeFunction = Callable[
-    [str, Iterable[str], str | Path | None],
-    list[NetworkRow],
-]
+RemoteProbeFunction = Callable[..., list[NetworkRow]]
 PROXY_ELIGIBLE_LABELS = {"huggingface", "github"}
 
 
 def probe_local(
     targets: Iterable[str],
-    local_proxy_url: str = "http://127.0.0.1:7890",
+    local_proxy_url: str = DEFAULT_LOCAL_PROXY_URL,
     run_cmd: RunCommand = subprocess.run,
 ) -> list[NetworkRow]:
     """Probe configured targets from the local Mac with direct-first semantics."""
@@ -144,11 +148,122 @@ def probe_remote_direct(
             client.close()
 
 
+def probe_remote_with_proxy_fallback(
+    server_name: str,
+    targets: Iterable[str],
+    config_path: str | Path | None = None,
+    *,
+    local_proxy_url: str = DEFAULT_LOCAL_PROXY_URL,
+    remote_proxy_port: int = DEFAULT_REMOTE_PROXY_PORT,
+    ssh_client_factory: SSHClientFactory = SSHClient,
+    ensure_tunnel_fn=ensure_tunnel,
+) -> list[NetworkRow]:
+    """Probe one remote server; retry failed targets through ssh -R proxy."""
+    clean_targets = _validated_targets(targets)
+    server, host = resolve_server_host(server_name, config_path)
+    client: SSHClient | None = None
+    remote_proxy_url: str | None = None
+    try:
+        client = ssh_client_factory(
+            host,
+            bootstrap_password=server.bootstrap_password_secret,
+        )
+        client.connect(connect_timeout=5.0)
+        rows: list[NetworkRow] = []
+        for url in clean_targets:
+            label = target_label(url)
+            exit_code, stdout, stderr = client.exec(_remote_shell_command(url))
+            direct = parse_curl_result(
+                exit_code,
+                stdout,
+                stderr,
+                "direct",
+                url,
+            )
+            attempts = [direct]
+            if not direct["ok"]:
+                if remote_proxy_url is None:
+                    try:
+                        state = ensure_tunnel_fn(
+                            server_name,
+                            config_path=config_path,
+                            local_proxy_url=local_proxy_url,
+                            remote_proxy_port=remote_proxy_port,
+                        )
+                        remote_proxy_url = state["remote_proxy_url"]
+                    except Exception as exc:
+                        attempts.append(
+                            _proxy_unavailable_attempt(
+                                url,
+                                "proxy_unavailable: "
+                                + _sanitize_proxy_error(
+                                    str(exc),
+                                    local_proxy_url,
+                                ),
+                            )
+                        )
+                        rows.append(
+                            _row_from_attempts(
+                                "remote",
+                                server.name,
+                                label,
+                                url,
+                                attempts,
+                                remote_direct=True,
+                            )
+                        )
+                        continue
+
+                px_exit, px_stdout, px_stderr = client.exec(
+                    _remote_shell_command(url, remote_proxy_url)
+                )
+                attempts.append(
+                    parse_curl_result(
+                        px_exit,
+                        px_stdout,
+                        px_stderr,
+                        "proxy",
+                        url,
+                        proxy_url=remote_proxy_url,
+                    )
+                )
+            rows.append(
+                _row_from_attempts(
+                    "remote",
+                    server.name,
+                    label,
+                    url,
+                    attempts,
+                    remote_direct=True,
+                )
+            )
+        return rows
+    except SSHError as exc:
+        return _failure_rows(
+            "remote",
+            server.name,
+            clean_targets,
+            f"SSH failed: {exc}",
+        )
+    except Exception as exc:
+        return _failure_rows(
+            "remote",
+            server.name,
+            clean_targets,
+            f"remote probe failed: {exc}",
+        )
+    finally:
+        if client is not None:
+            client.close()
+
+
 def probe_all_remotes(
     config_path: str | Path | None,
     targets: Iterable[str],
-    probe_fn: RemoteProbeFunction = probe_remote_direct,
+    probe_fn: RemoteProbeFunction = probe_remote_with_proxy_fallback,
     max_workers: int = 3,
+    local_proxy_url: str = DEFAULT_LOCAL_PROXY_URL,
+    remote_proxy_port: int = DEFAULT_REMOTE_PROXY_PORT,
 ) -> list[NetworkRow]:
     """Probe every configured server with bounded, failure-isolated workers."""
     config = from_path(config_path)
@@ -165,7 +280,22 @@ def probe_all_remotes(
         futures = {}
         for server_name in server_names:
             emit_progress("net.remote.begin", server=server_name)
-            future = executor.submit(probe_fn, server_name, clean_targets, config_path)
+            if probe_fn is probe_remote_with_proxy_fallback:
+                future = executor.submit(
+                    probe_fn,
+                    server_name,
+                    clean_targets,
+                    config_path,
+                    local_proxy_url=local_proxy_url,
+                    remote_proxy_port=remote_proxy_port,
+                )
+            else:
+                future = executor.submit(
+                    probe_fn,
+                    server_name,
+                    clean_targets,
+                    config_path,
+                )
             futures[future] = server_name
 
         for future in as_completed(futures):
@@ -213,6 +343,8 @@ def summarize_rows(rows: list[NetworkRow]) -> NetworkSummary:
         warned=total["warned"],
         failed=total["failed"],
         needs_proxy=total["needs_proxy"],
+        proxy_used=total["proxy_used"],
+        proxy_failed=total["proxy_failed"],
         failed_targets=total["failed_targets"],
         local=groups["local"],
         remotes=remotes,
@@ -224,7 +356,8 @@ def run_probe(
     server: str | None = None,
     local_only: bool = False,
     config: str | Path | None = None,
-    local_proxy_url: str = "http://127.0.0.1:7890",
+    local_proxy_url: str = DEFAULT_LOCAL_PROXY_URL,
+    remote_proxy_port: int = DEFAULT_REMOTE_PROXY_PORT,
     lang: str = "zh",
 ) -> int:
     """CLI boundary: print exactly one CheckResult JSON and return 0/1/2."""
@@ -248,10 +381,21 @@ def run_probe(
         if not local_only:
             if server:
                 emit_progress("net.remote.begin", server=server)
-                remote_rows = probe_remote_direct(server, targets, config)
+                remote_rows = probe_remote_with_proxy_fallback(
+                    server,
+                    targets,
+                    config,
+                    local_proxy_url=local_proxy_url,
+                    remote_proxy_port=remote_proxy_port,
+                )
                 emit_progress("net.remote.complete", server=server)
             else:
-                remote_rows = probe_all_remotes(config, targets)
+                remote_rows = probe_all_remotes(
+                    config,
+                    targets,
+                    local_proxy_url=local_proxy_url,
+                    remote_proxy_port=remote_proxy_port,
+                )
             rows.extend(remote_rows)
 
         summary = summarize_rows(rows)
@@ -325,7 +469,7 @@ def _run_local_curl(
         completed.stderr or "",
         mode,  # type: ignore[arg-type]
         url,
-        proxy_url=proxy_url,
+        proxy_url=redact_proxy_url(proxy_url) if proxy_url else None,
     )
 
 
@@ -366,8 +510,32 @@ def _row_from_attempts(
 
 
 def _remote_shell_command(url: str, proxy_url: str | None = None) -> str:
-    command = build_curl_command(url, proxy_url=proxy_url)
-    return " ".join(shlex.quote(part) for part in command)
+    command = build_curl_command(url)
+    shell_command = " ".join(shlex.quote(part) for part in command)
+    if proxy_url:
+        proxy = shlex.quote(proxy_url)
+        return f"ALL_PROXY={proxy} HTTPS_PROXY={proxy} {shell_command}"
+    return shell_command
+
+
+def _proxy_unavailable_attempt(url: str, error: str) -> CurlAttempt:
+    return CurlAttempt(
+        mode="proxy",
+        target_url=url,
+        proxy_url=None,
+        exit_code=1,
+        ok=False,
+        status="fail",
+        http_code=None,
+        latency_ms=None,
+        speed_download_bps=None,
+        error=error,
+    )
+
+
+def _sanitize_proxy_error(error: str, local_proxy_url: str) -> str:
+    text = error.replace(local_proxy_url, redact_proxy_url(local_proxy_url))
+    return re.sub(r"(https?://)[^/\s:@]+:[^/\s@]+@", r"\1***:***@", text)
 
 
 def _failure_rows(
@@ -416,6 +584,12 @@ def _summarize_group(rows: list[NetworkRow]) -> NetworkGroupSummary:
         warned=sum(row["status"] == "warn" for row in rows),
         failed=sum(row["status"] == "fail" for row in rows),
         needs_proxy=any(row["effective_mode"] == "proxy" for row in rows),
+        proxy_used=sum(row["effective_mode"] == "proxy" for row in rows),
+        proxy_failed=sum(
+            row["status"] == "fail"
+            and any(attempt["mode"] == "proxy" for attempt in row["attempts"])
+            for row in rows
+        ),
         failed_targets=[
             row["target_label"]
             for row in rows

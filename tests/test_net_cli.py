@@ -43,6 +43,7 @@ def test_net_probe_help_lists_expected_options():
     assert "--local-only" in result.stdout
     assert "--config" in result.stdout
     assert "--local-proxy-url" in result.stdout
+    assert "--remote-proxy-port" in result.stdout
     assert "--lang" in result.stdout
 
 
@@ -63,7 +64,7 @@ def test_net_probe_happy_path_outputs_one_json_and_progress(monkeypatch):
     monkeypatch.setattr(
         probe_module,
         "probe_all_remotes",
-        lambda config, targets: [],
+        lambda *args, **kwargs: [],
     )
 
     result = CliRunner().invoke(main, ["net", "probe"])
@@ -97,7 +98,11 @@ def test_net_probe_warn_only_exits_zero(monkeypatch):
         "probe_local",
         lambda targets, local_proxy_url: _rows("warn"),
     )
-    monkeypatch.setattr(probe_module, "probe_all_remotes", lambda *args: [])
+    monkeypatch.setattr(
+        probe_module,
+        "probe_all_remotes",
+        lambda *args, **kwargs: [],
+    )
 
     result = CliRunner().invoke(main, ["net", "probe"])
 
@@ -121,7 +126,11 @@ def test_net_probe_network_fail_exits_one(monkeypatch):
         "probe_local",
         lambda targets, local_proxy_url: _rows("fail"),
     )
-    monkeypatch.setattr(probe_module, "probe_all_remotes", lambda *args: [])
+    monkeypatch.setattr(
+        probe_module,
+        "probe_all_remotes",
+        lambda *args, **kwargs: [],
+    )
 
     result = CliRunner().invoke(main, ["net", "probe", "--local-only"])
 

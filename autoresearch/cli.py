@@ -173,6 +173,12 @@ def net() -> None:
     help="本机代理地址，用于 huggingface/github fallback。",
 )
 @click.option(
+    "--remote-proxy-port",
+    default=17890,
+    type=int,
+    help="远程 ssh -R 代理端口。",
+)
+@click.option(
     "--lang",
     default="zh",
     type=click.Choice(["zh", "en"]),
@@ -183,6 +189,7 @@ def net_probe(
     local_only: bool,
     cfg_path: str | None,
     local_proxy_url: str,
+    remote_proxy_port: int,
     lang: str,
 ) -> None:
     """输出本机 + 远程网络测速矩阵 JSON。"""
@@ -194,6 +201,7 @@ def net_probe(
             local_only=local_only,
             config=cfg_path,
             local_proxy_url=local_proxy_url,
+            remote_proxy_port=remote_proxy_port,
             lang=lang,
         )
     )
