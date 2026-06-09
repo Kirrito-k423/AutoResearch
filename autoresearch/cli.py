@@ -142,6 +142,63 @@ def hw_probe(
     )
 
 
+# === Phase 5 / Skill 04: network-check ===
+
+@main.group()
+def net() -> None:
+    """探测本机与远程服务器外网可达性。"""
+    pass
+
+
+@net.command(name="probe")
+@click.option(
+    "--server",
+    default=None,
+    help="只探测指定 config 服务器；不传则探测全部服务器。",
+)
+@click.option(
+    "--local-only",
+    is_flag=True,
+    help="只探测本机网络，不连接远程服务器。",
+)
+@click.option(
+    "--config",
+    "cfg_path",
+    default=None,
+    help="配置文件路径 (默认 ./config/config.yaml)。",
+)
+@click.option(
+    "--local-proxy-url",
+    default="http://127.0.0.1:7890",
+    help="本机代理地址，用于 huggingface/github fallback。",
+)
+@click.option(
+    "--lang",
+    default="zh",
+    type=click.Choice(["zh", "en"]),
+    help="输出语言 (zh/en)。",
+)
+def net_probe(
+    server: str | None,
+    local_only: bool,
+    cfg_path: str | None,
+    local_proxy_url: str,
+    lang: str,
+) -> None:
+    """输出本机 + 远程网络测速矩阵 JSON。"""
+    from autoresearch.net.probe import run_probe
+
+    raise click.exceptions.Exit(
+        run_probe(
+            server=server,
+            local_only=local_only,
+            config=cfg_path,
+            local_proxy_url=local_proxy_url,
+            lang=lang,
+        )
+    )
+
+
 # === Phase 3 / Skill 01: customer-config ===
 
 @main.group()
