@@ -478,3 +478,68 @@ def bmc_power_on(server: str, cfg_path: str | None, apply: bool, verify_ssl: boo
 def bmc_power_cycle(server: str, cfg_path: str | None, apply: bool, verify_ssl: bool) -> None:
     """强制下电 + 上电 (PowerCycle). 默认 DRY-RUN."""
     _run_power("cycle", server, cfg_path, apply=apply, verify_ssl=verify_ssl)
+
+
+# === Phase 4.x / SSH bootstrap: key 部署 + NOPASSWD sudo 安装 (D-34) ===
+
+@main.group()
+def ssh() -> None:
+    """SSH 远端服务器 bootstrap 工具 (key 部署 + NOPASSWD sudo 安装).
+
+    所有写操作默认 dry-run, 须 --apply 才执行.
+    """
+    pass
+
+
+def _print_result(result) -> None:
+    """统一 CheckResult -> 单 JSON + 错误 stderr."""
+    import json as _json
+    if result["error"]:
+        print(f"{result['message']}: {result['error']}", file=sys.stderr)
+    print(_json.dumps(result, ensure_ascii=False))
+
+
+@ssh.command(name="status")
+@click.option("--server", default=None, help="指定一台; 不传看全部.")
+@click.option("--config", "cfg_path", default=None, help="配置文件路径.")
+def ssh_status(server: str | None, cfg_path: str | None) -> None:
+    """检查每台 server 的 key 部署 + NOPASSWD sudo 状态."""
+    from autoresearch.ssh_bootstrap import run_ssh_status
+    result = run_ssh_status(server_name=server, config_path=cfg_path)
+    _print_result(result)
+    raise click.exceptions.Exit(0 if result["ok"] else 1)
+
+
+@ssh.command(name="deploy-key")
+@click.option("--server", required=True, help="config 中的服务器名.")
+@click.option("--config", "cfg_path", default=None, help="配置文件路径.")
+@click.option("--apply", is_flag=True, help="真正写远端; 默认 dry-run.")
+@click.option("--lang", default="zh", type=click.Choice(["zh", "en"]))
+def ssh_deploy_key(server: str, cfg_path: str | None, apply: bool, lang: str) -> None:
+    """把本机 ~/.ssh/id_ed25519.pub 追加到远端 <user>/.ssh/authorized_keys.
+
+    流程: 1) ensure_local_keypair 2) SSH 密码认证 (force_password)
+    3) 追加公钥 (已存在则跳过) 4) chmod 600 5) 写本地 marker
+    6) 第二次 connect 走 key 验证
+    """
+    from autoresearch.ssh_bootstrap import run_deploy_key
+    result = run_deploy_key(server, config_path=cfg_path, apply=apply, lang=lang)
+    _print_result(result)
+    raise click.exceptions.Exit(0 if result["ok"] else 1)
+
+
+@ssh.command(name="install-nopasswd-sudo")
+@click.option("--server", required=True, help="config 中的服务器名.")
+@click.option("--config", "cfg_path", default=None, help="配置文件路径.")
+@click.option("--apply", is_flag=True, help="真正写远端 /etc/sudoers.d; 默认 dry-run.")
+@click.option("--lang", default="zh", type=click.Choice(["zh", "en"]))
+def ssh_install_nopasswd_sudo(server: str, cfg_path: str | None, apply: bool, lang: str) -> None:
+    """给 <user> 装 NOPASSWD sudo 规则 (写到 /etc/sudoers.d/<user>-nopasswd).
+
+    流程: 1) 备份 /etc/sudoers 2) 写 /etc/sudoers.d/<user>-nopasswd
+    3) visudo -c 校验 (失败回滚) 4) sudo -n whoami 验证
+    """
+    from autoresearch.ssh_bootstrap import run_install_nopasswd_sudo
+    result = run_install_nopasswd_sudo(server, config_path=cfg_path, apply=apply, lang=lang)
+    _print_result(result)
+    raise click.exceptions.Exit(0 if result["ok"] else 1)

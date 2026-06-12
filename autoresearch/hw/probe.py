@@ -65,8 +65,13 @@ def enrich_processes(
     client: SSHClient,
     processes: list[NPUProcess],
     command_records: list[CommandRecord] | None = None,
+    sudo_command: str = "",
 ) -> list[str]:
-    """Enrich parsed numeric PIDs with user and executable basename."""
+    """Enrich parsed numeric PIDs with user and executable basename.
+
+    sudo_command 非空时, ps 命令前加 sudo 前缀 (e.g. 'sudo -i' ->
+    'sudo -i ps -o pid=,user=,comm= ...').
+    """
     pids = sorted(
         {
             process["pid"]
@@ -79,10 +84,8 @@ def enrich_processes(
     if not pids:
         return []
 
-    command = (
-        "ps -o pid=,user=,comm= -p "
-        + ",".join(str(pid) for pid in pids)
-    )
+    base_ps = "ps -o pid=,user=,comm= -p " + ",".join(str(pid) for pid in pids)
+    command = _prefixed(sudo_command, base_ps)
     try:
         if command_records is None:
             exit_code, stdout, stderr = client.exec(command)
@@ -426,7 +429,12 @@ def probe_server(
             _supplement_typed_metrics(client, data, command_records)
         if parsed["error"] is None:
             data["warnings"].extend(
-                enrich_processes(client, data["processes"], command_records)
+                enrich_processes(
+                    client,
+                    data["processes"],
+                    command_records,
+                    sudo_command=server.sudo_command,
+                )
             )
 
         _collect_driver_versions(
@@ -434,6 +442,15 @@ def probe_server(
         )
 
         if parsed["error"] is not None:
+            # 摘要 stderr 让用户看到真实原因 (e.g. "sudo: a password is required")
+            stderr_hint = ""
+            if stderr.strip():
+                stderr_hint = f"; stderr: {stderr.strip()[:200]}"
+            if "password is required" in stderr or "NOPASSWD" in stderr:
+                stderr_hint += (
+                    " | hint: 在远端 /etc/sudoers 加 "
+                    f"{server.user} ALL=(ALL) NOPASSWD: ALL"
+                )
             lspci_exit, lspci_stdout, lspci_stderr = _exec_recorded(
                 client,
                 lspci_cmd,
@@ -474,12 +491,18 @@ def probe_server(
                 severity=CheckSeverity.FAIL,
                 data=data,
                 message="NPU 输出解析失败，已执行 lspci 降级",
-                error=f"npu-smi parse failed: {parsed['error']}",
+                error=f"npu-smi parse failed: {parsed['error']}{stderr_hint}",
             )
 
         if exit_code != 0:
             detail = stderr.strip() or "no stderr"
-            error = f"npu-smi command failed with exit code {exit_code}: {detail}"
+            hint = ""
+            if "password is required" in detail or "NOPASSWD" in detail:
+                hint = (
+                    f" | hint: 在远端 /etc/sudoers 加 "
+                    f"{server.user} ALL=(ALL) NOPASSWD: ALL"
+                )
+            error = f"npu-smi command failed with exit code {exit_code}: {detail}{hint}"
             emit_progress(
                 "hw.fail",
                 level="error",

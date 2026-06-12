@@ -23,11 +23,15 @@ class HealthResult(TypedDict):
 
 # 4 services fixed (D-03c); 端口可用环境变量覆盖（默认 .env.example）
 # 注意：archon 端口固定 8088（D-05 锁定，不在 compose 里）
+# 5 services fixed (D-03c); 端口可用环境变量覆盖（默认 .env.example）
+# 注意：archon 端口固定 8088（D-05 锁定，不在 compose 里）
+# pushgateway 是 Phase 06-01 引入 (D-36), 端口 9091
 SERVICES: list[tuple[str, str]] = [
     ("archon", "http://localhost:8088/healthz"),
     ("wandb", "http://localhost:8080/healthz"),
     ("prometheus", "http://localhost:9090/-/healthy"),
     ("grafana", "http://localhost:3000/api/health"),
+    ("pushgateway", "http://localhost:9091/-/healthy"),
 ]
 
 DEFAULT_TIMEOUT_S = 3.0

@@ -8,17 +8,17 @@ from autoresearch.cli import main
 from autoresearch.services._common import SERVICES, check_all
 
 
-def test_services_constant_has_4_entries():
-    assert len(SERVICES) == 4
+def test_services_constant_has_5_entries():
+    assert len(SERVICES) == 5
     names = {s[0] for s in SERVICES}
-    assert names == {"archon", "wandb", "prometheus", "grafana"}
+    assert names == {"archon", "wandb", "prometheus", "grafana", "pushgateway"}
 
 
 def test_check_all_handles_connection_error():
-    """When all services are down, check_all should return 4 unhealthy results (not raise)."""
-    # No mocks; localhost:8088/8080/9090/3000 are almost certainly unbound in test env
+    """When all services are down, check_all should return 5 unhealthy results (not raise)."""
+    # No mocks; localhost:8088/8080/9090/3000/9091 are almost certainly unbound in test env
     results = check_all(timeout=0.5)
-    assert len(results) == 4
+    assert len(results) == 5
     # All results should be unhealthy (no service running)
     assert all(r["healthy"] is False for r in results)
     # Each result has all required fields
@@ -39,8 +39,8 @@ def test_status_json_output():
     payload = json.loads(result.output)
     assert "services" in payload
     assert "summary" in payload
-    assert len(payload["services"]) == 4
-    assert payload["summary"]["total"] == 4
+    assert len(payload["services"]) == 5
+    assert payload["summary"]["total"] == 5
 
 
 def test_status_human_output():

@@ -28,9 +28,17 @@ class SSHClient:
         host: HostSpec,
         *,
         bootstrap_password: str | None = None,
+        force_password: bool = False,
     ) -> None:
+        """force_password: bootstrap 阶段强制走 password, 不试 key.
+
+        True 时 connect 临时把 look_for_keys/allow_agent 关掉,
+        强制 paramiko 只用 password 认证 (跳过 key 试错).
+        完成后第二次 connect() 不传此参, 走正常 key 认证.
+        """
         self.host = host
         self._configured_password = bootstrap_password
+        self._force_password = force_password
         self._client: paramiko.SSHClient | None = None
 
     # ===== 登录 / 注销 =====
@@ -66,8 +74,8 @@ class SSHClient:
                     "port": self.host.port,
                     "username": self.host.user,
                     "timeout": connect_timeout,
-                    "allow_agent": True,
-                    "look_for_keys": True,
+                    "allow_agent": not self._force_password,
+                    "look_for_keys": not self._force_password,
                 }
                 if self.host.identity_file:
                     connect_kwargs["key_filename"] = str(self.host.identity_file)

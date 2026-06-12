@@ -1026,3 +1026,77 @@ def test_sudo_command_empty_means_no_prefix(tmp_path):
     assert result["data"]["sudo_command"] == ""
     seen_command = fake_client.exec.call_args_list[0].args[0]
     assert seen_command == "npu-smi info"
+
+
+def test_sudo_command_prefix_applied_to_ps_enrichment(tmp_path):
+    """非 root 机器上, ps 命令也必须带 sudo 前缀才能看到其他用户进程."""
+    path = tmp_path / "config.yaml"
+    path.write_text(
+        yaml.safe_dump(
+            {
+                "version": 1,
+                "servers": [
+                    {
+                        "name": "ax-102",
+                        "host": "192.0.2.102",
+                        "user": "admin123",
+                        "sudo_command": "sudo -i",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    # Use a fixture that includes processes
+    fake_client = MagicMock()
+    fake_client.connect.return_value = None
+    fake_client.exec.return_value = (0, PROCESSES, "")
+    fake_client.close.return_value = None
+
+    def factory(*a, **kw):
+        return fake_client
+
+    result = probe_server("ax-102", config_path=path, ssh_client_factory=factory)
+    # 检查所有 exec 过的命令中, ps 那一行带 sudo
+    ps_calls = [c for c in fake_client.exec.call_args_list if "ps -o pid" in c.args[0]]
+    assert ps_calls, "expected ps to be exec'd for process enrichment"
+    assert ps_calls[0].args[0].startswith("sudo -i "), (
+        f"ps command should be sudo-prefixed, got: {ps_calls[0].args[0]!r}"
+    )
+
+
+def test_nopasswd_sudo_failure_gives_actionable_error(tmp_path):
+    """NOPASSWD sudo 未配时, hw probe 应给出可操作错误而不是裸 stderr."""
+    path = tmp_path / "config.yaml"
+    path.write_text(
+        yaml.safe_dump(
+            {
+                "version": 1,
+                "servers": [
+                    {
+                        "name": "ax-102",
+                        "host": "192.0.2.102",
+                        "user": "admin123",
+                        "sudo_command": "sudo -i",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    fake_client = MagicMock()
+    fake_client.connect.return_value = None
+    # 模拟 NOPASSWD sudo 未配: sudo 报 "a password is required"
+    fake_client.exec.return_value = (1, "", "sudo: a password is required\n")
+    fake_client.close.return_value = None
+
+    def factory(*a, **kw):
+        return fake_client
+
+    result = probe_server("ax-102", config_path=path, ssh_client_factory=factory)
+    # 应当 fail (exit_code != 0), 错误信息含 "password" 或 "NOPASSWD" 提示
+    assert result["ok"] is False
+    err = (result["error"] or "").lower()
+    assert "password" in err or "nopasswd" in err

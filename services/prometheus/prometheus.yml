@@ -1,6 +1,6 @@
 # services/prometheus/prometheus.yml
-# 用途: Prometheus 自监控 scrape config (D-03d)
-# 容器内: localhost:9090 是 Prometheus 自己
+# 用途: Prometheus 自监控 scrape config (D-03d) + pushgateway 抓取 (D-36, Phase 06-01)
+# 容器内: localhost:9090 是 Prometheus 自己, pushgateway:9091 是同 compose 的 pushgateway
 
 global:
   scrape_interval: 15s
@@ -14,4 +14,10 @@ scrape_configs:
         labels:
           instance: prometheus-self
 
-  # M1 阶段只自监控；Phase 7 (REACH) 起加远程 pushgateway
+  - job_name: pushgateway
+    # D-36: honor_labels=true 保留 push 时打的 server/job 标签
+    honor_labels: true
+    static_configs:
+      - targets: ["pushgateway:9091"]
+        labels:
+          instance: pushgateway-local
