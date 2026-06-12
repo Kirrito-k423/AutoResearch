@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: MinViable Loop
-status: Phase 4 plan 04-04 code complete; 2/4 hosts pass real hw probe; 0/4 BMC real UAT (awaiting BMC IP/cred + iBMC protocol confirmation)
-stopped_at: 04-04-SUMMARY.md committed; transitioning to Phase 5/6 progression
-last_updated: "2026-06-12T05:00:00Z"
-last_activity: 2026-06-12 — Phase 4 plan 04-04 BMC + sudo support committed; 205/205 tests pass
+status: Ready to plan
+stopped_at: 04-04 code complete + 2/4 hosts pass; awaiting user BMC info
+last_updated: "2026-06-12T07:59:19.206Z"
+last_activity: 2026-06-12
 progress:
   total_phases: 13
-  completed_phases: 3
-  total_plans: 17
-  completed_plans: 15
-  percent: 32
+  completed_phases: 5
+  total_plans: 16
+  completed_plans: 17
+  percent: 38
 ---
 
 # State: AutoResearch v1.0
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 ## Position
 
 - **Milestone:** v1.0 MinViable Loop
-- **Phase:** 4 code-complete; real BMC UAT pending; 5/6/7/8/9/10/11/12/13 not started
-- **Plan:** 04-04 (BMC + sudo) committed; 2/4 hosts pass real hw probe
-- **Last activity:** 2026-06-12 — BMC skill shipped; sudo_command prefix landed; A3-AX-180/102/153 external blocks documented
+- **Phase:** 6
+- **Plan:** Not started
+- **Last activity:** 2026-06-12
 
 ## Session Continuity
 
