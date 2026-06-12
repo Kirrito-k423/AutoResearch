@@ -56,13 +56,13 @@ servers:
       protocol: redfish
       power_operations_allowed: false
 
-  - name: A2-AK-102            # admin123, 需 sudo su 切 root 才能用 npu-smi
+  - name: A2-AK-102            # 改 root 直连, 避开 admin123 + sudo 链路 (D-34, 2026-06-12)
     host: 192.168.9.102
     port: 22
-    user: admin123
+    user: root
     identity_file: ~/.ssh/id_ed25519
     bootstrap_password_secret: Huawei@123
-    sudo_command: "sudo -n"   # NOPASSWD sudo, 配好后填这个
+    sudo_command: ""          # root 直连, 不再需要 sudo 前缀
     bmc:
       host: 192.168.12.102    # TODO: 填实际 BMC IP
       port: 443
