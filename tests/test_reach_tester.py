@@ -205,3 +205,95 @@ def test_run_reach_test_wandb_fail_returns_nonzero(capsys, tmp_path):
     assert payload["error"]
     assert "请先跑" in payload["error"]
     assert "net tunnel ensure" in payload["error"]
+
+
+# === --all (D-07/D-29) ===
+
+def test_all_servers_passes_when_all_ok(tmp_path):
+    """4 台全 OK -> overall ok=True, passed=4, failed=0."""
+    import yaml
+    cfg_path = tmp_path / "cfg.yaml"
+    cfg_path.write_text(yaml.safe_dump({
+        "version": 1,
+        "servers": [
+            {"name": "s1", "host": "1.1.1.1", "user": "root"},
+            {"name": "s2", "host": "2.2.2.2", "user": "root"},
+            {"name": "s3", "host": "3.3.3.3", "user": "root"},
+            {"name": "s4", "host": "4.4.4.4", "user": "root"},
+        ],
+    }))
+    fake_result = lambda name: {
+        "server": name, "ok": True, "severity": "ok",
+        "wandb": {"name": "wandb", "ok": True, "latency_ms": 5, "status_code": 200, "detail": None, "warning": None},
+        "pushgateway": {"name": "pushgateway", "ok": True, "latency_ms": 6, "status_code": 200, "detail": None, "warning": None},
+        "host": "x", "tunnel_wandb": "pid=1", "tunnel_pushgateway": "pid=2", "error": None,
+    }
+    with patch("autoresearch.reach.tester.test_server_reach", side_effect=lambda n, *a, **kw: fake_result(n)):
+        from autoresearch.reach.tester import test_all_servers
+        summary = test_all_servers(config_path=cfg_path)
+    assert summary["total"] == 4
+    assert summary["passed"] == 4
+    assert summary["failed"] == 0
+    assert summary["failed_servers"] == []
+    assert summary["passed_servers"] == ["s1", "s2", "s3", "s4"]
+
+
+def test_all_servers_isolates_one_failure(tmp_path):
+    """1 台 fail 隔离, 3 台仍 ok -> overall fail, passed=3, failed=1."""
+    import yaml
+    cfg_path = tmp_path / "cfg.yaml"
+    cfg_path.write_text(yaml.safe_dump({
+        "version": 1,
+        "servers": [
+            {"name": "good-1", "host": "1.1.1.1", "user": "root"},
+            {"name": "bad-1", "host": "2.2.2.2", "user": "root"},
+            {"name": "good-2", "host": "3.3.3.3", "user": "root"},
+        ],
+    }))
+    def fake(n, *a, **kw):
+        if n == "bad-1":
+            return {
+                "server": n, "ok": False, "severity": "fail",
+                "wandb": {"name": "wandb", "ok": False, "latency_ms": None, "status_code": None, "detail": "x", "warning": None},
+                "pushgateway": {"name": "pushgateway", "ok": False, "latency_ms": None, "status_code": None, "detail": "y", "warning": None},
+                "host": "x", "tunnel_wandb": None, "tunnel_pushgateway": None, "error": "boom",
+            }
+        return {
+            "server": n, "ok": True, "severity": "ok",
+            "wandb": {"name": "wandb", "ok": True, "latency_ms": 5, "status_code": 200, "detail": None, "warning": None},
+            "pushgateway": {"name": "pushgateway", "ok": True, "latency_ms": 6, "status_code": 200, "detail": None, "warning": None},
+            "host": "x", "tunnel_wandb": "p", "tunnel_pushgateway": "p", "error": None,
+        }
+    with patch("autoresearch.reach.tester.test_server_reach", side_effect=fake):
+        from autoresearch.reach.tester import test_all_servers
+        summary = test_all_servers(config_path=cfg_path)
+    assert summary["total"] == 3
+    assert summary["passed"] == 2
+    assert summary["failed"] == 1
+    assert summary["failed_servers"] == ["bad-1"]
+
+
+def test_all_servers_preserves_config_order(tmp_path):
+    """结果按 config 顺序排, 不按 worker 完成顺序."""
+    import yaml, time
+    cfg_path = tmp_path / "cfg.yaml"
+    cfg_path.write_text(yaml.safe_dump({
+        "version": 1,
+        "servers": [
+            {"name": "slow-1", "host": "1.1.1.1", "user": "root"},
+            {"name": "fast-1", "host": "2.2.2.2", "user": "root"},
+            {"name": "fast-2", "host": "3.3.3.3", "user": "root"},
+        ],
+    }))
+    def fake(n, *a, **kw):
+        time.sleep(0.1 if n.startswith("slow") else 0.01)
+        return {
+            "server": n, "ok": True, "severity": "ok",
+            "wandb": {"name": "wandb", "ok": True, "latency_ms": 1, "status_code": 200, "detail": None, "warning": None},
+            "pushgateway": {"name": "pushgateway", "ok": True, "latency_ms": 1, "status_code": 200, "detail": None, "warning": None},
+            "host": "x", "tunnel_wandb": "p", "tunnel_pushgateway": "p", "error": None,
+        }
+    with patch("autoresearch.reach.tester.test_server_reach", side_effect=fake):
+        from autoresearch.reach.tester import test_all_servers
+        summary = test_all_servers(config_path=cfg_path)
+    assert list(summary["results"].keys()) == ["slow-1", "fast-1", "fast-2"]

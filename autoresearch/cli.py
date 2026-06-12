@@ -552,14 +552,29 @@ def reach() -> None:
 
 
 @reach.command(name="test")
-@click.option("--server", required=True, help="config 中的服务器名称.")
+@click.option("--server", default=None, help="config 中的服务器名称 (与 --all 互斥).")
+@click.option("--all", "all_servers", is_flag=True, help="并发探测全部 config 中的服务器 (最多 3 worker).")
 @click.option("--config", "cfg_path", default=None, help="配置文件路径 (默认 ./config/config.yaml).")
 @click.option("--lang", default="zh", type=click.Choice(["zh", "en"]))
-def reach_test(server: str, cfg_path: str | None, lang: str) -> None:
+def reach_test(
+    server: str | None,
+    all_servers: bool,
+    cfg_path: str | None,
+    lang: str,
+) -> None:
     """验证指定服务器能通过 SSH 反向代理隧道访问本地 wandb (8080) + pushgateway (9091).
 
-    走 net tunnel ensure 17890 验 wandb /healthz; 临时建 17891 推 pushgateway metric.
+    --server X 单机; --all 并发跑全部. 走 net tunnel ensure 17890 验 wandb /healthz;
+    临时建 17891 推 pushgateway metric.
     """
-    from autoresearch.reach.tester import run_reach_test
-    exit_code = run_reach_test(server=server, config=cfg_path, lang=lang)
+    if (server is None) == (not all_servers):
+        # 既不传 --server 也不传 --all, 或两者都传了
+        click.echo("错误: --server X 与 --all 必须二选一", err=True)
+        raise click.exceptions.Exit(2)
+    from autoresearch.reach.tester import run_reach_test, run_reach_test_all
+    if all_servers:
+        exit_code = run_reach_test_all(config=cfg_path, lang=lang)
+    else:
+        assert server is not None
+        exit_code = run_reach_test(server=server, config=cfg_path, lang=lang)
     raise click.exceptions.Exit(exit_code)

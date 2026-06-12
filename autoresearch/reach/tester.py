@@ -421,3 +421,109 @@ def run_reach_test(
     }
     print(json.dumps(payload, ensure_ascii=False))
     return 0 if result["ok"] else 1
+
+
+# === --all multi-server ===
+
+import sys as _sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from .models import ReachSummary  # noqa: F401  (already imported at top)
+
+
+def test_all_servers(
+    config_path: str | Path | None = None,
+    max_workers: int = 3,
+    lang: str = "zh",
+) -> ReachSummary:
+    """并发跑全部 server reach test.
+
+    复用 Phase 4 hw.probe.probe_all 模式: ThreadPoolExecutor + as_completed
+    + worker exception 隔离. 结果按 config 顺序排.
+
+    失败隔离 (D-07/D-29): 一台 worker 失败不取消其他.
+    """
+    from workspace_core.config import from_path
+    cfg = from_path(str(config_path) if config_path else None)
+    server_names = [s.name for s in cfg.servers]
+    if not server_names:
+        return ReachSummary(
+            total=0, passed=0, failed=0, warned=0,
+            passed_servers=[], failed_servers=[], results={},
+        )
+    worker_count = min(3, max_workers, len(server_names))
+    results_by_name: dict[str, ReachResult] = {}
+    with ThreadPoolExecutor(max_workers=worker_count) as ex:
+        futures = {
+            ex.submit(test_server_reach, name, config_path, lang): name
+            for name in server_names
+        }
+        emit_progress("reach.all.begin", level="info", server=None)
+        for future in as_completed(futures):
+            name = futures[future]
+            try:
+                result: ReachResult = future.result()
+            except Exception as exc:
+                result = ReachResult(
+                    server=name, ok=False, severity="fail",
+                    wandb=ReachCheck(name="wandb", ok=False, latency_ms=None,
+                                     status_code=None, detail=None, warning=None),
+                    pushgateway=ReachCheck(name="pushgateway", ok=False, latency_ms=None,
+                                           status_code=None, detail=None, warning=None),
+                    host="", tunnel_wandb=None, tunnel_pushgateway=None,
+                    error=f"worker 异常: {exc}",
+                )
+            results_by_name[name] = result
+            emit_progress(
+                "reach.all.complete" if result["ok"] else "reach.all.fail",
+                level="info" if result["ok"] else "error",
+                server=name,
+                severity=result["severity"],
+            )
+
+    # 按 config 顺序
+    ordered = {name: results_by_name[name] for name in server_names}
+    passed = [n for n, r in ordered.items() if r["ok"]]
+    failed = [n for n, r in ordered.items() if not r["ok"]]
+    warned = sum(1 for r in ordered.values() if r["severity"] == "warn" and r["ok"])
+    return ReachSummary(
+        total=len(ordered),
+        passed=len(passed),
+        failed=len(failed),
+        warned=warned,
+        passed_servers=passed,
+        failed_servers=failed,
+        results=ordered,
+    )
+
+
+def run_reach_test_all(
+    config: str | Path | None = None,
+    lang: str = "zh",
+) -> int:
+    """CLI 边界: --all 多机 reach test, 输出汇总 JSON."""
+    summary = test_all_servers(config_path=config, lang=lang)
+    # 转成 CheckResult-ish 形态
+    overall_ok = summary["failed"] == 0
+    severity = "ok" if overall_ok else "fail"
+    payload = {
+        "ok": overall_ok,
+        "severity": severity,
+        "data": {
+            "total": summary["total"],
+            "passed": summary["passed"],
+            "failed": summary["failed"],
+            "warned": summary["warned"],
+            "passed_servers": summary["passed_servers"],
+            "failed_servers": summary["failed_servers"],
+            "results": summary["results"],
+        },
+        "message": _check_message(severity, lang),
+        "error": None if overall_ok else f"failed servers: {summary['failed_servers']}",
+    }
+    print(_sys_json_dumps(payload))
+    return 0 if overall_ok else 1
+
+
+def _sys_json_dumps(obj: dict) -> str:
+    import json as _json
+    return _json.dumps(obj, ensure_ascii=False)
