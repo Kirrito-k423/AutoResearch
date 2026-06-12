@@ -62,7 +62,7 @@ servers:
     user: root
     identity_file: ~/.ssh/id_ed25519
     bootstrap_password_secret: Huawei@123
-    sudo_command: ""          # root 直连, 不再需要 sudo 前缀
+    sudo_command: ""          # root 直连, 不需要 sudo (D-34)
     bmc:
       host: 192.168.12.102    # TODO: 填实际 BMC IP
       port: 443
