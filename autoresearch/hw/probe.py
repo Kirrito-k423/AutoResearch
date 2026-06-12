@@ -16,6 +16,7 @@ from workspace_core.result import CheckResult, CheckSeverity
 from workspace_core.ssh import HostSpec, SSHClient, SSHError, resolve_host
 
 from .models import CommandRecord, DriverVersions, HardwareData, NPUProcess
+from ..bmc import identify_server
 from .parser import (
     core_field_errors,
     parse_driver_version_info,
@@ -26,9 +27,22 @@ from .parser import (
 )
 
 
-NPU_SMI_INFO_COMMAND = "npu-smi info"
-DRIVER_VERSION_COMMAND = "cat /usr/local/Ascend/driver/version.info"
-LSPCI_COMMAND = "lspci -Dnn"
+NPU_SMI_INFO_BASE = "npu-smi info"
+DRIVER_VERSION_BASE = "cat /usr/local/Ascend/driver/version.info"
+LSPCI_BASE = "lspci -Dnn"
+
+# legacy aliases (现有 _exec_recorded / _raw_output_summary 还在引用, 保留)
+NPU_SMI_INFO_COMMAND = NPU_SMI_INFO_BASE
+DRIVER_VERSION_COMMAND = DRIVER_VERSION_BASE
+LSPCI_COMMAND = LSPCI_BASE
+
+
+def _prefixed(sudo_command: str, base: str) -> str:
+    """拼 sudo 前缀; 空字符串不加. 命令最终形如 'sudo -n npu-smi info'."""
+    sudo = (sudo_command or "").strip()
+    if not sudo:
+        return base
+    return f"{sudo} {base}"
 TYPED_QUERY_TYPES = ("memory", "temp", "usages")
 SSHClientFactory = Callable[..., SSHClient]
 ProbeFunction = Callable[[str, str | Path | None], CheckResult]
@@ -184,10 +198,12 @@ def _collect_driver_versions(
     client: SSHClient,
     data: HardwareData,
     command_records: list[CommandRecord],
+    sudo_command: str = "",
 ) -> None:
+    driver_ver_cmd = _prefixed(sudo_command, DRIVER_VERSION_BASE)
     exit_code, stdout, stderr = _exec_recorded(
         client,
-        DRIVER_VERSION_COMMAND,
+        driver_ver_cmd,
         command_records,
     )
     if exit_code != 0:
@@ -237,7 +253,8 @@ def write_raw_failure_log(
 def _raw_output_summary(command_records: list[CommandRecord]) -> str:
     parts: list[str] = []
     for record in command_records:
-        if record["command"] == DRIVER_VERSION_COMMAND:
+        # 只对 base 命令做特殊处理, 带 sudo 前缀的等价形式会被当做普通命令
+        if record["command"] == DRIVER_VERSION_BASE or record["command"].endswith(" " + DRIVER_VERSION_BASE):
             parts.append(
                 f"{record['command']}: exit code {record['exit_code']}"
             )
@@ -308,6 +325,9 @@ def _empty_data(server: ServerSpec) -> HardwareData:
             "host": server.host,
             "port": server.port,
         },
+        host_actual=server.host,
+        bmc_identifier=None,
+        sudo_command=server.sudo_command,
         devices=[],
         processes=[],
         driver_versions=DriverVersions(
@@ -352,6 +372,26 @@ def probe_server(
     command_records: list[CommandRecord] = []
     stage = "connect"
 
+    # 按 server.sudo_command 拼前缀 (D-33)
+    npu_smi_cmd = _prefixed(server.sudo_command, NPU_SMI_INFO_BASE)
+    driver_ver_cmd = _prefixed(server.sudo_command, DRIVER_VERSION_BASE)
+    lspci_cmd = _prefixed(server.sudo_command, LSPCI_BASE)
+    ps_prefix = server.sudo_command.strip()
+    if ps_prefix:
+        # 'sudo -n ps ...' 的拼接由 enrich_processes 内部处理 — 这里只覆盖 npu-smi/lspci 链
+        pass
+
+    # BMC identify: 取唯一硬件编码 (D-32), bmc 缺失或失败不阻塞主流程
+    if server.bmc is not None:
+        bmc_res = identify_server(server.bmc, verify_ssl=False)
+        ident = (bmc_res.get("data") or {}).get("bmc_identifier")
+        if ident:
+            data["bmc_identifier"] = ident
+        if not bmc_res["ok"]:
+            data["warnings"].append(
+                f"bmc identify 失败 (非阻塞): {bmc_res['error']}"
+            )
+
     try:
         client = ssh_client_factory(
             host,
@@ -364,11 +404,11 @@ def probe_server(
         emit_progress(
             "hw.command",
             server=server.name,
-            command=NPU_SMI_INFO_COMMAND,
+            command=npu_smi_cmd,
         )
         exit_code, stdout, stderr = _exec_recorded(
             client,
-            NPU_SMI_INFO_COMMAND,
+            npu_smi_cmd,
             command_records,
         )
 
@@ -378,7 +418,8 @@ def probe_server(
         data["devices"] = parsed["devices"]
         data["processes"] = parsed["processes"]
         data["driver_versions"] = parsed["driver_versions"]
-        data["warnings"] = list(parsed["warnings"])
+        # 保留 BMC 阶段的 warning, 再 append parser warning (不覆盖)
+        data["warnings"].extend(parsed["warnings"])
         data["field_errors"] = parsed["field_errors"]
 
         if parsed["error"] is None and data["field_errors"]:
@@ -388,12 +429,14 @@ def probe_server(
                 enrich_processes(client, data["processes"], command_records)
             )
 
-        _collect_driver_versions(client, data, command_records)
+        _collect_driver_versions(
+            client, data, command_records, sudo_command=server.sudo_command
+        )
 
         if parsed["error"] is not None:
             lspci_exit, lspci_stdout, lspci_stderr = _exec_recorded(
                 client,
-                LSPCI_COMMAND,
+                lspci_cmd,
                 command_records,
             )
             fallback_devices = (
@@ -526,6 +569,9 @@ def probe_server(
 def _cli_failure(server_name: str | None, message: str, error: str) -> CheckResult:
     data = HardwareData(
         server={"name": server_name} if server_name else {},
+        host_actual=None,
+        bmc_identifier=None,
+        sudo_command="",
         devices=[],
         processes=[],
         driver_versions=DriverVersions(

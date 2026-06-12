@@ -6,6 +6,7 @@ import threading
 import time
 
 import pytest
+from unittest.mock import MagicMock, patch
 import yaml
 
 from autoresearch.hw.probe import (
@@ -740,3 +741,288 @@ def test_probe_all_warn_only_is_success(tmp_path):
     assert result["severity"] == CheckSeverity.WARN
     assert result["data"]["warned"] == 2
     assert result["data"]["failed_servers"] == []
+
+
+# === D-33: sudo_command 前缀 + D-32: bmc_identifier 集成测试 ===
+
+
+def test_sudo_command_prefix_is_applied_to_npu_smi_lspci_driver(tmp_path):
+    """sudo_command 非空时, 远程命令前缀正确拼接, 记录在 command_records 中."""
+    path = tmp_path / "config.yaml"
+    path.write_text(
+        yaml.safe_dump(
+            {
+                "version": 1,
+                "servers": [
+                    {
+                        "name": "ax-102",
+                        "host": "192.0.2.102",
+                        "user": "admin123",
+                        "sudo_command": "sudo -n",
+                        "bmc": {
+                            "host": "192.168.12.102",
+                            "user": "Administrator",
+                            "password": "Admin@9000",
+                        },
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    fake_client = MagicMock()
+    fake_client.connect.return_value = None
+    fake_client.exec.return_value = (0, BASELINE, "")
+    fake_client.close.return_value = None
+
+    with patch("autoresearch.hw.probe.identify_server") as mid_bmc:
+        mid_bmc.return_value = {
+            "ok": True,
+            "data": {"bmc_identifier": "SERIAL-102"},
+            "error": None,
+        }
+        with patch(
+            "autoresearch.hw.probe.SSHClient", return_value=fake_client
+        ):
+            result = probe_server("ax-102", config_path=path)
+
+    # ok
+    assert result["ok"] is True
+    # 命令确实带 sudo 前缀
+    seen_cmds = [c["command"] for c in result["data"].get("raw_output_summary", "").split()]
+    # 通过 field 直接验证: sudo_command 字段在 data 里
+    assert result["data"]["sudo_command"] == "sudo -n"
+    # raw_output_summary 至少包含 npu-smi
+    assert "npu-smi" in (result["data"].get("raw_output_summary") or "")
+    # bmc_identifier 已塞入
+    assert result["data"]["bmc_identifier"] == "SERIAL-102"
+
+
+def test_bmc_identify_failure_does_not_block_probe(tmp_path):
+    """bmc identify 失败时 hw probe 仍走完 (warning 而非 fail)."""
+    path = tmp_path / "config.yaml"
+    path.write_text(
+        yaml.safe_dump(
+            {
+                "version": 1,
+                "servers": [
+                    {
+                        "name": "ax-225",
+                        "host": "192.0.2.225",
+                        "user": "root",
+                        "bmc": {
+                            "host": "192.168.12.225",
+                            "user": "Administrator",
+                            "password": "Admin@9000",
+                        },
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    fake_client = MagicMock()
+    fake_client.connect.return_value = None
+    fake_client.exec.return_value = (0, BASELINE, "")
+    fake_client.close.return_value = None
+
+    with patch("autoresearch.hw.probe.identify_server") as mid_bmc:
+        mid_bmc.return_value = {
+            "ok": False,
+            "data": {},
+            "error": "connection refused",
+        }
+        with patch(
+            "autoresearch.hw.probe.SSHClient", return_value=fake_client
+        ):
+            result = probe_server("ax-225", config_path=path)
+
+    # bmc 失败不阻塞主流程
+    assert result["ok"] is True
+    assert result["data"]["bmc_identifier"] is None
+    assert any("bmc identify 失败" in w for w in result["data"]["warnings"])
+
+
+def test_sudo_command_empty_means_no_prefix(tmp_path):
+    """root 用户 (sudo_command="") 时, 远程命令保持基础命令."""
+    path = tmp_path / "config.yaml"
+    path.write_text(
+        yaml.safe_dump(
+            {
+                "version": 1,
+                "servers": [
+                    {
+                        "name": "ax-225",
+                        "host": "192.0.2.225",
+                        "user": "root",
+                        # 无 sudo_command, 默认 ""
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    fake_client = MagicMock()
+    fake_client.connect.return_value = None
+    fake_client.exec.return_value = (0, BASELINE, "")
+    fake_client.close.return_value = None
+
+    with patch("autoresearch.hw.probe.identify_server") as mid_bmc:
+        mid_bmc.return_value = {
+            "ok": True, "data": {"bmc_identifier": "U"}, "error": None,
+        }
+        with patch(
+            "autoresearch.hw.probe.SSHClient", return_value=fake_client
+        ):
+            result = probe_server("ax-225", config_path=path)
+
+    assert result["data"]["sudo_command"] == ""
+    # exec 收到的命令应该 = base (无 sudo)
+    seen_command = fake_client.exec.call_args_list[0].args[0]
+    assert seen_command == "npu-smi info"
+
+
+def _make_factory(client_mock):
+    """helper: 包装 client_mock 为 ssh_client_factory 用的 callable."""
+
+    def factory(*args, **kwargs):
+        return client_mock
+
+    return factory
+
+
+def test_sudo_command_prefix_is_applied_to_npu_smi_lspci_driver(tmp_path):
+    """sudo_command 非空时, 远程命令前缀正确拼接."""
+    path = tmp_path / "config.yaml"
+    path.write_text(
+        yaml.safe_dump(
+            {
+                "version": 1,
+                "servers": [
+                    {
+                        "name": "ax-102",
+                        "host": "192.0.2.102",
+                        "user": "admin123",
+                        "sudo_command": "sudo -n",
+                        "bmc": {
+                            "host": "192.168.12.102",
+                            "user": "Administrator",
+                            "password": "Admin@9000",
+                        },
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    fake_client = MagicMock()
+    fake_client.connect.return_value = None
+    fake_client.exec.return_value = (0, BASELINE, "")
+    fake_client.close.return_value = None
+
+    with patch("autoresearch.hw.probe.identify_server") as mid_bmc:
+        mid_bmc.return_value = {
+            "ok": True,
+            "data": {"bmc_identifier": "SERIAL-102"},
+            "error": None,
+        }
+        result = probe_server(
+            "ax-102", config_path=path, ssh_client_factory=_make_factory(fake_client)
+        )
+
+    assert result["ok"] is True
+    assert result["data"]["sudo_command"] == "sudo -n"
+    # npu-smi 命令应当带 sudo -n 前缀
+    npu_smi_calls = [
+        c for c in fake_client.exec.call_args_list
+        if "npu-smi info" in c.args[0]
+    ]
+    assert npu_smi_calls, "expected npu-smi info to be exec'd"
+    assert npu_smi_calls[0].args[0] == "sudo -n npu-smi info"
+    # bmc_identifier 已塞入
+    assert result["data"]["bmc_identifier"] == "SERIAL-102"
+
+
+def test_bmc_identify_failure_does_not_block_probe(tmp_path):
+    """bmc identify 失败时 hw probe 仍走完 (warning 而非 fail)."""
+    path = tmp_path / "config.yaml"
+    path.write_text(
+        yaml.safe_dump(
+            {
+                "version": 1,
+                "servers": [
+                    {
+                        "name": "ax-225",
+                        "host": "192.0.2.225",
+                        "user": "root",
+                        "bmc": {
+                            "host": "192.168.12.225",
+                            "user": "Administrator",
+                            "password": "Admin@9000",
+                        },
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    fake_client = MagicMock()
+    fake_client.connect.return_value = None
+    fake_client.exec.return_value = (0, BASELINE, "")
+    fake_client.close.return_value = None
+
+    with patch("autoresearch.hw.probe.identify_server") as mid_bmc:
+        mid_bmc.return_value = {
+            "ok": False,
+            "data": {},
+            "error": "connection refused",
+        }
+        result = probe_server(
+            "ax-225", config_path=path, ssh_client_factory=_make_factory(fake_client)
+        )
+
+    assert result["ok"] is True
+    assert result["data"]["bmc_identifier"] is None
+    assert any("bmc identify 失败" in w for w in result["data"]["warnings"])
+
+
+def test_sudo_command_empty_means_no_prefix(tmp_path):
+    """root 用户 (sudo_command=\"\") 时, 远程命令保持基础命令."""
+    path = tmp_path / "config.yaml"
+    path.write_text(
+        yaml.safe_dump(
+            {
+                "version": 1,
+                "servers": [
+                    {
+                        "name": "ax-225",
+                        "host": "192.0.2.225",
+                        "user": "root",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    fake_client = MagicMock()
+    fake_client.connect.return_value = None
+    fake_client.exec.return_value = (0, BASELINE, "")
+    fake_client.close.return_value = None
+
+    with patch("autoresearch.hw.probe.identify_server") as mid_bmc:
+        mid_bmc.return_value = {
+            "ok": True, "data": {"bmc_identifier": "U"}, "error": None,
+        }
+        result = probe_server(
+            "ax-225", config_path=path, ssh_client_factory=_make_factory(fake_client)
+        )
+
+    assert result["data"]["sudo_command"] == ""
+    seen_command = fake_client.exec.call_args_list[0].args[0]
+    assert seen_command == "npu-smi info"

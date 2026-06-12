@@ -2,6 +2,7 @@
 from .schema import (
     Config,
     ServerSpec,
+    BMCSpec,
     NetworkProbes,
     LogConfig,
     WandbConfig,
@@ -11,6 +12,7 @@ from .loader import from_yaml, from_path, ConfigError
 __all__ = [
     "Config",
     "ServerSpec",
+    "BMCSpec",
     "NetworkProbes",
     "LogConfig",
     "WandbConfig",

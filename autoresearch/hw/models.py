@@ -59,6 +59,9 @@ class HardwareData(TypedDict):
     """Stable payload carried in a hardware CheckResult."""
 
     server: dict[str, Any]
+    host_actual: str | None
+    bmc_identifier: str | None
+    sudo_command: str
     devices: list[NPUDevice]
     processes: list[NPUProcess]
     driver_versions: DriverVersions

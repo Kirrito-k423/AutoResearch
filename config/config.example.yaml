@@ -1,19 +1,77 @@
 # config/config.example.yaml
 # 用途: autoresearch 配置文件模板. 复制为 config/config.yaml 后修改.
 # 真实 config/config.yaml 在 .gitignore 里, 不进 git.
+#
+# === 安全声明 (D-32) ===
+# - bootstrap_password_secret: 可用 <keyring:NAME> 或 <env:VAR> 占位符
+# - bmc.password: 走明文 (内网机器, 不加密)
+# - host: 你手动管理, 宕机时改这里再跑 autoresearch
 
 version: 1
 
 # === 远端服务器清单 (D-03 Bootstrap-then-Key) ===
-# 解开注释 + 填实际值即可; 不填则 autoresearch ping --server 走 dummy.
 servers:
-  # - name: nvidia-01
-  #   host: 192.168.13.154
-  #   port: 22
-  #   user: t00906153
-  #   identity_file: ~/.ssh/id_ed25519
-  #   # 首次连接一次性密码 (bootstrap 阶段用, 部署完 key 后可删)
-  #   bootstrap_password_secret: "<env:SSH_PASSWORD_NVIDIA_01>"
+  - name: A2-AK-225
+    host: 192.168.9.225
+    port: 22
+    user: root
+    identity_file: ~/.ssh/id_ed25519
+    bootstrap_password_secret: OpenTraining1!2@
+    sudo_command: ""          # root 用户, 不需要 sudo
+    bmc:
+      host: 192.168.12.225    # TODO: 填实际 BMC IP
+      port: 443
+      user: Administrator
+      password: Admin@9000    # TODO: 填实际密码
+      protocol: redfish
+      power_operations_allowed: false   # 默认 dry-run
+
+  - name: A3-AK-182
+    host: 192.168.13.182
+    port: 22
+    user: root
+    identity_file: ~/.ssh/id_ed25519
+    bootstrap_password_secret: OpenTraining1!2@
+    sudo_command: ""
+    bmc:
+      host: 192.168.12.182
+      port: 443
+      user: Administrator
+      password: Admin@9000
+      protocol: redfish
+      power_operations_allowed: false
+
+  - name: A3-AX-180            # 旧名 A3-AX-176, IP 改 192.168.13.180
+    host: 192.168.13.180
+    port: 22
+    user: root
+    identity_file: ~/.ssh/id_ed25519
+    bootstrap_password_secret: OpenTraining1!2@
+    sudo_command: ""
+    bmc:
+      host: 192.168.12.180    # TODO: 填实际 BMC IP
+      port: 443
+      user: Administrator
+      password: Admin@9000    # TODO: 填实际密码
+      protocol: redfish
+      power_operations_allowed: false
+
+  - name: A2-AK-102            # admin123, 需 sudo su 切 root 才能用 npu-smi
+    host: 192.168.9.102
+    port: 22
+    user: admin123
+    identity_file: ~/.ssh/id_ed25519
+    bootstrap_password_secret: Huawei@123
+    sudo_command: "sudo -n"   # NOPASSWD sudo, 配好后填这个
+    bmc:
+      host: 192.168.12.102    # TODO: 填实际 BMC IP
+      port: 443
+      user: Administrator
+      password: Admin@9000    # TODO: 填实际密码
+      protocol: redfish
+      power_operations_allowed: false
+
+  # - name: A3-AX-153         # 暂时宕机, 修好再加回 (ip 动态分配)
 
 # === 外网探针 (phase 6 启用) ===
 network:

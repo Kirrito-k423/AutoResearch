@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import click
-
+import sys
 from autoresearch import __version__
 
 
@@ -347,3 +347,134 @@ def config_keyring_list(lang: str) -> None:
 
 if __name__ == "__main__":
     main()
+
+
+# === Phase 4.x / BMC: 带外管理 (Redfish) ===
+
+@main.group()
+def bmc() -> None:
+    """带外管理 (BMC) skill — Redfish 协议 (iBMC 等).
+
+    安全门 (D-32):
+      - power off/on/cycle 默认 DRY-RUN, 只打印意图
+      - --apply 才真正下发 BMC Reset
+      - config bmc.power_operations_allowed=false 时, --apply 一定拒绝
+    """
+    pass
+
+
+def _resolve_bmc(server: str, cfg_path: str | None) -> tuple[str, Any]:
+    """helper: 从 config 找 server 并取 bmc 段."""
+    from workspace_core.config import from_path, ConfigError
+    cfg = from_path(cfg_path)
+    spec = next((s for s in cfg.servers if s.name == server), None)
+    if spec is None:
+        available = [s.name for s in cfg.servers]
+        raise ConfigError(
+            f"config.servers 中找不到 '{server}'; 已配: {available}"
+        )
+    if spec.bmc is None:
+        raise ConfigError(
+            f"server '{server}' 未配置 bmc 段 (servers[].bmc=null)"
+        )
+    return server, spec.bmc
+
+
+@bmc.command(name="identify")
+@click.option("--server", required=True, help="config 中的服务器名.")
+@click.option("--config", "cfg_path", default=None, help="配置文件路径.")
+@click.option(
+    "--verify-ssl",
+    is_flag=True,
+    help="校验 BMC SSL 证书 (内网 BMC 一般自签, 默认不校验).",
+)
+def bmc_identify(server: str, cfg_path: str | None, verify_ssl: bool) -> None:
+    """通过 Redfish 拉机器唯一硬件编码 (BMC UUID / System SerialNumber / SKU)."""
+    import json as _json
+    from workspace_core.config import ConfigError
+    from autoresearch.bmc import identify_server
+    try:
+        _, bmc_spec = _resolve_bmc(server, cfg_path)
+    except ConfigError as exc:
+        print(f"配置错误: {exc}", file=sys.stderr)
+        print(_json.dumps(
+            {"ok": False, "severity": "fail", "data": {}, "message": "配置错误", "error": str(exc)},
+            ensure_ascii=False,
+        ))
+        raise click.exceptions.Exit(2)
+    result = identify_server(bmc_spec, verify_ssl=verify_ssl)
+    if result["error"]:
+        print(f"{result['message']}: {result['error']}", file=sys.stderr)
+    print(_json.dumps(result, ensure_ascii=False))
+    raise click.exceptions.Exit(0 if result["ok"] else 1)
+
+
+@bmc.group()
+def power() -> None:
+    """电源操作: status / off / on / cycle. 默认 DRY-RUN."""
+    pass
+
+
+def _run_power(op: str, server: str, cfg_path: str | None, apply: bool, verify_ssl: bool) -> None:
+    import json as _json
+    from workspace_core.config import ConfigError
+    from autoresearch.bmc import power_status, power_off, power_on, power_cycle
+    try:
+        _, bmc_spec = _resolve_bmc(server, cfg_path)
+    except ConfigError as exc:
+        print(f"配置错误: {exc}", file=sys.stderr)
+        print(_json.dumps(
+            {"ok": False, "severity": "fail", "data": {}, "message": "配置错误", "error": str(exc)},
+            ensure_ascii=False,
+        ))
+        raise click.exceptions.Exit(2)
+    fn = {
+        "status": power_status,
+        "off": power_off,
+        "on": power_on,
+        "cycle": power_cycle,
+    }[op]
+    result = fn(bmc_spec, apply=apply, verify_ssl=verify_ssl)
+    if result["error"]:
+        print(f"{result['message']}: {result['error']}", file=sys.stderr)
+    print(_json.dumps(result, ensure_ascii=False))
+    raise click.exceptions.Exit(0 if result["ok"] else 1)
+
+
+@power.command(name="status")
+@click.option("--server", required=True)
+@click.option("--config", "cfg_path", default=None)
+@click.option("--verify-ssl", is_flag=True)
+def bmc_power_status(server: str, cfg_path: str | None, verify_ssl: bool) -> None:
+    """读 BMC 电源状态 (无破坏性, 不需要 --apply)."""
+    _run_power("status", server, cfg_path, apply=False, verify_ssl=verify_ssl)
+
+
+@power.command(name="off")
+@click.option("--server", required=True)
+@click.option("--config", "cfg_path", default=None)
+@click.option("--apply", is_flag=True, help="真正下发 ResetType=ForceOff. 默认 dry-run.")
+@click.option("--verify-ssl", is_flag=True)
+def bmc_power_off(server: str, cfg_path: str | None, apply: bool, verify_ssl: bool) -> None:
+    """强制下电 (ForceOff). 默认 DRY-RUN."""
+    _run_power("off", server, cfg_path, apply=apply, verify_ssl=verify_ssl)
+
+
+@power.command(name="on")
+@click.option("--server", required=True)
+@click.option("--config", "cfg_path", default=None)
+@click.option("--apply", is_flag=True)
+@click.option("--verify-ssl", is_flag=True)
+def bmc_power_on(server: str, cfg_path: str | None, apply: bool, verify_ssl: bool) -> None:
+    """上电 (On). 默认 DRY-RUN."""
+    _run_power("on", server, cfg_path, apply=apply, verify_ssl=verify_ssl)
+
+
+@power.command(name="cycle")
+@click.option("--server", required=True)
+@click.option("--config", "cfg_path", default=None)
+@click.option("--apply", is_flag=True)
+@click.option("--verify-ssl", is_flag=True)
+def bmc_power_cycle(server: str, cfg_path: str | None, apply: bool, verify_ssl: bool) -> None:
+    """强制下电 + 上电 (PowerCycle). 默认 DRY-RUN."""
+    _run_power("cycle", server, cfg_path, apply=apply, verify_ssl=verify_ssl)
