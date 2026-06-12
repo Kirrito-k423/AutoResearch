@@ -543,3 +543,23 @@ def ssh_install_nopasswd_sudo(server: str, cfg_path: str | None, apply: bool, la
     result = run_install_nopasswd_sudo(server, config_path=cfg_path, apply=apply, lang=lang)
     _print_result(result)
     raise click.exceptions.Exit(0 if result["ok"] else 1)
+
+
+@main.group(name="reach")
+def reach() -> None:
+    """远程服务可达性测试 (Phase 06): wandb + pushgateway."""
+    pass
+
+
+@reach.command(name="test")
+@click.option("--server", required=True, help="config 中的服务器名称.")
+@click.option("--config", "cfg_path", default=None, help="配置文件路径 (默认 ./config/config.yaml).")
+@click.option("--lang", default="zh", type=click.Choice(["zh", "en"]))
+def reach_test(server: str, cfg_path: str | None, lang: str) -> None:
+    """验证指定服务器能通过 SSH 反向代理隧道访问本地 wandb (8080) + pushgateway (9091).
+
+    走 net tunnel ensure 17890 验 wandb /healthz; 临时建 17891 推 pushgateway metric.
+    """
+    from autoresearch.reach.tester import run_reach_test
+    exit_code = run_reach_test(server=server, config=cfg_path, lang=lang)
+    raise click.exceptions.Exit(exit_code)
