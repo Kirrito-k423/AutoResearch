@@ -2,40 +2,40 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: MinViable Loop
-status: v1.0 MinViable Loop archived — PR #1
-stopped_at: v1.0 milestone archived; next route is v1.1 planning via gsd-new-milestone
-last_updated: "2026-06-15T16:58:00Z"
+status: Phase 12 shipped — PR #1
+stopped_at: Phase 12 E2E smoke verified, pushed, and reflected in PR #1; next route is Phase 13 M1 archive
+last_updated: "2026-06-15T16:50:00Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 13
-  completed_phases: 13
-  total_plans: 37
-  completed_plans: 37
-  percent: 100
+  completed_phases: 12
+  total_plans: 30
+  completed_plans: 34
+  percent: 92
 ---
 
 # State: AutoResearch v1.0
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-15 after v1.0 milestone)
+See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 **Core value:** "常实践，详记录，知得失，会设计，有整理"——每个 skill 跑一次都留下可被复盘、可被二次开发的产物。
 
-**Current focus:** v1.0 is archived; next immediate step is defining v1.1.
+**Current focus:** Phase 12 E2E smoke is shipped to PR #1; next immediate step is Phase 13 M1 archive.
 
 ## Position
 
-- **Milestone:** v1.0 MinViable Loop archived
-- **Phase:** v1.1 planning
-- **Plan:** Next milestone
+- **Milestone:** v1.0 MinViable Loop
+- **Phase:** 13
+- **Plan:** Next
 - **Last activity:** 2026-06-15
 
 ## Session Continuity
 
 - **Last session:** 2026-06-15T10:28:47Z
-- **Stopped At:** v1.0 archive created and living requirements removed after snapshot
-- **Resume File:** .planning/MILESTONES.md
+- **Stopped At:** Phase 12 UAT passed on real run `01KV62JVH0N3ZRVRMH4PYWF1VB`; branch pushed and PR #1 updated for Phase 12
+- **Resume File:** .planning/phases/12-e2e-smoke/12-UAT.md
 
 ### Decisions Made This Session (2026-06-15)
 
@@ -73,24 +73,6 @@ See: .planning/PROJECT.md (updated 2026-06-15 after v1.0 milestone)
 - **D-74 Archon 可观测性门槛**：Archon healthz healthy 且 repo-local `ar-min-loop` workflow 存在。
 - **D-75 Phase 12 不重跑 Archon workflow**：Phase 10 已验证 Archon run path；Phase 12 聚焦本地 CLI loop。
 - **D-76 E2E 时长门槛**：默认 `--max-duration 1800` 秒，对齐 `< 30 min` 要求。
-- **D-77 Phase 13 范围**：Phase 13 仅归档规划和状态，不改产品代码。
-- **D-78 archive 形态**：v1.0 快照目录固定为 `.planning/milestones/v1.0/`。
-- **D-79 归档诚实性**：6 个历史未完全收口 REQ 作为 known gaps 存档，不强行勾选。
-- **D-80 PR 策略**：继续更新 PR #1，不在 milestone close 时合并或删分支。
-- **D-81 tag 策略**：归档提交成功后再创建 `v1.0` tag。
-- **D-82 open artifact audit**：Phase 04 partial 与 Phase 12 passed/0 pending 被 acknowledged/deferred。
-
-## Deferred Items
-
-Items acknowledged and deferred at milestone close on 2026-06-15:
-
-| Category | Item | Status |
-|---|---|---|
-| uat_gap | Phase 04 / 04-UAT.md | partial, 0 pending scenarios |
-| uat_gap | Phase 12 / 12-UAT.md | passed, 0 pending scenarios |
-| requirement_gap | HW-CONN-01 / HW-CONN-02 | multi-server SSH/BMC UAT follow-up |
-| requirement_gap | HW-OCC-01 / HW-OCC-02 | process ownership data depends on real npu-smi output |
-| requirement_gap | NET-TUNNEL-01 / NET-TUNNEL-02 | implementation path exists; all-server UAT follow-up |
 
 ### Files Created This Session (08-03 / 08-04)
 
@@ -190,33 +172,32 @@ Items acknowledged and deferred at milestone close on 2026-06-15:
 
 ## Next Steps
 
-1. `$gsd-new-milestone` 进入 v1.1 规划
-2. Define v1.1 requirements around hardening and remaining hardware/network gaps
-3. Keep PR #1 open until user is ready to merge
+1. Ship Phase 12 to PR #1
+2. `$gsd-progress --next` 进入 Phase 13 M1 归档
+3. 运行 milestone archive 并准备 v1.1 规划
 
 ## Continuation Prompts
 
 ```
-$gsd-new-milestone
+$gsd-progress --next
 ```
 
 ## Metrics
 
 - **Phases planned:** 13
-- **Phases complete:** 13 complete
-- **Plans complete:** 37 summaries through Phase 13
-- **Requirements:** 88 archived, 82 checked, 6 known gaps
+- **Phases complete:** 12 complete
+- **Plans complete:** 36 summaries through Phase 12
+- **Requirements:** 88
 - **Tests:** 361 / 361 passing
 - **Phase 11 UAT:** pass; smoke run `01KV60QS8PMSEG02MQEB0Z27FT`
 - **Phase 12 UAT:** pass; E2E run `01KV62JVH0N3ZRVRMH4PYWF1VB`
-- **Phase 13 archive:** `.planning/milestones/v1.0/`
 - **Latest PR:** `#1 Phase 12: E2E smoke validation`
 
 ## Branch & Commits
 
 - **Branch:** `codex/phase-02-workspace-core`
-- **Latest commit:** pending archive commit
+- **Latest commit:** `feat(12): add e2e smoke validation`
 - **Open PR:** `https://github.com/Kirrito-k423/AutoResearch/pull/1`
 
 ---
-*Last updated: 2026-06-15 after v1.0 archive*
+*Last updated: 2026-06-15 after Phase 12 ship to PR #1*
