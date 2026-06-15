@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: MinViable Loop
-status: Phase 12 verified — pending ship
-stopped_at: Phase 12 E2E smoke verified locally; next route is ship Phase 12 to PR #1
-last_updated: "2026-06-15T16:45:00Z"
+status: Phase 12 shipped — PR #1
+stopped_at: Phase 12 E2E smoke verified, pushed, and reflected in PR #1; next route is Phase 13 M1 archive
+last_updated: "2026-06-15T16:50:00Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 13
@@ -22,19 +22,19 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 **Core value:** "常实践，详记录，知得失，会设计，有整理"——每个 skill 跑一次都留下可被复盘、可被二次开发的产物。
 
-**Current focus:** Phase 12 E2E smoke is verified locally; next immediate step is shipping Phase 12 to PR #1.
+**Current focus:** Phase 12 E2E smoke is shipped to PR #1; next immediate step is Phase 13 M1 archive.
 
 ## Position
 
 - **Milestone:** v1.0 MinViable Loop
-- **Phase:** 12
-- **Plan:** Ship
+- **Phase:** 13
+- **Plan:** Next
 - **Last activity:** 2026-06-15
 
 ## Session Continuity
 
 - **Last session:** 2026-06-15T10:28:47Z
-- **Stopped At:** Phase 12 UAT passed on real run `01KV62JVH0N3ZRVRMH4PYWF1VB`; branch ready to ship to PR #1
+- **Stopped At:** Phase 12 UAT passed on real run `01KV62JVH0N3ZRVRMH4PYWF1VB`; branch pushed and PR #1 updated for Phase 12
 - **Resume File:** .planning/phases/12-e2e-smoke/12-UAT.md
 
 ### Decisions Made This Session (2026-06-15)
@@ -191,13 +191,13 @@ $gsd-progress --next
 - **Tests:** 361 / 361 passing
 - **Phase 11 UAT:** pass; smoke run `01KV60QS8PMSEG02MQEB0Z27FT`
 - **Phase 12 UAT:** pass; E2E run `01KV62JVH0N3ZRVRMH4PYWF1VB`
-- **Latest PR:** `#1 Phase 11: Top-level CLI orchestration`
+- **Latest PR:** `#1 Phase 12: E2E smoke validation`
 
 ## Branch & Commits
 
 - **Branch:** `codex/phase-02-workspace-core`
-- **Latest commit:** pending Phase 12 ship commit
+- **Latest commit:** `feat(12): add e2e smoke validation`
 - **Open PR:** `https://github.com/Kirrito-k423/AutoResearch/pull/1`
 
 ---
-*Last updated: 2026-06-15 after Phase 12 verification*
+*Last updated: 2026-06-15 after Phase 12 ship to PR #1*
