@@ -578,3 +578,44 @@ def reach_test(
         assert server is not None
         exit_code = run_reach_test(server=server, config=cfg_path, lang=lang)
     raise click.exceptions.Exit(exit_code)
+
+
+@main.group(name="stack")
+def stack() -> None:
+    """远程训练栈健康检查 (Phase 07): conda env + verl/veomni import + NPU 1-step 干跑."""
+    pass
+
+
+@stack.command(name="check")
+@click.option("--server", default=None, help="config 中的服务器名称 (与 --all 互斥).")
+@click.option("--all", "all_servers", is_flag=True, help="并发探测全部 config 中的服务器 (最多 3 worker).")
+@click.option("--config", "cfg_path", default=None, help="配置文件路径 (默认 ./config/config.yaml).")
+@click.option(
+    "--lib",
+    "libs",
+    multiple=True,
+    help="要检测的库, 多次传叠加 (默认 verl + veomni).",
+)
+@click.option("--lang", default="zh", type=click.Choice(["zh", "en"]))
+def stack_check(
+    server: str | None,
+    all_servers: bool,
+    cfg_path: str | None,
+    libs: tuple[str, ...],
+    lang: str,
+) -> None:
+    """验证指定服务器 verl/veomni 训练栈就绪 (conda env + import + 1-step NPU 干跑).
+
+    --server X 单机; --all 并发跑全部. 走 `conda run -n <env>` 验库 + 1-step 干跑.
+    """
+    if (server is None) == (not all_servers):
+        click.echo("错误: --server X 与 --all 必须二选一", err=True)
+        raise click.exceptions.Exit(2)
+    from autoresearch.stack.checker import run_stack_check, run_stack_check_all
+    lib_tuple = tuple(libs) if libs else None
+    if all_servers:
+        exit_code = run_stack_check_all(config=cfg_path, libs=lib_tuple, lang=lang)
+    else:
+        assert server is not None
+        exit_code = run_stack_check(server=server, config=cfg_path, libs=lib_tuple, lang=lang)
+    raise click.exceptions.Exit(exit_code)

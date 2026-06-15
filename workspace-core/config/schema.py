@@ -47,6 +47,13 @@ class ServerSpec(BaseModel):
             " 推荐先 bootstrap NOPASSWD sudo, 再填 'sudo -n'."
         ),
     )
+    conda_env: str = Field(
+        default="",
+        description=(
+            "Phase 7 (D-40): conda env 名称, 跑 stack check 时走 `conda run -n <env>`."
+            " 留空 = 走系统 python (没 conda env)."
+        ),
+    )
     bmc: BMCSpec | None = Field(
         default=None,
         description="带外管理 (BMC) 凭据; 不填则无 BMC 能力",
