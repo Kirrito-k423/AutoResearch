@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: MinViable Loop
-status: v1.0 MinViable Loop archived — PR #1
-stopped_at: v1.0 milestone archived; next route is v1.1 planning via gsd-new-milestone
-last_updated: "2026-06-15T16:58:00Z"
+status: v1.0 MinViable Loop archived and tagged — PR #1
+stopped_at: v1.0 milestone archived and tagged; next route is v1.1 planning via gsd-new-milestone
+last_updated: "2026-06-15T17:02:00Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 13
@@ -211,11 +211,12 @@ $gsd-new-milestone
 - **Phase 12 UAT:** pass; E2E run `01KV62JVH0N3ZRVRMH4PYWF1VB`
 - **Phase 13 archive:** `.planning/milestones/v1.0/`
 - **Latest PR:** `#1 Phase 12: E2E smoke validation`
+- **Tag:** `v1.0`
 
 ## Branch & Commits
 
 - **Branch:** `codex/phase-02-workspace-core`
-- **Latest commit:** pending archive commit
+- **Latest commit:** `chore: archive v1.0 milestone`
 - **Open PR:** `https://github.com/Kirrito-k423/AutoResearch/pull/1`
 
 ---

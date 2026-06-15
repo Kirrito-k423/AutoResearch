@@ -9,6 +9,7 @@
 **Requirements:** 82/88 checked
 **Branch:** `codex/phase-02-workspace-core`
 **PR:** `https://github.com/Kirrito-k423/AutoResearch/pull/1`
+**Tag:** `v1.0`
 
 ### Delivered
 
