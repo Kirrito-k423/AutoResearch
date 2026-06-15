@@ -129,11 +129,11 @@
 
 ## ORCH — 顶层 CLI 编排
 
-- [ ] **ORCH-CHECK-01** — `autoresearch check all` 串跑 8 skill 的 check 部分
-- [ ] **ORCH-CHECK-02** — 输出统一报告（哪个服务 / 哪个服务器 不健康）
-- [ ] **ORCH-RUN-01** — `autoresearch run smoke --server X` 跑 COLL + RPT
-- [ ] **ORCH-RUN-02** — 失败时给出诊断（哪一步挂了，为什么）
-- [ ] **ORCH-LOG-01** — 所有 CLI 输出遵守 `__AR_PROGRESS__=` 协议
+- [x] **ORCH-CHECK-01** — `autoresearch check all` 串跑 8 skill 的 check 部分
+- [x] **ORCH-CHECK-02** — 输出统一报告（哪个服务 / 哪个服务器 不健康）
+- [x] **ORCH-RUN-01** — `autoresearch run smoke --server X` 跑 COLL + RPT
+- [x] **ORCH-RUN-02** — 失败时给出诊断（哪一步挂了，为什么）
+- [x] **ORCH-LOG-01** — 所有 CLI 输出遵守 `__AR_PROGRESS__=` 协议
 
 ## E2E — 端到端验证
 

@@ -249,8 +249,8 @@ Plans:
 
 Plans:
 
-- [ ] 11-01: `autoresearch check all` 编排器
-- [ ] 11-02: `autoresearch run smoke` 编排器 + 失败诊断
+- [x] 11-01: `autoresearch check all` 编排器
+- [x] 11-02: `autoresearch run smoke` 编排器 + 失败诊断
 
 ### Phase 12: E2E 端到端 smoke
 
@@ -306,6 +306,6 @@ Phases execute in numeric order: 1 → 2 → 3 → ... → 13
 | 8. Skill 07: data-collection | 4/4 | Complete | 2026-06-15 |
 | 9. Skill 08: experiment-report | 2/2 | Complete | 2026-06-15 |
 | 10. Archon 适配层 | 3/3 | Complete | 2026-06-15 |
-| 11. 顶层 CLI 编排 | 0/2 | Not started | - |
+| 11. 顶层 CLI 编排 | 2/2 | Complete | 2026-06-15 |
 | 12. E2E 端到端 smoke | 0/2 | Not started | - |
 | 13. M1 归档 | 0/1 | Not started | - |

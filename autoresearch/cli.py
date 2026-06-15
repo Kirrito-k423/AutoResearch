@@ -1,6 +1,7 @@
 """autoresearch CLI entry point."""
 from __future__ import annotations
 
+import json
 import click
 import sys
 from autoresearch import __version__
@@ -365,6 +366,114 @@ def report() -> None:
 from autoresearch.report.cli import render as report_render_command
 
 report.add_command(report_render_command)
+
+
+@main.group(name="check")
+def check() -> None:
+    """顶层 readiness 编排: 串起 8 个 skill 的检查面。"""
+    pass
+
+
+@check.command(name="all")
+@click.option("--server", default=None, help="config 中的服务器名称；不传则使用第一台。")
+@click.option("--config", "cfg_path", default=None, help="配置文件路径 (默认 ./config/config.yaml).")
+@click.option(
+    "--stack-lib",
+    "stack_libs",
+    multiple=True,
+    help="要检测的训练库，可重复传；默认只检测 verl。",
+)
+@click.option(
+    "--remote-proxy-port",
+    default=17892,
+    type=int,
+    help="network-check 使用的远端代理端口，默认避开 reach/wandb 的 17890。",
+)
+@click.option("--lang", default="zh", type=click.Choice(["zh", "en"]))
+def check_all(
+    server: str | None,
+    cfg_path: str | None,
+    stack_libs: tuple[str, ...],
+    remote_proxy_port: int,
+    lang: str,
+) -> None:
+    """串行运行 config/services/hw/net/reach/stack readiness 并报告 collect/report 就绪性。"""
+    from autoresearch.orchestrator.checks import run_check_all
+
+    try:
+        exit_code, payload = run_check_all(
+            server=server,
+            config=cfg_path,
+            stack_libs=tuple(stack_libs) if stack_libs else None,
+            remote_proxy_port=remote_proxy_port,
+            lang=lang,
+        )
+    except Exception as exc:
+        payload = {"ok": False, "command": "check", "failed_step": "orchestrator", "error": str(exc)}
+        exit_code = 2
+    click.echo(json.dumps(payload, ensure_ascii=False, indent=2))
+    raise click.exceptions.Exit(exit_code)
+
+
+@main.group(name="run")
+def run_group() -> None:
+    """顶层运行编排: smoke 等端到端流程。"""
+    pass
+
+
+@run_group.command(name="smoke")
+@click.option("--server", required=True, help="config 中的服务器名称。")
+@click.option("--lib", "lib", default="verl", type=click.Choice(["verl", "veomni"]))
+@click.option("--config", "cfg_path", default=None, help="配置文件路径。")
+@click.option("--workdir", default=None, help="覆盖 config.servers[].workdir。")
+@click.option("--timeout", default=60.0, type=float, help="minimal 1-step timeout 秒数。")
+@click.option("--run-id", default=None, help="指定 run id；默认自动生成。")
+@click.option(
+    "--pushgateway-url",
+    default="http://127.0.0.1:17891",
+    help="远程可访问的 pushgateway URL。",
+)
+@click.option("--prometheus-url", default="http://localhost:9090", help="本机 Prometheus URL。")
+@click.option(
+    "--prometheus-wait",
+    default=16.0,
+    type=float,
+    help="Prometheus 抓取 Pushgateway 的等待秒数；0 表示不等待。",
+)
+@click.option("--open", "open_report", is_flag=True, help="渲染后打开 report.html。")
+def run_smoke_cmd(
+    server: str,
+    lib: str,
+    cfg_path: str | None,
+    workdir: str | None,
+    timeout: float,
+    run_id: str | None,
+    pushgateway_url: str,
+    prometheus_url: str,
+    prometheus_wait: float,
+    open_report: bool,
+) -> None:
+    """跑 collect + report 的最小端到端冒烟。"""
+    from autoresearch.orchestrator.smoke import run_smoke
+
+    try:
+        exit_code, payload = run_smoke(
+            server=server,
+            lib=lib,
+            config=cfg_path,
+            workdir=workdir,
+            timeout=timeout,
+            run_id=run_id,
+            pushgateway_url=pushgateway_url,
+            prometheus_url=prometheus_url,
+            prometheus_wait=prometheus_wait,
+            open_report=open_report,
+        )
+    except Exception as exc:
+        payload = {"ok": False, "command": "smoke", "failed_step": "orchestrator", "error": str(exc)}
+        exit_code = 2
+    click.echo(json.dumps(payload, ensure_ascii=False, indent=2))
+    raise click.exceptions.Exit(exit_code)
 
 
 if __name__ == "__main__":

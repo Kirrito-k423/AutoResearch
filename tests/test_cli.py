@@ -16,6 +16,8 @@ def test_help_shows_services():
     result = runner.invoke(main, ["--help"])
     assert result.exit_code == 0
     assert "services" in result.output
+    assert "check" in result.output
+    assert "run" in result.output
 
 
 def test_services_help_shows_subcommands():

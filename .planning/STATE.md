@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: MinViable Loop
-status: Phase 10 shipped — PR #1
-stopped_at: Phase 10 Archon adapter verified and pushed to PR #1; next route is Phase 11 top-level CLI orchestration
-last_updated: "2026-06-15T15:30:00Z"
+status: Phase 11 verified — pending ship to PR #1
+stopped_at: Phase 11 top-level CLI orchestration verified with real A2-AK-225 check/smoke run
+last_updated: "2026-06-15T16:11:00Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 13
-  completed_phases: 10
-  total_plans: 28
-  completed_plans: 32
-  percent: 77
+  completed_phases: 11
+  total_plans: 30
+  completed_plans: 34
+  percent: 85
 ---
 
 # State: AutoResearch v1.0
@@ -22,20 +22,20 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 **Core value:** "常实践，详记录，知得失，会设计，有整理"——每个 skill 跑一次都留下可被复盘、可被二次开发的产物。
 
-**Current focus:** Phase 10 Archon adapter is shipped to PR #1; next immediate step is Phase 11 top-level CLI orchestration.
+**Current focus:** Phase 11 top-level CLI orchestration is verified; next immediate step is shipping the update to PR #1 and then entering Phase 12 E2E smoke.
 
 ## Position
 
 - **Milestone:** v1.0 MinViable Loop
-- **Phase:** 11
+- **Phase:** 12
 - **Plan:** Next
 - **Last activity:** 2026-06-15
 
 ## Session Continuity
 
 - **Last session:** 2026-06-15T10:28:47Z
-- **Stopped At:** Phase 10 UAT passed on Archon run `37dfb89e99e9a482e25fadaf3e5b7d0d` and was pushed to PR #1
-- **Resume File:** .planning/phases/10-archon/10-UAT.md
+- **Stopped At:** Phase 11 UAT passed on real run `01KV60QS8PMSEG02MQEB0Z27FT`; code and verification are ready to ship to PR #1
+- **Resume File:** .planning/phases/11-orchestration/11-UAT.md
 
 ### Decisions Made This Session (2026-06-15)
 
@@ -59,6 +59,11 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 - **D-60 Archon 安装边界**：Archon 继续外部 CLI 管理，不进 `autoresearch services start`；本机需 `archon serve --port 8088`。
 - **D-61 主 workflow 端口隔离**：`ar-min-loop` 网络代理默认用远端 `17892`，把 `17890` 留给 reach/wandb。
 - **D-62 provider auth 现实边界**：本机 Claude provider 对 loop 节点返回 401；Phase 10 验证 loop YAML 有效，主闭环用 script/bash 节点完成真实端到端。
+- **D-63 顶层编排复用边界**：`autoresearch check all` / `run smoke` 复用现有 Python `run_*` 入口，不通过 shell 拼命令。
+- **D-64 check all 语义**：`check all` 是 readiness 检查；COLL/RPT 在 8 skill 位置中作为 readiness placeholder，真实执行交给 `run smoke`。
+- **D-65 smoke 语义**：`run smoke` 串 collect -> report，任何失败都通过 `failed_step` 和 step diagnosis 指明。
+- **D-66 proxy 端口隔离**：`check all` 默认 remote proxy port 使用 `17892`，避免和 reach/wandb 的 `17890` 隧道抢端口。
+- **D-67 Prometheus scrape 等待**：`run smoke` 在 collect 推送 Pushgateway 后默认等待 Prometheus 抓到该 run 的指标，再渲染报告。
 
 ### Files Created This Session (08-03 / 08-04)
 
@@ -97,7 +102,9 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 - `uv run autoresearch reach test --server A2-AK-225` → `ok=true`, remote can reach local wandb and pushgateway
 - `uv run autoresearch stack check --server A2-AK-225 --lib verl` → `ok=true`, 8 NPU one-step dry run
 - `CLAUDE_BIN_PATH=/opt/homebrew/bin/claude AR_STACK_LIBS=verl archon workflow run ar-min-loop --no-worktree ""` → completed, Archon run `37dfb89e99e9a482e25fadaf3e5b7d0d`
-- `uv run pytest -q` → 343 passed, 6 warnings
+- `uv run pytest -q` → 352 passed, 6 warnings
+- `uv run autoresearch check all --server A2-AK-225 --stack-lib verl` → `ok=true`, 8 steps, 6 passed, 2 warned, 0 failed
+- `uv run autoresearch run smoke --server A2-AK-225 --lib verl --timeout 60 --pushgateway-url http://127.0.0.1:17891` → `ok=true`, run `01KV60QS8PMSEG02MQEB0Z27FT`, `prometheus_ready=true`, report warnings `[]`
 
 ### Decisions Made This Session (2026-06-12)
 
@@ -153,25 +160,25 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 ## Next Steps
 
-1. `$gsd-progress --next` 进入 Phase 11 顶层 CLI 编排的 discuss/plan/execute
-2. 基于已通过的 `ar-min-loop`，规划 `autoresearch check all` 与 `autoresearch run smoke`
-3. 继续把 Phase 10 的 Archon 适配更新推送到 PR #1
+1. `$gsd-ship` 将 Phase 11 顶层 CLI 编排推送到 PR #1
+2. `$gsd-progress --next` 进入 Phase 12 E2E 端到端 smoke
+3. 用 `autoresearch check all` + `autoresearch run smoke` 作为 Phase 12 的本地 CLI 主路径
 
 ## Continuation Prompts
 
 ```
-$gsd-progress --next
+$gsd-ship
 ```
 
 ## Metrics
 
 - **Phases planned:** 13
-- **Phases complete:** 10 complete
-- **Plans complete:** 32 summaries through Phase 10
+- **Phases complete:** 11 complete
+- **Plans complete:** 34 summaries through Phase 11
 - **Requirements:** 88
-- **Tests:** 343 / 343 passing
-- **Phase 10 UAT:** pass; Archon run `37dfb89e99e9a482e25fadaf3e5b7d0d`
-- **Latest PR:** `#1 Phase 10: Archon workflow adapter`
+- **Tests:** 352 / 352 passing
+- **Phase 11 UAT:** pass; smoke run `01KV60QS8PMSEG02MQEB0Z27FT`
+- **Latest PR:** `#1 Phase 10: Archon workflow adapter` (will be updated for Phase 11)
 
 ## Branch & Commits
 
@@ -180,4 +187,4 @@ $gsd-progress --next
 - **Open PR:** `https://github.com/Kirrito-k423/AutoResearch/pull/1`
 
 ---
-*Last updated: 2026-06-15 after Phase 10 ship to PR #1*
+*Last updated: 2026-06-15 after Phase 11 verification*
