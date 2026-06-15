@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: MinViable Loop
-status: Phase 10 verified
-stopped_at: Phase 10 Archon adapter verified; next route is Phase 11 top-level CLI orchestration
-last_updated: "2026-06-15T15:16:00Z"
+status: Phase 10 shipped — PR #1
+stopped_at: Phase 10 Archon adapter verified and pushed to PR #1; next route is Phase 11 top-level CLI orchestration
+last_updated: "2026-06-15T15:30:00Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 13
@@ -22,7 +22,7 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 **Core value:** "常实践，详记录，知得失，会设计，有整理"——每个 skill 跑一次都留下可被复盘、可被二次开发的产物。
 
-**Current focus:** Phase 10 Archon adapter is verified; next immediate step is Phase 11 top-level CLI orchestration.
+**Current focus:** Phase 10 Archon adapter is shipped to PR #1; next immediate step is Phase 11 top-level CLI orchestration.
 
 ## Position
 
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 ## Session Continuity
 
 - **Last session:** 2026-06-15T10:28:47Z
-- **Stopped At:** Phase 10 UAT passed on Archon run `37dfb89e99e9a482e25fadaf3e5b7d0d`
+- **Stopped At:** Phase 10 UAT passed on Archon run `37dfb89e99e9a482e25fadaf3e5b7d0d` and was pushed to PR #1
 - **Resume File:** .planning/phases/10-archon/10-UAT.md
 
 ### Decisions Made This Session (2026-06-15)
@@ -171,13 +171,13 @@ $gsd-progress --next
 - **Requirements:** 88
 - **Tests:** 343 / 343 passing
 - **Phase 10 UAT:** pass; Archon run `37dfb89e99e9a482e25fadaf3e5b7d0d`
-- **Latest PR:** `#1 Phase 8: Skill 07 — data-collection`
+- **Latest PR:** `#1 Phase 10: Archon workflow adapter`
 
 ## Branch & Commits
 
 - **Branch:** `codex/phase-02-workspace-core`
-- **Latest commit:** `feat(10): add Archon workflow adapter`
+- **Latest commit:** `docs(10): ship phase 10`
 - **Open PR:** `https://github.com/Kirrito-k423/AutoResearch/pull/1`
 
 ---
-*Last updated: 2026-06-15 after Phase 10 Archon UAT completion and PR update prep*
+*Last updated: 2026-06-15 after Phase 10 ship to PR #1*
