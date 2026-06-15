@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: MinViable Loop
-status: Phase 11 verified — pending ship to PR #1
-stopped_at: Phase 11 top-level CLI orchestration verified with real A2-AK-225 check/smoke run
-last_updated: "2026-06-15T16:11:00Z"
+status: Phase 11 shipped — PR #1
+stopped_at: Phase 11 top-level CLI orchestration verified, pushed, and reflected in PR #1; next route is Phase 12 E2E smoke
+last_updated: "2026-06-15T16:16:00Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 13
@@ -22,7 +22,7 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 **Core value:** "常实践，详记录，知得失，会设计，有整理"——每个 skill 跑一次都留下可被复盘、可被二次开发的产物。
 
-**Current focus:** Phase 11 top-level CLI orchestration is verified; next immediate step is shipping the update to PR #1 and then entering Phase 12 E2E smoke.
+**Current focus:** Phase 11 top-level CLI orchestration is shipped to PR #1; next immediate step is Phase 12 E2E smoke.
 
 ## Position
 
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 ## Session Continuity
 
 - **Last session:** 2026-06-15T10:28:47Z
-- **Stopped At:** Phase 11 UAT passed on real run `01KV60QS8PMSEG02MQEB0Z27FT`; code and verification are ready to ship to PR #1
+- **Stopped At:** Phase 11 UAT passed on real run `01KV60QS8PMSEG02MQEB0Z27FT`; branch pushed and PR #1 updated for Phase 11
 - **Resume File:** .planning/phases/11-orchestration/11-UAT.md
 
 ### Decisions Made This Session (2026-06-15)
@@ -160,14 +160,14 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 ## Next Steps
 
-1. `$gsd-ship` 将 Phase 11 顶层 CLI 编排推送到 PR #1
-2. `$gsd-progress --next` 进入 Phase 12 E2E 端到端 smoke
-3. 用 `autoresearch check all` + `autoresearch run smoke` 作为 Phase 12 的本地 CLI 主路径
+1. `$gsd-progress --next` 进入 Phase 12 E2E 端到端 smoke
+2. 用 `autoresearch check all` + `autoresearch run smoke` 作为 Phase 12 的本地 CLI 主路径
+3. 在 Phase 12 验证报告完整包含 log + wandb + prom 三视图
 
 ## Continuation Prompts
 
 ```
-$gsd-ship
+$gsd-progress --next
 ```
 
 ## Metrics
@@ -178,13 +178,13 @@ $gsd-ship
 - **Requirements:** 88
 - **Tests:** 352 / 352 passing
 - **Phase 11 UAT:** pass; smoke run `01KV60QS8PMSEG02MQEB0Z27FT`
-- **Latest PR:** `#1 Phase 10: Archon workflow adapter` (will be updated for Phase 11)
+- **Latest PR:** `#1 Phase 11: Top-level CLI orchestration`
 
 ## Branch & Commits
 
 - **Branch:** `codex/phase-02-workspace-core`
-- **Latest commit:** `docs(10): ship phase 10`
+- **Latest commit:** `feat(11): add top-level CLI orchestration`
 - **Open PR:** `https://github.com/Kirrito-k423/AutoResearch/pull/1`
 
 ---
-*Last updated: 2026-06-15 after Phase 11 verification*
+*Last updated: 2026-06-15 after Phase 11 ship to PR #1*
