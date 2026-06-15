@@ -229,9 +229,9 @@ Plans:
 
 Plans:
 
-- [ ] 10-01: 8 skill 各自打包成 Archon workflow YAML
-- [ ] 10-02: 主 workflow ar-min-loop.yaml 串联
-- [ ] 10-03: 在 Archon Web UI 验证可触发 + 可观察
+- [x] 10-01: 8 skill 各自打包成 Archon workflow YAML
+- [x] 10-02: 主 workflow ar-min-loop.yaml 串联
+- [x] 10-03: 在 Archon Web UI 验证可触发 + 可观察
 
 ### Phase 11: 顶层 CLI 编排
 
@@ -304,8 +304,8 @@ Phases execute in numeric order: 1 → 2 → 3 → ... → 13
 | 6. Skill 05: service-reachability | 3/3 | Complete    | 2026-06-12 |
 | 7. Skill 06: train-stack-health | 3/3 | Complete    | 2026-06-15 |
 | 8. Skill 07: data-collection | 4/4 | Complete | 2026-06-15 |
-| 9. Skill 08: experiment-report | 0/2 | Not started | - |
-| 10. Archon 适配层 | 0/3 | Not started | - |
+| 9. Skill 08: experiment-report | 2/2 | Complete | 2026-06-15 |
+| 10. Archon 适配层 | 3/3 | Complete | 2026-06-15 |
 | 11. 顶层 CLI 编排 | 0/2 | Not started | - |
 | 12. E2E 端到端 smoke | 0/2 | Not started | - |
 | 13. M1 归档 | 0/1 | Not started | - |

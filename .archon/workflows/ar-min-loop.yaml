@@ -1,0 +1,52 @@
+name: ar-min-loop
+description: AutoResearch M1 eight-skill loop from config validation to local report.
+interactive: true
+worktree:
+  enabled: false
+tags: [AutoResearch, M1, Smoke]
+nodes:
+  - id: config-validate
+    script: ar-skill-01
+    runtime: uv
+    timeout: 120000
+
+  - id: services-start-and-status
+    script: ar-skill-02
+    runtime: uv
+    timeout: 600000
+    depends_on: [config-validate]
+
+  - id: hw-probe
+    script: ar-skill-03
+    runtime: uv
+    timeout: 180000
+    depends_on: [services-start-and-status]
+
+  - id: net-probe
+    bash: "AR_REMOTE_PROXY_PORT=${AR_REMOTE_PROXY_PORT:-17892} uv run .archon/scripts/ar-skill-04.py"
+    timeout: 300000
+    depends_on: [hw-probe]
+
+  - id: reach-test
+    script: ar-skill-05
+    runtime: uv
+    timeout: 300000
+    depends_on: [net-probe]
+
+  - id: stack-check
+    script: ar-skill-06
+    runtime: uv
+    timeout: 600000
+    depends_on: [reach-test]
+
+  - id: collect-run
+    script: ar-skill-07
+    runtime: uv
+    timeout: 600000
+    depends_on: [stack-check]
+
+  - id: report-render
+    script: ar-skill-08
+    runtime: uv
+    timeout: 180000
+    depends_on: [collect-run]

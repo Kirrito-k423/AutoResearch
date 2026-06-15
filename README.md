@@ -12,8 +12,9 @@
 git clone https://github.com/<org>/autoresearch.git
 cd autoresearch
 # 1) 装 Archon CLI（前置条件；详见 services/archon/README.md）
-brew install archon   # 或见 archon.diy
-archon serve &        # 启动 Archon（用户自行管理）
+brew install coleam00/archon/archon
+export CLAUDE_BIN_PATH="$(command -v claude)"
+archon serve --port 8088 &  # 启动 Archon（用户自行管理）
 # 2) 启本地服务栈
 autoresearch services start
 # 3) 验证全绿

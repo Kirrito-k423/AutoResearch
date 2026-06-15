@@ -1,0 +1,11 @@
+name: ar-skill-03
+description: AutoResearch Skill 03 - probe remote server hardware.
+interactive: true
+worktree:
+  enabled: false
+tags: [AutoResearch, Hardware]
+nodes:
+  - id: hw-probe
+    script: ar-skill-03
+    runtime: uv
+    timeout: 180000

@@ -134,6 +134,38 @@ def test_delete_tunnel_state_is_idempotent():
     assert load_tunnel_state("server-0") is None
 
 
+def test_stop_process_returns_after_sigterm_when_process_exits(monkeypatch):
+    signals: list[tuple[int, int]] = []
+
+    monkeypatch.setattr(
+        tunnel_module.os,
+        "kill",
+        lambda pid, sig: signals.append((pid, sig)),
+    )
+    monkeypatch.setattr(tunnel_module, "is_process_alive", lambda pid: False)
+
+    tunnel_module._stop_process(123, timeout_s=1.0)
+
+    assert signals == [(123, tunnel_module.signal.SIGTERM)]
+
+
+def test_stop_process_kills_when_process_stays_alive(monkeypatch):
+    signals: list[tuple[int, int]] = []
+
+    monkeypatch.setattr(
+        tunnel_module.os,
+        "kill",
+        lambda pid, sig: signals.append((pid, sig)),
+    )
+
+    tunnel_module._stop_process(123, timeout_s=0.0)
+
+    assert signals == [
+        (123, tunnel_module.signal.SIGTERM),
+        (123, tunnel_module.signal.SIGKILL),
+    ]
+
+
 def test_ensure_tunnel_opens_without_state_using_default_ports(tmp_path):
     opener, calls = _opener(pid=456)
 

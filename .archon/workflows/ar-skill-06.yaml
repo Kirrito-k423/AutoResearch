@@ -1,0 +1,32 @@
+name: ar-skill-06
+description: AutoResearch Skill 06 - loop through train stack checks for verl and veomni.
+interactive: true
+worktree:
+  enabled: false
+tags: [AutoResearch, Stack]
+nodes:
+  - id: stack-setup
+    bash: "AR_ARCHON_MODE=stack-setup uv run .archon/scripts/ar-skill-06.py"
+    timeout: 120000
+
+  - id: stack-loop
+    depends_on: [stack-setup]
+    loop:
+      prompt: |
+        You are running AutoResearch Skill 06 inside Archon.
+
+        Run this shell command exactly once:
+        AR_ARCHON_MODE=stack-step uv run .archon/scripts/ar-skill-06.py
+
+        The command updates $ARTIFACTS_DIR/stack-state.json. If the state file
+        says "complete": true, output exactly:
+        <promise>STACK_DONE</promise>
+      until: STACK_DONE
+      max_iterations: 3
+      fresh_context: true
+      until_bash: "uv run python -c \"import json, os, pathlib, sys; p=pathlib.Path(os.environ.get('ARTIFACTS_DIR', '.archon/artifacts/local'))/'stack-state.json'; sys.exit(0 if p.exists() and json.loads(p.read_text()).get('complete') else 1)\""
+
+  - id: stack-summary
+    depends_on: [stack-loop]
+    bash: "AR_ARCHON_MODE=stack-summary uv run .archon/scripts/ar-skill-06.py"
+    timeout: 120000

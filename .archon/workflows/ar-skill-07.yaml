@@ -1,0 +1,33 @@
+name: ar-skill-07
+description: AutoResearch Skill 07 - collect one minimal experiment with bounded retry.
+interactive: true
+worktree:
+  enabled: false
+tags: [AutoResearch, Collection]
+nodes:
+  - id: collect-setup
+    bash: "AR_ARCHON_MODE=collect-setup uv run .archon/scripts/ar-skill-07.py"
+    timeout: 120000
+
+  - id: collect-loop
+    depends_on: [collect-setup]
+    loop:
+      prompt: |
+        You are running AutoResearch Skill 07 inside Archon.
+
+        Run this shell command exactly once:
+        AR_ARCHON_MODE=collect-step uv run .archon/scripts/ar-skill-07.py
+
+        The command updates $ARTIFACTS_DIR/collect-state.json and writes
+        $ARTIFACTS_DIR/collect-result.json. If collect-state.json says
+        "done": true, output exactly:
+        <promise>COLLECT_DONE</promise>
+      until: COLLECT_DONE
+      max_iterations: 3
+      fresh_context: true
+      until_bash: "uv run python -c \"import json, os, pathlib, sys; p=pathlib.Path(os.environ.get('ARTIFACTS_DIR', '.archon/artifacts/local'))/'collect-state.json'; sys.exit(0 if p.exists() and json.loads(p.read_text()).get('done') else 1)\""
+
+  - id: collect-summary
+    depends_on: [collect-loop]
+    bash: "AR_ARCHON_MODE=collect-summary uv run .archon/scripts/ar-skill-07.py"
+    timeout: 120000

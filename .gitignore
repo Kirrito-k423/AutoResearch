@@ -63,6 +63,7 @@ credentials.json
 data/
 runs/
 .autoresearch/
+.archon/artifacts/
 *.log
 wandb/
 !services/wandb/

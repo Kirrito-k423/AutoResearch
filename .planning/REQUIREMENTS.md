@@ -119,13 +119,13 @@
 
 ## ARCH — Archon 适配层
 
-- [ ] **ARCH-WF-01** — 8 skill 各自有 `.archon/workflows/ar-skill-XX.yaml`
-- [ ] **ARCH-WF-02** — YAML 节点可调用对应 skill 的 Python 入口
-- [ ] **ARCH-WF-03** — YAML 含 `loop:` 节点支持 STACK 和 COLL 的迭代
-- [ ] **ARCH-WF-MAIN-01** — 主 workflow `ar-min-loop.yaml` 串联 8 skill
-- [ ] **ARCH-WF-MAIN-02** — 主 workflow 跑完产出 RPT 报告
-- [ ] **ARCH-RUN-01** — `archon workflow run ar-min-loop` 可一键跑完整循环
-- [ ] **ARCH-RUN-02** — 进度在 Archon Web UI 可见
+- [x] **ARCH-WF-01** — 8 skill 各自有 `.archon/workflows/ar-skill-XX.yaml`
+- [x] **ARCH-WF-02** — YAML 节点可调用对应 skill 的 Python 入口
+- [x] **ARCH-WF-03** — YAML 含 `loop:` 节点支持 STACK 和 COLL 的迭代
+- [x] **ARCH-WF-MAIN-01** — 主 workflow `ar-min-loop.yaml` 串联 8 skill
+- [x] **ARCH-WF-MAIN-02** — 主 workflow 跑完产出 RPT 报告
+- [x] **ARCH-RUN-01** — `archon workflow run ar-min-loop` 可一键跑完整循环
+- [x] **ARCH-RUN-02** — 进度在 Archon Web UI 可见
 
 ## ORCH — 顶层 CLI 编排
 

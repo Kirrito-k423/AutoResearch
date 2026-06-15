@@ -254,8 +254,10 @@ def _check_wandb(spec: ServerSpec) -> ReachCheck:
 
 
 def _wandb_health_body_ok(body: str) -> bool:
-    """Accept both old JSON health and current wandb/local text health."""
+    """Accept known wandb/local health responses after curl exits 0."""
     text = body.strip()
+    if text == "":
+        return True
     if text == WANDB_READY_TEXT:
         return True
     try:

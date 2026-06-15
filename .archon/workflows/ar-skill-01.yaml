@@ -1,0 +1,11 @@
+name: ar-skill-01
+description: AutoResearch Skill 01 - validate customer config.
+interactive: true
+worktree:
+  enabled: false
+tags: [AutoResearch, Config]
+nodes:
+  - id: config-validate
+    script: ar-skill-01
+    runtime: uv
+    timeout: 120000

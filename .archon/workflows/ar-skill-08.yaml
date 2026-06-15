@@ -1,0 +1,11 @@
+name: ar-skill-08
+description: AutoResearch Skill 08 - render the local experiment report for a run.
+interactive: true
+worktree:
+  enabled: false
+tags: [AutoResearch, Report]
+nodes:
+  - id: report-render
+    script: ar-skill-08
+    runtime: uv
+    timeout: 180000

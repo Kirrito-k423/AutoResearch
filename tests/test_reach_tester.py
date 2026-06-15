@@ -109,6 +109,23 @@ def test_check_wandb_pass_with_ready_text():
     assert chk["status_code"] == 200
 
 
+def test_check_wandb_pass_with_empty_200_body():
+    """当前 wandb/local /healthz 可能 200 但 body 为空."""
+    from autoresearch.reach.tester import _check_wandb
+
+    spec = MagicMock()
+    spec.user = "root"
+    spec.host = "1.2.3.4"
+    spec.port = 22
+    spec.identity_file = "/tmp/k"
+    spec.bootstrap_password_secret = None
+    with patch("autoresearch.reach.tester._ssh_exec_capture") as m:
+        m.return_value = (0, "", "")
+        chk = _check_wandb(spec)
+    assert chk["ok"] is True
+    assert chk["status_code"] == 200
+
+
 def test_check_wandb_fail_when_state_wrong():
     """wandb /healthz 返 state!=available -> ok=False, detail 包含 state 值."""
     from autoresearch.reach.tester import _check_wandb

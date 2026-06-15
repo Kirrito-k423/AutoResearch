@@ -6,14 +6,14 @@
 
 | 服务 | 端口 | 镜像 | compose 文件 | 启动方式 |
 |------|------|------|--------------|----------|
-| **Archon** | 8088 | (本地 CLI) | — | `archon serve`（用户自管） |
+| **Archon** | 8088 | (本地 CLI) | — | `archon serve --port 8088`（用户自管） |
 | **wandb (local)** | 8080 | `wandb/local:0.17.5` | `wandb/compose.yml` | autoresearch services start |
 | **Prometheus** | 9090 | `prom/prometheus:v2.51.0` | `prometheus/compose.yml` | autoresearch services start |
 | **Grafana** | 3000 | `grafana/grafana:10.4.0` | `grafana/compose.yml` | autoresearch services start |
 
 ## 启动顺序
 
-1. **前置**：先装 `archon` CLI（见 [archon/README.md](archon/README.md)），再 `archon serve &`
+1. **前置**：先装 `archon` CLI（见 [archon/README.md](archon/README.md)），再 `archon serve --port 8088 &`
 2. 启动 3 个 docker 服务：
    ```bash
    autoresearch services start

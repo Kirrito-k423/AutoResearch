@@ -1,0 +1,11 @@
+name: ar-skill-05
+description: AutoResearch Skill 05 - test remote reachability to local wandb and pushgateway.
+interactive: true
+worktree:
+  enabled: false
+tags: [AutoResearch, Reachability]
+nodes:
+  - id: reach-test
+    script: ar-skill-05
+    runtime: uv
+    timeout: 300000

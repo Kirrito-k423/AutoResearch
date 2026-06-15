@@ -1,0 +1,11 @@
+name: ar-skill-04
+description: AutoResearch Skill 04 - check local and remote network reachability.
+interactive: true
+worktree:
+  enabled: false
+tags: [AutoResearch, Network]
+nodes:
+  - id: net-probe
+    script: ar-skill-04
+    runtime: uv
+    timeout: 300000

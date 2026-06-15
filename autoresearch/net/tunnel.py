@@ -365,9 +365,18 @@ def _local_proxy_port(local_proxy_url: str) -> int:
     return parsed.port
 
 
-def _stop_process(pid: int) -> None:
+def _stop_process(pid: int, timeout_s: float = 3.0) -> None:
     try:
         os.kill(pid, signal.SIGTERM)
+    except OSError:
+        return
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        if not is_process_alive(pid):
+            return
+        time.sleep(0.1)
+    try:
+        os.kill(pid, signal.SIGKILL)
     except OSError:
         return
 

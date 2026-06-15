@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: MinViable Loop
-status: Phase 9 shipped
-stopped_at: Phase 9 verified and pushed to PR #1; next route is Phase 10 discuss
-last_updated: "2026-06-15T13:45:46Z"
+status: Phase 10 verified
+stopped_at: Phase 10 Archon adapter verified; next route is Phase 11 top-level CLI orchestration
+last_updated: "2026-06-15T15:16:00Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 13
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 28
-  completed_plans: 29
-  percent: 69
+  completed_plans: 32
+  percent: 77
 ---
 
 # State: AutoResearch v1.0
@@ -22,20 +22,20 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 **Core value:** "常实践，详记录，知得失，会设计，有整理"——每个 skill 跑一次都留下可被复盘、可被二次开发的产物。
 
-**Current focus:** Phase 9 experiment-report has been shipped to PR #1; next immediate step is Phase 10 Archon 适配层 discuss/plan.
+**Current focus:** Phase 10 Archon adapter is verified; next immediate step is Phase 11 top-level CLI orchestration.
 
 ## Position
 
 - **Milestone:** v1.0 MinViable Loop
-- **Phase:** 10
-- **Plan:** Discuss
+- **Phase:** 11
+- **Plan:** Next
 - **Last activity:** 2026-06-15
 
 ## Session Continuity
 
 - **Last session:** 2026-06-15T10:28:47Z
-- **Stopped At:** Phase 9 UAT passed on real run `01KV5MV7N5A3RBZ6388E5HCYAP` and shipped to the open PR
-- **Resume File:** .planning/phases/09-skill-08-experiment-report/09-UAT.md
+- **Stopped At:** Phase 10 UAT passed on Archon run `37dfb89e99e9a482e25fadaf3e5b7d0d`
+- **Resume File:** .planning/phases/10-archon/10-UAT.md
 
 ### Decisions Made This Session (2026-06-15)
 
@@ -52,6 +52,13 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 - **D-53 M1 视图语义**：wandb/prom 指标按 snapshot-style 展示，诚实反映 minimal run 的单点数据粒度。
 - **D-54 report 交付面**：`autoresearch report render --run-id X [--open]` 生成单文件 `report.html` 并可在本地浏览器打开。
 - **D-55 报告链接策略**：raw artifact / W&B / Prometheus 都要给出入口；W&B deep-link best-effort，root URL 保底。
+- **D-56 Archon 资产布局**：repo-local `.archon/workflows/` + `.archon/scripts/`，不依赖用户全局资产。
+- **D-57 skill workflow 范围**：8 个 skill workflow 包 happy path，不把维护/管理子命令都搬进 Archon。
+- **D-58 Archon 输入与 artifact 交接**：`AR_CONFIG_PATH` / `AR_SERVER` / `AR_LIB` / `AR_STACK_LIBS` / `AR_TIMEOUT` / `AR_REMOTE_PROXY_PORT` / `AR_PUSHGATEWAY_URL` / `AR_RUN_ID` 作为覆盖层，`$ARTIFACTS_DIR` 作为节点交接边界。
+- **D-59 STACK/COLL loop 表达**：standalone `ar-skill-06` / `ar-skill-07` 保留真实 Archon `loop:`；主 workflow 用 deterministic script 入口保证 smoke run 不依赖 provider auth。
+- **D-60 Archon 安装边界**：Archon 继续外部 CLI 管理，不进 `autoresearch services start`；本机需 `archon serve --port 8088`。
+- **D-61 主 workflow 端口隔离**：`ar-min-loop` 网络代理默认用远端 `17892`，把 `17890` 留给 reach/wandb。
+- **D-62 provider auth 现实边界**：本机 Claude provider 对 loop 节点返回 401；Phase 10 验证 loop YAML 有效，主闭环用 script/bash 节点完成真实端到端。
 
 ### Files Created This Session (08-03 / 08-04)
 
@@ -84,6 +91,13 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 - `curl 'http://localhost:9090/api/v1/query?query=autoresearch_npu_count{run_id="01KV5MV7N5A3RBZ6388E5HCYAP"}'` → value `8`
 - `uv run autoresearch report render --run-id 01KV5MV7N5A3RBZ6388E5HCYAP` → `ok=true`, `report=/Users/Zhuanz/.autoresearch/runs/01KV5MV7N5A3RBZ6388E5HCYAP/report.html`
 - `uv run autoresearch report render --run-id 01KV5MV7N5A3RBZ6388E5HCYAP --open` → `opened=true`
+- `CLAUDE_BIN_PATH=/opt/homebrew/bin/claude archon doctor` → all checks passed
+- `for wf in ar-skill-01 ... ar-skill-08 ar-min-loop; do archon validate workflows "$wf" --quiet || exit 1; done` → all repo-local workflows valid
+- `uv run autoresearch services status --json` → 5/5 healthy, including Archon 8088 and Grafana 3000
+- `uv run autoresearch reach test --server A2-AK-225` → `ok=true`, remote can reach local wandb and pushgateway
+- `uv run autoresearch stack check --server A2-AK-225 --lib verl` → `ok=true`, 8 NPU one-step dry run
+- `CLAUDE_BIN_PATH=/opt/homebrew/bin/claude AR_STACK_LIBS=verl archon workflow run ar-min-loop --no-worktree ""` → completed, Archon run `37dfb89e99e9a482e25fadaf3e5b7d0d`
+- `uv run pytest -q` → 343 passed, 6 warnings
 
 ### Decisions Made This Session (2026-06-12)
 
@@ -139,9 +153,9 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 ## Next Steps
 
-1. `$gsd-progress --next` 进入 Phase 10 Archon 适配层的 discuss/plan/execute
-2. 基于已完成的 8-skill CLI 入口，为每个 skill 规划 Archon workflow YAML 包装
-3. 视需要把 PR #1 的 review 焦点从 Phase 8 扩展到已并入的 Phase 9 report 能力
+1. `$gsd-progress --next` 进入 Phase 11 顶层 CLI 编排的 discuss/plan/execute
+2. 基于已通过的 `ar-min-loop`，规划 `autoresearch check all` 与 `autoresearch run smoke`
+3. 继续把 Phase 10 的 Archon 适配更新推送到 PR #1
 
 ## Continuation Prompts
 
@@ -152,18 +166,18 @@ $gsd-progress --next
 ## Metrics
 
 - **Phases planned:** 13
-- **Phases complete:** 9 complete
-- **Plans complete:** 28 / 28 planned-through-Phase-9 (100% code plans); 29 summaries including historical gap-closure work
+- **Phases complete:** 10 complete
+- **Plans complete:** 32 summaries through Phase 10
 - **Requirements:** 88
-- **Tests:** 332 / 332 passing
-- **Phase 9 UAT:** complete, 5 pass / 0 blocked
+- **Tests:** 343 / 343 passing
+- **Phase 10 UAT:** pass; Archon run `37dfb89e99e9a482e25fadaf3e5b7d0d`
 - **Latest PR:** `#1 Phase 8: Skill 07 — data-collection`
 
 ## Branch & Commits
 
 - **Branch:** `codex/phase-02-workspace-core`
-- **Latest commit:** `feat(09): add local experiment report workflow`
+- **Latest commit:** `feat(10): add Archon workflow adapter`
 - **Open PR:** `https://github.com/Kirrito-k423/AutoResearch/pull/1`
 
 ---
-*Last updated: 2026-06-15 after Phase 9 real UAT completion and PR update prep*
+*Last updated: 2026-06-15 after Phase 10 Archon UAT completion and PR update prep*

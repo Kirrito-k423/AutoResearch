@@ -1,0 +1,11 @@
+name: ar-skill-02
+description: AutoResearch Skill 02 - start local services and check health.
+interactive: true
+worktree:
+  enabled: false
+tags: [AutoResearch, Services]
+nodes:
+  - id: services-start-and-status
+    script: ar-skill-02
+    runtime: uv
+    timeout: 600000
