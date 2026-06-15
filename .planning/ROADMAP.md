@@ -207,8 +207,10 @@ Plans:
 
 Plans:
 
-- [ ] 09-01: 读 manifest + 收集三路数据
-- [ ] 09-02: HTML 模板 + 嵌入图表 + 浏览器打开
+- [x] 09-01: 读 manifest + 收集三路数据
+- [x] 09-02: HTML 模板 + 嵌入图表 + 浏览器打开
+
+> 2026-06-15: 2/2 代码计划完成且真实 UAT 已通过。`autoresearch report render --run-id 01KV5MV7N5A3RBZ6388E5HCYAP --open` 已成功生成并打开本地 `report.html`。
 
 ### Phase 10: Archon 适配层
 

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: MinViable Loop
-status: Ready to ship
-stopped_at: Phase 8 UAT complete; shipping is waiting on GitHub auth for PR creation
-last_updated: "2026-06-15T12:44:35Z"
+status: Phase 9 shipped
+stopped_at: Phase 9 verified and pushed to PR #1; next route is Phase 10 discuss
+last_updated: "2026-06-15T13:45:46Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 13
-  completed_phases: 8
-  total_plans: 26
-  completed_plans: 27
-  percent: 62
+  completed_phases: 9
+  total_plans: 28
+  completed_plans: 29
+  percent: 69
 ---
 
 # State: AutoResearch v1.0
@@ -22,20 +22,20 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 **Core value:** "常实践，详记录，知得失，会设计，有整理"——每个 skill 跑一次都留下可被复盘、可被二次开发的产物。
 
-**Current focus:** Phase 8 verified complete; next immediate step is shipping the fixes, then moving to Phase 9 discuss/plan.
+**Current focus:** Phase 9 experiment-report has been shipped to PR #1; next immediate step is Phase 10 Archon 适配层 discuss/plan.
 
 ## Position
 
 - **Milestone:** v1.0 MinViable Loop
-- **Phase:** 8
-- **Plan:** Ship
+- **Phase:** 10
+- **Plan:** Discuss
 - **Last activity:** 2026-06-15
 
 ## Session Continuity
 
 - **Last session:** 2026-06-15T10:28:47Z
-- **Stopped At:** Phase 8 UAT passed on A2-AK-225 with local wandb/prometheus/pushgateway; PR creation is blocked only by expired GitHub auth
-- **Resume File:** .planning/phases/08-skill-07-data-collection/08-UAT.md
+- **Stopped At:** Phase 9 UAT passed on real run `01KV5MV7N5A3RBZ6388E5HCYAP` and shipped to the open PR
+- **Resume File:** .planning/phases/09-skill-08-experiment-report/09-UAT.md
 
 ### Decisions Made This Session (2026-06-15)
 
@@ -46,6 +46,12 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 - **D-48 local wandb 修复**：`services/wandb/compose.yml` 去掉 `user: "0"` 并切到新卷 `ar-wandb-data-v2`, 本地 8080 成功完成首次初始化、API key 生成和真实 sync。
 - **D-49 services 健康探针修复**：`autoresearch services status` 对 wandb 改查 `/ready`, 避免 nginx 前门存活时的假阳性。
 - **验收结论更新**：Phase 8 已完成真实 UAT；A2-AK-225 的 collect run 成功落本地 wandb/log/prom/manifest。
+- **D-50 Phase 8 已发 PR**：已创建 GitHub PR `#1 Phase 8: Skill 07 — data-collection`，URL 为 `https://github.com/Kirrito-k423/AutoResearch/pull/1`。
+- **D-51 report 真相源**：Phase 9 报告固定从 `manifest.json` 重建 run，全链路 local-first。
+- **D-52 report 数据读取边界**：log 读本地 artifact，wandb 读本地 `wandb-summary.json`，Prometheus 读本地服务；不回远端、不依赖云端。
+- **D-53 M1 视图语义**：wandb/prom 指标按 snapshot-style 展示，诚实反映 minimal run 的单点数据粒度。
+- **D-54 report 交付面**：`autoresearch report render --run-id X [--open]` 生成单文件 `report.html` 并可在本地浏览器打开。
+- **D-55 报告链接策略**：raw artifact / W&B / Prometheus 都要给出入口；W&B deep-link best-effort，root URL 保底。
 
 ### Files Created This Session (08-03 / 08-04)
 
@@ -70,11 +76,14 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 ### Verification
 
 - `uv run pytest tests/test_reach_tester.py tests/test_reach_cli.py tests/test_datalake_prometheus_push.py tests/test_collect_cli.py tests/test_datalake_wandb_sync.py tests/test_status.py -q` → 48 passed
-- `uv run pytest -q` → 322 passed, 6 warnings
+- `uv run pytest tests/test_report_loader.py tests/test_report_wandb.py tests/test_report_prometheus.py tests/test_report_render.py tests/test_report_cli.py -q` → 10 passed
+- `uv run pytest -q` → 332 passed, 6 warnings
 - `uv run autoresearch services status --json` → wandb/prometheus/pushgateway healthy (`3/5` overall; archon/grafana not required for Phase 8)
 - `.venv/bin/wandb sync ~/.autoresearch/runs/difdkkcx/wandb` → synced to `http://localhost:8080/autoresearch-local/uncategorized/runs/difdkkcx`
 - `uv run autoresearch collect run --server A2-AK-225 --lib verl --config config/config.yaml --timeout 60 --pushgateway-url http://127.0.0.1:17891` → `ok=true`, `run_id=01KV5MV7N5A3RBZ6388E5HCYAP`
 - `curl 'http://localhost:9090/api/v1/query?query=autoresearch_npu_count{run_id="01KV5MV7N5A3RBZ6388E5HCYAP"}'` → value `8`
+- `uv run autoresearch report render --run-id 01KV5MV7N5A3RBZ6388E5HCYAP` → `ok=true`, `report=/Users/Zhuanz/.autoresearch/runs/01KV5MV7N5A3RBZ6388E5HCYAP/report.html`
+- `uv run autoresearch report render --run-id 01KV5MV7N5A3RBZ6388E5HCYAP --open` → `opened=true`
 
 ### Decisions Made This Session (2026-06-12)
 
@@ -123,7 +132,6 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 ## Active Blockers
 
-- **GitHub CLI 认证失效**（2026-06-15）— `gh auth status` 显示当前 token invalid；阻塞 `$gsd-ship` 的 PR 创建
 - **A3-AX-180 SSH 认证失败**（2026-06-12）— 用户运维事项，需重部署 SSH key
 - **A2-AK-102 npu-smi dcmi 故障**（2026-06-12）— 驱动级，需远端调试
 - **5 台 BMC iBMC 协议未确认**（2026-06-12）— 待用户确认走 Redfish 还是 `/api/`
@@ -131,9 +139,9 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 ## Next Steps
 
-1. 重新执行 `gh auth login -h github.com` 或恢复有效 token
-2. 运行 `$gsd-ship` / 创建 PR，把 Phase 8 验证结果推上去
-3. `$gsd-progress --next` 进入 Phase 9 experiment-report 的 discuss/plan/execute
+1. `$gsd-progress --next` 进入 Phase 10 Archon 适配层的 discuss/plan/execute
+2. 基于已完成的 8-skill CLI 入口，为每个 skill 规划 Archon workflow YAML 包装
+3. 视需要把 PR #1 的 review 焦点从 Phase 8 扩展到已并入的 Phase 9 report 能力
 
 ## Continuation Prompts
 
@@ -144,17 +152,18 @@ $gsd-progress --next
 ## Metrics
 
 - **Phases planned:** 13
-- **Phases complete:** 8 complete
-- **Plans complete:** 26 / 26 planned-through-Phase-8 (100% code plans); 27 summaries including historical gap-closure work
+- **Phases complete:** 9 complete
+- **Plans complete:** 28 / 28 planned-through-Phase-9 (100% code plans); 29 summaries including historical gap-closure work
 - **Requirements:** 88
-- **Tests:** 322 / 322 passing
-- **Phase 8 UAT:** complete, 5 pass / 0 blocked
-- **Estimated ship date:** TBD
+- **Tests:** 332 / 332 passing
+- **Phase 9 UAT:** complete, 5 pass / 0 blocked
+- **Latest PR:** `#1 Phase 8: Skill 07 — data-collection`
 
 ## Branch & Commits
 
 - **Branch:** `codex/phase-02-workspace-core`
-- **Latest commit:** `feat(08): complete data collection artifacts`
+- **Latest commit:** `feat(09): add local experiment report workflow`
+- **Open PR:** `https://github.com/Kirrito-k423/AutoResearch/pull/1`
 
 ---
-*Last updated: 2026-06-15 after Phase 8 real UAT completion and ship preflight*
+*Last updated: 2026-06-15 after Phase 9 real UAT completion and PR update prep*

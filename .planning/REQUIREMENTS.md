@@ -109,11 +109,13 @@
 
 ## RPT — Skill 08: experiment-report
 
-- [ ] **RPT-MANIFEST-01** — 读 manifest.json 重建 run 全貌
-- [ ] **RPT-PAGE-01** — `ar-report render --run-id X` 出单页 HTML
-- [ ] **RPT-PAGE-02** — 报告含 log 摘要 / wandb 关键曲线 / 资源曲线
-- [ ] **RPT-PAGE-03** — `--open` 在浏览器打开
-- [ ] **RPT-LINK-01** — 报告里嵌入 wandb 链接和 Prometheus 链接
+- [x] **RPT-MANIFEST-01** — 读 manifest.json 重建 run 全貌
+- [x] **RPT-PAGE-01** — `ar-report render --run-id X` 出单页 HTML
+- [x] **RPT-PAGE-02** — 报告含 log 摘要 / wandb 关键曲线 / 资源曲线
+- [x] **RPT-PAGE-03** — `--open` 在浏览器打开
+- [x] **RPT-LINK-01** — 报告里嵌入 wandb 链接和 Prometheus 链接
+
+> 2026-06-15: Phase 9 已完成真实 UAT。基于 `01KV5MV7N5A3RBZ6388E5HCYAP` 的 `autoresearch report render` 成功生成 `report.html`，并通过 `--open` 在浏览器打开；见 `.planning/phases/09-skill-08-experiment-report/09-UAT.md` 与 `09-VERIFICATION.md`。
 
 ## ARCH — Archon 适配层
 

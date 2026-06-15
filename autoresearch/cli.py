@@ -356,6 +356,17 @@ from autoresearch.collect.cli import run as collect_run_command
 collect.add_command(collect_run_command)
 
 
+@main.group(name="report")
+def report() -> None:
+    """实验报告: 读取本地 run artifact 生成单页 HTML。"""
+    pass
+
+
+from autoresearch.report.cli import render as report_render_command
+
+report.add_command(report_render_command)
+
+
 if __name__ == "__main__":
     main()
 
