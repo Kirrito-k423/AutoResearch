@@ -10,6 +10,7 @@ from autoresearch.stack.checker import (
     check_library,
     probe_conda_env,
     run_one_step_dryrun,
+    check_all_servers,
     ONE_STEP_SCRIPT_TMPL,
     DIAG_ENV_MISSING_TMPL,
 )
@@ -266,3 +267,89 @@ def _mock_uat(args, kwargs, mode):
             raise CommandTimeoutError("30s timeout")
         return (0, "SUM= 6.0\nNPU_COUNT= 8\n", "")
     return (0, "", "")
+
+
+# === --all (D-07/D-29) ===
+
+def test_check_all_servers_passes_when_all_ok(tmp_path):
+    """4 台全 OK -> overall ok=True, passed=4."""
+    import yaml
+    cfg_path = tmp_path / "cfg.yaml"
+    cfg_path.write_text(yaml.safe_dump({
+        "version": 1,
+        "servers": [
+            {"name": "s1", "host": "1.1.1.1", "user": "root"},
+            {"name": "s2", "host": "2.2.2.2", "user": "root"},
+            {"name": "s3", "host": "3.3.3.3", "user": "root"},
+            {"name": "s4", "host": "4.4.4.4", "user": "root"},
+        ],
+    }))
+    fake = lambda n, *a, **kw: {
+        "server": n, "ok": True, "severity": "ok",
+        "conda_env": {"name": "", "exists": False, "python_version": None, "detail": "no env"},
+        "libraries": {}, "one_step": None, "error": None,
+    }
+    with patch.object(_checker, "check_stack", side_effect=fake):
+        summary = check_all_servers(config_path=cfg_path)
+    assert summary["total"] == 4
+    assert summary["passed"] == 4
+    assert summary["failed"] == 0
+
+
+def test_check_all_servers_isolates_one_failure(tmp_path):
+    """1 台 fail 隔离, 3 台 OK -> overall fail, failed=1."""
+    import yaml
+    cfg_path = tmp_path / "cfg.yaml"
+    cfg_path.write_text(yaml.safe_dump({
+        "version": 1,
+        "servers": [
+            {"name": "good-1", "host": "1.1.1.1", "user": "root"},
+            {"name": "bad-1", "host": "2.2.2.2", "user": "root"},
+            {"name": "good-2", "host": "3.3.3.3", "user": "root"},
+        ],
+    }))
+    def fake(n, *a, **kw):
+        if n == "bad-1":
+            return {
+                "server": n, "ok": False, "severity": "fail",
+                "conda_env": {"name": "x", "exists": False, "python_version": None, "detail": "no env"},
+                "libraries": {"verl": {"library": "verl", "version": None, "ok": False, "detail": "fail", "warning": None}},
+                "one_step": None, "error": "boom",
+            }
+        return {
+            "server": n, "ok": True, "severity": "ok",
+            "conda_env": {"name": "", "exists": False, "python_version": None, "detail": ""},
+            "libraries": {}, "one_step": None, "error": None,
+        }
+    with patch.object(_checker, "check_stack", side_effect=fake):
+        summary = check_all_servers(config_path=cfg_path)
+    assert summary["passed"] == 2
+    assert summary["failed"] == 1
+    assert summary["failed_servers"] == ["bad-1"]
+
+
+def test_check_all_servers_preserves_config_order(tmp_path):
+    """结果按 config 顺序排, 不按 worker 完成时间."""
+    import yaml, time
+    cfg_path = tmp_path / "cfg.yaml"
+    cfg_path.write_text(yaml.safe_dump({
+        "version": 1,
+        "servers": [
+            {"name": "slow-1", "host": "1.1.1.1", "user": "root"},
+            {"name": "fast-1", "host": "2.2.2.2", "user": "root"},
+            {"name": "fast-2", "host": "3.3.3.3", "user": "root"},
+        ],
+    }))
+    def fake(n, *a, **kw):
+        time.sleep(0.1 if n.startswith("slow") else 0.01)
+        return {
+            "server": n, "ok": True, "severity": "ok",
+            "conda_env": {"name": "", "exists": False, "python_version": None, "detail": ""},
+            "libraries": {}, "one_step": None, "error": None,
+        }
+    with patch.object(_checker, "check_stack", side_effect=fake):
+        summary = check_all_servers(config_path=cfg_path)
+    assert list(summary["results"].keys()) == ["slow-1", "fast-1", "fast-2"]
+
+
+# 改 import 把 check_all_servers 加进来

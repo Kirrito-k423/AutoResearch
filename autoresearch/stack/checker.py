@@ -40,7 +40,7 @@ from .models import (
 
 DEFAULT_LIBS: tuple[str, ...] = ("verl", "veomni")
 ONE_STEP_TIMEOUT_S: float = 30.0
-DEFAULT_CHECK_TIMEOUT_S: float = 12.0
+DEFAULT_CHECK_TIMEOUT_S: float = 30.0  # 07-03 UAT: verl 冷启 11.2s, 12s 擦边超时, 框架类需 30s
 
 # D-41 1-step 脚本 (NPU 适配 — 用户明确要求 torch_npu, 不是 verl.trainer.main)
 # 用 {lib} 占位符供 check_stack 替换
@@ -392,27 +392,96 @@ def run_stack_check(
 
 # === --all multi-server (Phase 07-03 完整实现, 07-01 占位) ===
 
+def check_all_servers(
+    config_path: str | Path | None = None,
+    max_workers: int = 3,
+    libs: tuple[str, ...] | None = None,
+    lang: str = "zh",
+) -> StackSummary:
+    """并发跑全部 server stack check (D-07/D-29).
+
+    复用 Phase 4/6 模式: ThreadPoolExecutor + as_completed + worker exception 隔离.
+    结果按 config 顺序排.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from workspace_core.config import from_path
+    if not libs:
+        libs = DEFAULT_LIBS
+    cfg = from_path(str(config_path) if config_path else None)
+    server_names = [s.name for s in cfg.servers]
+    if not server_names:
+        return StackSummary(
+            total=0, passed=0, failed=0, warned=0,
+            passed_servers=[], failed_servers=[], results={},
+        )
+    worker_count = min(3, max_workers, len(server_names))
+    results_by_name: dict[str, StackResult] = {}
+    with ThreadPoolExecutor(max_workers=worker_count) as ex:
+        futures = {
+            ex.submit(check_stack, name, config_path, libs, lang): name
+            for name in server_names
+        }
+        emit_progress("stack.all.begin", level="info", server=None)
+        for future in as_completed(futures):
+            name = futures[future]
+            try:
+                result: StackResult = future.result()
+            except Exception as exc:
+                from .models import CondaEnvProbe, LibraryCheck, OneStepResult
+                result = StackResult(
+                    server=name, ok=False, severity="fail",
+                    conda_env=CondaEnvProbe(name="", exists=False, python_version=None, detail=f"worker 异常: {exc}"),
+                    libraries={}, one_step=None, error=f"worker 异常: {exc}",
+                )
+            results_by_name[name] = result
+            emit_progress(
+                "stack.all.complete" if result["ok"] else "stack.all.fail",
+                level="info" if result["ok"] else "error",
+                server=name,
+                severity=result["severity"],
+            )
+
+    ordered = {name: results_by_name[name] for name in server_names}
+    passed = [n for n, r in ordered.items() if r["ok"]]
+    failed = [n for n, r in ordered.items() if not r["ok"]]
+    warned = sum(1 for r in ordered.values() if r["severity"] == "warn" and r["ok"])
+    return StackSummary(
+        total=len(ordered),
+        passed=len(passed),
+        failed=len(failed),
+        warned=warned,
+        passed_servers=passed,
+        failed_servers=failed,
+        results=ordered,
+    )
+
+
 def run_stack_check_all(
     config: str | Path | None = None,
     libs: tuple[str, ...] | None = None,
     lang: str = "zh",
 ) -> int:
-    """CLI 边界: --all 多机 stack check, 07-03 完整实现 (07-01 占位).
-
-    07-01 返回 0 跟 mock 走通; 07-03 替换为 ThreadPoolExecutor 并发.
-    """
+    """CLI 边界: --all 多机 stack check."""
     import json as _json
     if not libs:
         libs = DEFAULT_LIBS
-    print(_json.dumps({
-        "ok": False,
-        "severity": "fail",
+    summary = check_all_servers(config_path=config, libs=libs, lang=lang)
+    overall_ok = summary["failed"] == 0
+    severity = "ok" if overall_ok else "fail"
+    payload = {
+        "ok": overall_ok,
+        "severity": severity,
         "data": {
-            "total": 0, "passed": 0, "failed": 0, "warned": 0,
-            "passed_servers": [], "failed_servers": [],
-            "results": {},
+            "total": summary["total"],
+            "passed": summary["passed"],
+            "failed": summary["failed"],
+            "warned": summary["warned"],
+            "passed_servers": summary["passed_servers"],
+            "failed_servers": summary["failed_servers"],
+            "results": summary["results"],
         },
-        "message": "stack check --all 在 07-01 阶段是占位, 完整并发 07-03 实现",
-        "error": "not_implemented",
-    }, ensure_ascii=False))
-    return 1
+        "message": _check_message(severity, lang),
+        "error": None if overall_ok else f"failed servers: {summary['failed_servers']}",
+    }
+    print(_json.dumps(payload, ensure_ascii=False))
+    return 0 if overall_ok else 1
