@@ -4,7 +4,9 @@
 
 services:
   wandb:
-    image: wandb/local:0.17.5
+    image: wandb/local:latest
+    platform: linux/amd64
+    user: "0"
     container_name: ar-wandb
     ports:
       - "${PORT_WANDB:-8080}:8080"

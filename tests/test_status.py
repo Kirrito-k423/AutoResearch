@@ -2,6 +2,7 @@
 import json
 from unittest.mock import patch
 
+import requests
 from click.testing import CliRunner
 
 from autoresearch.cli import main
@@ -16,8 +17,9 @@ def test_services_constant_has_5_entries():
 
 def test_check_all_handles_connection_error():
     """When all services are down, check_all should return 5 unhealthy results (not raise)."""
-    # No mocks; localhost:8088/8080/9090/3000/9091 are almost certainly unbound in test env
-    results = check_all(timeout=0.5)
+    with patch("autoresearch.services._common.requests.get") as mock_get:
+        mock_get.side_effect = requests.ConnectionError("connection refused")
+        results = check_all(timeout=0.5)
     assert len(results) == 5
     # All results should be unhealthy (no service running)
     assert all(r["healthy"] is False for r in results)
