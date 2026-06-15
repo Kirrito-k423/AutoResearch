@@ -162,18 +162,20 @@ def test_sync_run_happy_path(tmp_path):
     """sync_run: 1) 验 wandb CLI 2) ls 远程 3) SFTP 拉 4) subprocess sync 5) return path."""
     spec = _spec()
     local_root = tmp_path / "runs"
+    # wandb SDK 写到 <WANDB_DIR>/wandb/offline-run-*, D-45 runner 设 WANDB_DIR=/root/wandb
+    # 所以远程路径是 /root/wandb/wandb/offline-run-<ts>-<id>/
     with patch("datalake.wandb.sync._check_wandb_cli"), \
          patch("datalake.wandb.sync._list_remote_wandb_runs",
-               return_value=["run-20260615_050749-abc123"]), \
+               return_value=["offline-run-20260615_050749-abc123"]), \
          patch("datalake.wandb.sync._sftp_fetch_dir") as mock_fetch, \
          patch("datalake.wandb.sync._wandb_sync_subprocess",
                return_value=(0, "Syncing run abc123\nwandb: Synced 3 files\n", "")):
         result = sync_run("abc123", spec, workdir="/root", local_runs_root=local_root)
 
     assert result == local_root / "abc123" / "wandb"
-    # _sftp_fetch_dir 调了 1 次, 远程目录是 /root/wandb/run-...
+    # _sftp_fetch_dir 调了 1 次, 远程目录是 /root/wandb/wandb/offline-run-...
     args = mock_fetch.call_args
-    assert args[0][1] == "/root/wandb/run-20260615_050749-abc123"
+    assert args[0][1] == "/root/wandb/wandb/offline-run-20260615_050749-abc123"
 
 
 def test_sync_run_no_remote_run_raises(tmp_path):
@@ -200,7 +202,7 @@ def test_sync_run_sync_failed_with_local_server_hint(tmp_path):
     local_root = tmp_path / "runs"
     with patch("datalake.wandb.sync._check_wandb_cli"), \
          patch("datalake.wandb.sync._list_remote_wandb_runs",
-               return_value=["run-20260615_050749-abc"]), \
+               return_value=["offline-run-20260615_050749-abc"]), \
          patch("datalake.wandb.sync._sftp_fetch_dir"), \
          patch("datalake.wandb.sync._wandb_sync_subprocess",
                return_value=(1, "", "wandb: Connection refused to localhost:8080")):
@@ -213,7 +215,7 @@ def test_sync_run_sync_failed_generic(tmp_path):
     local_root = tmp_path / "runs"
     with patch("datalake.wandb.sync._check_wandb_cli"), \
          patch("datalake.wandb.sync._list_remote_wandb_runs",
-               return_value=["run-20260615_050749-abc"]), \
+               return_value=["offline-run-20260615_050749-abc"]), \
          patch("datalake.wandb.sync._sftp_fetch_dir"), \
          patch("datalake.wandb.sync._wandb_sync_subprocess",
                return_value=(1, "some stdout", "some random error")):

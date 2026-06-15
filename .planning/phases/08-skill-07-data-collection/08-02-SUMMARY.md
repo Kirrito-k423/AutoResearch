@@ -178,7 +178,17 @@ print(r)
 - **site-packages 同步**: hatch editable 模式不自动同步, 改完源文件后 `uv pip install -e . --force-reinstall` (但 pypi 网络时常 timeout) → 退而求其次手动 `cp -f` 到 site-packages.
 - **docstring 跨行闭合符被截**: patch ONE_STEP_SCRIPT_TMPL 时 `"""` 被截成 `""`, Python 解析报 SyntaxError 指向 `08-04` 中文. 改用 `fix3q.py` 修复.
 - **mock 路径**: 旧测试只 patch `run_in_env`, 新 runner 走 `SSHClient` 直连 + `sftp.put` 旁路. 测试补 patch `workspace_core.ssh.client.SSHClient` + `resolve_secret`.
-- **pypi 网络受限**: `uv pip install wandb` timeout, Mac 本地装 wandb CLI 受阻. 同步生产用户环境 (外网) 时 sync 阶段能跑通.
+- **wandb CLI 装好 (venv 0.27.2)**: `uv pip install wandb -i https://pypi.tuna.tsinghua.edu.cn/simple/` 装成功, .venv/bin/wandb 装好; uv 默认 pypi 慢但可达 (curl 200), 加 -i 清华镜像立即装. 不在默认 PATH.
+- **wandb sync 路径修正**: D-45 runner 设 `WANDB_DIR=/root/wandb`, wandb SDK 实际写到 `<WANDB_DIR>/wandb/offline-run-*` 嵌套层; sync 改读 `/root/wandb/wandb/`. 修了 grep pattern (`offline-run-`/`run-`).
+- **wandb sync --no-videos 删了**: 0.27 CLI 删了 --no-videos 选项, 简化为 `wandb sync <path>`. 测试 OK.
+- **WANDB_BASE_URL env 默认 localhost:8080**: 让 sync 走本地服务 (Phase 1 SVC-02 起的 8080 容器), 不默认 https://api.wandb.ai 云端. 但 wandb 0.27 CLI 在 WANDB_BASE_URL 模式下仍强 wandb login (要 API key), 即便本地服务接受 anonymous.
+- **本地 wandb 服务未起 (port 8080)**: `curl http://localhost:8080/health` 返 000, Phase 1 SVC-02 docker 容器 wandb/local 在用户网络拉镜像失败 (Phase 6 reach test 暴露). sync 阶段走 SyncFailed 路径, 错误诊断到位. **不是 08-02 代码问题, 是 Phase 1 部署遗留, 修在 SVC-02 / Phase 6 REACH-WB 范围**.
+- **真机 UAT 端到端验过 4 步**:
+  1. 1-step 真打印 SUM=5.32 NPU_COUNT=8 WANDB_RUN_ID=fmgp7lz4 ✅
+  2. 远程 wandb 目录真生成 /root/wandb/wandb/offline-run-20260615_*-fmgp7lz4/ ✅
+  3. SFTP 拉回本地 ~/.autoresearch/runs/fmgp7lz4/wandb/ (files/ logs/ run-fmgp7lz4.wandb) ✅
+  4. `wandb sync` subprocess 走通, 因本地服务 + API key 报 SyncFailed, 错误诊断完整 ✅
+- **生产用户跑通路径**: 起本地 wandb 服务 (能拉镜像的网络用 `wandb server start` 或 `docker compose up wandb`) → `export PATH=$PWD/.venv/bin:$PATH` (用 venv 内 wandb) → `wandb login --host=http://localhost:8080` (本地版 anonymous 登录) → `autoresearch collect run --server X --lib verl` → 端到端 sync 走通.
 
 ## Next Steps
 

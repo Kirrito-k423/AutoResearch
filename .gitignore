@@ -66,6 +66,7 @@ runs/
 *.log
 wandb/
 !services/wandb/
+!datalake/wandb/
 __experiment_logs__/
 
 # --- 真实配置 (含明文密码, 不能进 git) ---
