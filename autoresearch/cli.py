@@ -476,6 +476,84 @@ def run_smoke_cmd(
     raise click.exceptions.Exit(exit_code)
 
 
+@main.group(name="e2e")
+def e2e() -> None:
+    """端到端验证: readiness + smoke + report completeness。"""
+    pass
+
+
+@e2e.command(name="smoke")
+@click.option("--server", required=True, help="config 中的服务器名称。")
+@click.option("--lib", "lib", default="verl", type=click.Choice(["verl", "veomni"]))
+@click.option("--config", "cfg_path", default=None, help="配置文件路径。")
+@click.option("--workdir", default=None, help="覆盖 config.servers[].workdir。")
+@click.option("--timeout", default=60.0, type=float, help="minimal 1-step timeout 秒数。")
+@click.option("--run-id", default=None, help="指定 run id；默认自动生成。")
+@click.option(
+    "--pushgateway-url",
+    default="http://127.0.0.1:17891",
+    help="远程可访问的 pushgateway URL。",
+)
+@click.option("--prometheus-url", default="http://localhost:9090", help="本机 Prometheus URL。")
+@click.option(
+    "--prometheus-wait",
+    default=16.0,
+    type=float,
+    help="Prometheus 抓取 Pushgateway 的等待秒数；0 表示不等待。",
+)
+@click.option("--archon-url", default="http://localhost:8088", help="本机 Archon Web UI URL。")
+@click.option("--max-duration", default=1800.0, type=float, help="E2E 最大允许耗时秒数。")
+@click.option(
+    "--remote-proxy-port",
+    default=17892,
+    type=int,
+    help="readiness network-check 使用的远端代理端口。",
+)
+@click.option("--open", "open_report", is_flag=True, help="渲染后打开 report.html。")
+@click.option("--lang", default="zh", type=click.Choice(["zh", "en"]))
+def e2e_smoke_cmd(
+    server: str,
+    lib: str,
+    cfg_path: str | None,
+    workdir: str | None,
+    timeout: float,
+    run_id: str | None,
+    pushgateway_url: str,
+    prometheus_url: str,
+    prometheus_wait: float,
+    archon_url: str,
+    max_duration: float,
+    remote_proxy_port: int,
+    open_report: bool,
+    lang: str,
+) -> None:
+    """跑完整 M1 smoke 并断言报告 log/wandb/prom 三视图。"""
+    from autoresearch.e2e.smoke import run_e2e_smoke
+
+    try:
+        exit_code, payload = run_e2e_smoke(
+            server=server,
+            lib=lib,
+            config=cfg_path,
+            workdir=workdir,
+            timeout=timeout,
+            run_id=run_id,
+            pushgateway_url=pushgateway_url,
+            prometheus_url=prometheus_url,
+            prometheus_wait=prometheus_wait,
+            archon_url=archon_url,
+            max_duration=max_duration,
+            remote_proxy_port=remote_proxy_port,
+            open_report=open_report,
+            lang=lang,
+        )
+    except Exception as exc:
+        payload = {"ok": False, "command": "e2e-smoke", "failed_step": "orchestrator", "error": str(exc)}
+        exit_code = 2
+    click.echo(json.dumps(payload, ensure_ascii=False, indent=2))
+    raise click.exceptions.Exit(exit_code)
+
+
 if __name__ == "__main__":
     main()
 

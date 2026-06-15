@@ -268,8 +268,8 @@ Plans:
 
 Plans:
 
-- [ ] 12-01: E2E 测试脚本（脚本化整个 M1 流程）
-- [ ] 12-02: 报告完整性检查（断言 3 视图都齐）
+- [x] 12-01: E2E 测试脚本（脚本化整个 M1 流程）
+- [x] 12-02: 报告完整性检查（断言 3 视图都齐）
 
 ### Phase 13: M1 归档
 
@@ -307,5 +307,5 @@ Phases execute in numeric order: 1 → 2 → 3 → ... → 13
 | 9. Skill 08: experiment-report | 2/2 | Complete | 2026-06-15 |
 | 10. Archon 适配层 | 3/3 | Complete | 2026-06-15 |
 | 11. 顶层 CLI 编排 | 2/2 | Complete | 2026-06-15 |
-| 12. E2E 端到端 smoke | 0/2 | Not started | - |
+| 12. E2E 端到端 smoke | 2/2 | Complete | 2026-06-15 |
 | 13. M1 归档 | 0/1 | Not started | - |

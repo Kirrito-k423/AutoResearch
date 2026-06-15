@@ -18,6 +18,7 @@ def test_help_shows_services():
     assert "services" in result.output
     assert "check" in result.output
     assert "run" in result.output
+    assert "e2e" in result.output
 
 
 def test_services_help_shows_subcommands():

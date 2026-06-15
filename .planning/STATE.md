@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: MinViable Loop
-status: Phase 11 shipped — PR #1
-stopped_at: Phase 11 top-level CLI orchestration verified, pushed, and reflected in PR #1; next route is Phase 12 E2E smoke
-last_updated: "2026-06-15T16:16:00Z"
+status: Phase 12 verified — pending ship
+stopped_at: Phase 12 E2E smoke verified locally; next route is ship Phase 12 to PR #1
+last_updated: "2026-06-15T16:45:00Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 13
-  completed_phases: 11
+  completed_phases: 12
   total_plans: 30
   completed_plans: 34
-  percent: 85
+  percent: 92
 ---
 
 # State: AutoResearch v1.0
@@ -22,20 +22,20 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 **Core value:** "常实践，详记录，知得失，会设计，有整理"——每个 skill 跑一次都留下可被复盘、可被二次开发的产物。
 
-**Current focus:** Phase 11 top-level CLI orchestration is shipped to PR #1; next immediate step is Phase 12 E2E smoke.
+**Current focus:** Phase 12 E2E smoke is verified locally; next immediate step is shipping Phase 12 to PR #1.
 
 ## Position
 
 - **Milestone:** v1.0 MinViable Loop
 - **Phase:** 12
-- **Plan:** Next
+- **Plan:** Ship
 - **Last activity:** 2026-06-15
 
 ## Session Continuity
 
 - **Last session:** 2026-06-15T10:28:47Z
-- **Stopped At:** Phase 11 UAT passed on real run `01KV60QS8PMSEG02MQEB0Z27FT`; branch pushed and PR #1 updated for Phase 11
-- **Resume File:** .planning/phases/11-orchestration/11-UAT.md
+- **Stopped At:** Phase 12 UAT passed on real run `01KV62JVH0N3ZRVRMH4PYWF1VB`; branch ready to ship to PR #1
+- **Resume File:** .planning/phases/12-e2e-smoke/12-UAT.md
 
 ### Decisions Made This Session (2026-06-15)
 
@@ -64,6 +64,15 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 - **D-65 smoke 语义**：`run smoke` 串 collect -> report，任何失败都通过 `failed_step` 和 step diagnosis 指明。
 - **D-66 proxy 端口隔离**：`check all` 默认 remote proxy port 使用 `17892`，避免和 reach/wandb 的 `17890` 隧道抢端口。
 - **D-67 Prometheus scrape 等待**：`run smoke` 在 collect 推送 Pushgateway 后默认等待 Prometheus 抓到该 run 的指标，再渲染报告。
+- **D-68 E2E 入口**：Phase 12 使用 `autoresearch e2e smoke` 作为用户可运行的端到端入口，而不是 standalone shell。
+- **D-69 E2E 复用边界**：E2E 复用 Phase 11 的 `run_check_all` 和 `run_smoke`，避免复制 8 skill 编排。
+- **D-70 E2E 默认栈**：默认验证路径为 `A2-AK-225` + `verl`；`veomni` 不纳入当前必需 E2E。
+- **D-71 报告完整性**：E2E 报告必须包含 html、log、wandb、Prometheus 四个可检查面。
+- **D-72 报告真相源**：完整性检查从 `ReportBundle` 判断，不解析 HTML 字符串。
+- **D-73 缺视图即失败**：缺任一报告视图时 E2E `failed_step=report`。
+- **D-74 Archon 可观测性门槛**：Archon healthz healthy 且 repo-local `ar-min-loop` workflow 存在。
+- **D-75 Phase 12 不重跑 Archon workflow**：Phase 10 已验证 Archon run path；Phase 12 聚焦本地 CLI loop。
+- **D-76 E2E 时长门槛**：默认 `--max-duration 1800` 秒，对齐 `< 30 min` 要求。
 
 ### Files Created This Session (08-03 / 08-04)
 
@@ -105,6 +114,9 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 - `uv run pytest -q` → 352 passed, 6 warnings
 - `uv run autoresearch check all --server A2-AK-225 --stack-lib verl` → `ok=true`, 8 steps, 6 passed, 2 warned, 0 failed
 - `uv run autoresearch run smoke --server A2-AK-225 --lib verl --timeout 60 --pushgateway-url http://127.0.0.1:17891` → `ok=true`, run `01KV60QS8PMSEG02MQEB0Z27FT`, `prometheus_ready=true`, report warnings `[]`
+- `uv run pytest tests/test_e2e_smoke.py tests/test_report_loader.py tests/test_cli.py -q` → 14 passed
+- `uv run pytest -q` → 361 passed, 6 warnings
+- `uv run autoresearch e2e smoke --server A2-AK-225 --lib verl --timeout 60 --pushgateway-url http://127.0.0.1:17891` → `ok=true`, run `01KV62JVH0N3ZRVRMH4PYWF1VB`, elapsed `146.673s`, report completeness passed
 
 ### Decisions Made This Session (2026-06-12)
 
@@ -160,9 +172,9 @@ See: .planning/PROJECT.md (updated 2026-06-06 after $gsd-new-project)
 
 ## Next Steps
 
-1. `$gsd-progress --next` 进入 Phase 12 E2E 端到端 smoke
-2. 用 `autoresearch check all` + `autoresearch run smoke` 作为 Phase 12 的本地 CLI 主路径
-3. 在 Phase 12 验证报告完整包含 log + wandb + prom 三视图
+1. Ship Phase 12 to PR #1
+2. `$gsd-progress --next` 进入 Phase 13 M1 归档
+3. 运行 milestone archive 并准备 v1.1 规划
 
 ## Continuation Prompts
 
@@ -173,18 +185,19 @@ $gsd-progress --next
 ## Metrics
 
 - **Phases planned:** 13
-- **Phases complete:** 11 complete
-- **Plans complete:** 34 summaries through Phase 11
+- **Phases complete:** 12 complete
+- **Plans complete:** 36 summaries through Phase 12
 - **Requirements:** 88
-- **Tests:** 352 / 352 passing
+- **Tests:** 361 / 361 passing
 - **Phase 11 UAT:** pass; smoke run `01KV60QS8PMSEG02MQEB0Z27FT`
+- **Phase 12 UAT:** pass; E2E run `01KV62JVH0N3ZRVRMH4PYWF1VB`
 - **Latest PR:** `#1 Phase 11: Top-level CLI orchestration`
 
 ## Branch & Commits
 
 - **Branch:** `codex/phase-02-workspace-core`
-- **Latest commit:** `feat(11): add top-level CLI orchestration`
+- **Latest commit:** pending Phase 12 ship commit
 - **Open PR:** `https://github.com/Kirrito-k423/AutoResearch/pull/1`
 
 ---
-*Last updated: 2026-06-15 after Phase 11 ship to PR #1*
+*Last updated: 2026-06-15 after Phase 12 verification*

@@ -97,6 +97,9 @@ def _diagnosis(payload: dict[str, Any]) -> str | None:
     errors = payload.get("errors")
     if isinstance(errors, list) and errors:
         return "; ".join(str(item) for item in errors[:3])
+    missing = payload.get("missing")
+    if isinstance(missing, list) and missing:
+        return "missing: " + ", ".join(str(item) for item in missing[:5])
     if payload.get("message") and payload.get("ok") is False:
         return str(payload["message"])
     summary = payload.get("summary")

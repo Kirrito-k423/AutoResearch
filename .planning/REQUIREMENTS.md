@@ -137,10 +137,10 @@
 
 ## E2E — 端到端验证
 
-- [ ] **E2E-01** — 一次性 M1 全循环跑通（从空 config → 跑出 smoke 报告）
-- [ ] **E2E-02** — E2E 跑出的报告能完整看到 log + wandb + prom 三视图
-- [ ] **E2E-03** — E2E 跑出 `< 30 min`（在 demo 服务器上）
-- [ ] **E2E-04** — E2E 全过程在 Archon Web UI 可观察
+- [x] **E2E-01** — 一次性 M1 全循环跑通（从空 config → 跑出 smoke 报告）
+- [x] **E2E-02** — E2E 跑出的报告能完整看到 log + wandb + prom 三视图
+- [x] **E2E-03** — E2E 跑出 `< 30 min`（在 demo 服务器上）
+- [x] **E2E-04** — E2E 全过程在 Archon Web UI 可观察
 
 ---
 
