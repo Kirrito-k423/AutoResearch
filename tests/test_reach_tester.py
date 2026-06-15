@@ -11,6 +11,7 @@ from autoresearch.reach.tester import (
     WANDB_HEALTH_URL,
     PUSHGATEWAY_REMOTE_PORT,
     WANDB_REMOTE_PORT,
+    WANDB_LOCAL_URL,
 )
 
 
@@ -28,6 +29,24 @@ def test_build_wandb_curl_hits_17890_healthz():
     assert "127.0.0.1:17890/healthz" in cmd
     assert "curl" in cmd
     assert "-X GET" in cmd or "GET" not in cmd  # curl 默认 GET, 不强制写
+
+
+def test_ensure_wandb_tunnel_targets_local_wandb_port():
+    """wandb reach 隧道必须转到本机 8080, 不能复用默认代理 7890."""
+    from autoresearch.reach.tester import _ensure_wandb_tunnel, _heartbeat_wandb_tunnel
+
+    with patch("autoresearch.net.tunnel.ensure_tunnel") as ensure:
+        ensure.return_value = {"remote_port": WANDB_REMOTE_PORT, "pid": 123}
+        assert _ensure_wandb_tunnel("A2-AK-225", "config/config.yaml") == (
+            8080,
+            WANDB_REMOTE_PORT,
+            123,
+        )
+    ensure.assert_called_once()
+    kwargs = ensure.call_args.kwargs
+    assert kwargs["local_proxy_url"] == WANDB_LOCAL_URL
+    assert kwargs["remote_proxy_port"] == WANDB_REMOTE_PORT
+    assert kwargs["heartbeat_fn"] is _heartbeat_wandb_tunnel
 
 
 def test_build_pushgateway_curl_has_metric_body():
@@ -73,6 +92,23 @@ def test_check_wandb_pass_with_state_available():
     assert chk["latency_ms"] is not None
 
 
+def test_check_wandb_pass_with_ready_text():
+    """新版 wandb/local /healthz 返回 ready! 文本也应视为健康."""
+    from autoresearch.reach.tester import _check_wandb
+
+    spec = MagicMock()
+    spec.user = "root"
+    spec.host = "1.2.3.4"
+    spec.port = 22
+    spec.identity_file = "/tmp/k"
+    spec.bootstrap_password_secret = None
+    with patch("autoresearch.reach.tester._ssh_exec_capture") as m:
+        m.return_value = (0, "ready!", "")
+        chk = _check_wandb(spec)
+    assert chk["ok"] is True
+    assert chk["status_code"] == 200
+
+
 def test_check_wandb_fail_when_state_wrong():
     """wandb /healthz 返 state!=available -> ok=False, detail 包含 state 值."""
     from autoresearch.reach.tester import _check_wandb
@@ -90,7 +126,7 @@ def test_check_wandb_fail_when_state_wrong():
 
 
 def test_check_wandb_fail_on_non_json_body():
-    """wandb /healthz 返非 JSON -> ok=False."""
+    """wandb /healthz 返非 ready 文本 -> ok=False."""
     from autoresearch.reach.tester import _check_wandb
     spec = MagicMock()
     spec.user = "root"
@@ -102,7 +138,7 @@ def test_check_wandb_fail_on_non_json_body():
         m.return_value = (0, "OK\n", "")  # plain text
         chk = _check_wandb(spec)
     assert chk["ok"] is False
-    assert "非 JSON" in (chk["detail"] or "")
+    assert "不表示 ready" in (chk["detail"] or "")
 
 
 # === Pushgateway check (D-38.D4 best-effort) ===

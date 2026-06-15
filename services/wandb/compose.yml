@@ -6,16 +6,15 @@ services:
   wandb:
     image: wandb/local:latest
     platform: linux/amd64
-    user: "0"
     container_name: ar-wandb
     ports:
       - "${PORT_WANDB:-8080}:8080"
     environment:
       - WANDB_BASE_URL=http://localhost:${PORT_WANDB:-8080}
     volumes:
-      - wandb-data:/vol
+      - wandb-data-v2:/vol
     restart: unless-stopped
 
 volumes:
-  wandb-data:
-    name: ar-wandb-data
+  wandb-data-v2:
+    name: ar-wandb-data-v2

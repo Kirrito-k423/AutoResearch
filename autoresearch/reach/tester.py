@@ -1,8 +1,8 @@
 """autoresearch.reach.tester — reach test 单机实现 (D-35..D-38).
 
 核心入口 `test_server_reach(server_name, ...)`:
-  1. _ensure_tunnel_for_reach: 通过 Phase 5 暴露的 net.tunnel.ensure_tunnel
-     建 17890 (wandb 走 Phase 5 状态) + 17891 (pushgateway 走本地变量, 不写 state)
+  1. _ensure_tunnel_for_reach: 通过 net.tunnel.ensure_tunnel 建直连 17890 -> 本机 wandb:8080
+     + 17891 -> 本机 pushgateway:9091 (pushgateway 不写 state)
   2. 远程 ssh curl http://127.0.0.1:17890/healthz 验 wandb
   3. 远程 ssh curl -X PUT http://127.0.0.1:17891/metrics/job/... 推 pushgateway metric
   4. 汇总 wandb + pushgateway -> ReachResult
@@ -35,11 +35,12 @@ from .models import ReachCheck, ReachResult, ReachSummary
 
 # === Constants (D-35, D-36, D-38) ===
 
-WANDB_REMOTE_PORT = 17890   # 走 Phase 5 state (复用)
+WANDB_REMOTE_PORT = 17890   # 远端直连本机 wandb:8080
 WANDB_HEALTH_PATH = "/healthz"
 WANDB_HEALTH_URL = f"http://127.0.0.1:{WANDB_REMOTE_PORT}{WANDB_HEALTH_PATH}"
 WANDB_HEALTH_EXPECTED_BODY_KEY = "state"  # {"state": "available"} -> PASS
 WANDB_HEALTH_EXPECTED_VALUE = "available"
+WANDB_READY_TEXT = "ready!"
 
 PUSHGATEWAY_REMOTE_PORT = 17891   # Phase 6 引入 (不写 state, reach 期间临时)
 PUSHGATEWAY_PUSH_PATH_TMPL = (
@@ -48,6 +49,7 @@ PUSHGATEWAY_PUSH_PATH_TMPL = (
 PUSHGATEWAY_LOCAL_PORT = 9091     # 本机 pushgateway 容器端口 (D-36.B1)
 
 WANDB_LOCAL_PORT = 8080           # 本机 wandb 容器端口
+WANDB_LOCAL_URL = f"http://127.0.0.1:{WANDB_LOCAL_PORT}"
 
 # Metric body template (D-38.D2)
 PUSHGATEWAY_METRIC_TMPL = """# HELP autoresearch_reach_test Reach test pass/fail gauge
@@ -96,7 +98,7 @@ def _ensure_wandb_tunnel(
     server_name: str,
     config_path: str | Path | None,
 ) -> tuple[int, int, int | None]:
-    """确保 wandb tunnel (17890) 就绪; 复用 Phase 5 state.
+    """确保 wandb tunnel (17890) 就绪.
 
     Returns: (local_port, remote_port, pid)
     Raises:  TunnelError / ConfigError
@@ -105,13 +107,33 @@ def _ensure_wandb_tunnel(
     state = ensure_tunnel(
         server_name,
         config_path=config_path,
+        local_proxy_url=WANDB_LOCAL_URL,
         remote_proxy_port=WANDB_REMOTE_PORT,
+        heartbeat_fn=_heartbeat_wandb_tunnel,
     )
     return (
         WANDB_LOCAL_PORT,
         state["remote_port"],
         int(state["pid"]),
     )
+
+
+def _heartbeat_wandb_tunnel(
+    server_name: str,
+    state: dict[str, Any],
+    config_path: str | Path | None = None,
+) -> bool:
+    """Heartbeat for a direct wandb reverse tunnel, not an HTTP proxy tunnel."""
+    from autoresearch.net.tunnel import is_process_alive
+
+    if not is_process_alive(state["pid"]):
+        return False
+    try:
+        spec = _resolve_server(server_name, config_path)
+        ec, so, _ = _ssh_exec_capture(spec, _build_wandb_curl(), timeout=10.0)
+        return ec == 0 and _wandb_health_body_ok(so.strip())
+    except Exception:
+        return False
 
 
 def _open_pushgateway_tunnel(
@@ -213,32 +235,34 @@ def _check_wandb(spec: ServerSpec) -> ReachCheck:
                 detail=f"curl exit={ec}: {se.strip()[:200]}",
                 warning=None,
             )
-        # parse JSON body
-        try:
-            data = json.loads(body)
-            state_val = data.get(WANDB_HEALTH_EXPECTED_BODY_KEY)
-            if state_val == WANDB_HEALTH_EXPECTED_VALUE:
-                return ReachCheck(
-                    name="wandb", ok=True, latency_ms=latency,
-                    status_code=200, detail=None, warning=None,
-                )
+        if _wandb_health_body_ok(body):
             return ReachCheck(
-                name="wandb", ok=False, latency_ms=latency,
-                status_code=200, detail=f"body state={state_val!r} != 'available'",
-                warning=None,
+                name="wandb", ok=True, latency_ms=latency,
+                status_code=200, detail=None, warning=None,
             )
-        except json.JSONDecodeError as e:
-            return ReachCheck(
-                name="wandb", ok=False, latency_ms=latency,
-                status_code=200, detail=f"body 非 JSON: {body[:100]} ({e})",
-                warning=None,
-            )
+        return ReachCheck(
+            name="wandb", ok=False, latency_ms=latency,
+            status_code=200, detail=f"body 不表示 ready: {body[:100]}",
+            warning=None,
+        )
     except Exception as e:
         latency = int((time.perf_counter() - t0) * 1000)
         return ReachCheck(
             name="wandb", ok=False, latency_ms=latency,
             status_code=None, detail=str(e)[:200], warning=None,
         )
+
+
+def _wandb_health_body_ok(body: str) -> bool:
+    """Accept both old JSON health and current wandb/local text health."""
+    text = body.strip()
+    if text == WANDB_READY_TEXT:
+        return True
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return False
+    return data.get(WANDB_HEALTH_EXPECTED_BODY_KEY) == WANDB_HEALTH_EXPECTED_VALUE
 
 
 def _check_pushgateway(
@@ -307,7 +331,7 @@ def test_server_reach(
             error=f"配置错误: {e}",
         )
 
-    # 1. 建 wandb tunnel (17890, 走 state)
+    # 1. 建 wandb tunnel (17890 -> 本机 8080)
     tunnel_wandb_pid: int | None = None
     try:
         _, _, tunnel_wandb_pid = _ensure_wandb_tunnel(server_name, config_path)

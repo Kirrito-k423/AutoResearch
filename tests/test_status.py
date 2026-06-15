@@ -13,6 +13,8 @@ def test_services_constant_has_5_entries():
     assert len(SERVICES) == 5
     names = {s[0] for s in SERVICES}
     assert names == {"archon", "wandb", "prometheus", "grafana", "pushgateway"}
+    urls = dict(SERVICES)
+    assert urls["wandb"] == "http://localhost:8080/ready"
 
 
 def test_check_all_handles_connection_error():

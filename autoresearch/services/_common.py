@@ -28,7 +28,9 @@ class HealthResult(TypedDict):
 # pushgateway 是 Phase 06-01 引入 (D-36), 端口 9091
 SERVICES: list[tuple[str, str]] = [
     ("archon", "http://localhost:8088/healthz"),
-    ("wandb", "http://localhost:8080/healthz"),
+    # `/ready` reflects the backend startup state; `/healthz` can be a false
+    # positive while the frontend nginx is up but gorilla/mysql are not ready.
+    ("wandb", "http://localhost:8080/ready"),
     ("prometheus", "http://localhost:9090/-/healthy"),
     ("grafana", "http://localhost:3000/api/health"),
     ("pushgateway", "http://localhost:9091/-/healthy"),
