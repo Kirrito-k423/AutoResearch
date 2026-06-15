@@ -248,6 +248,8 @@ servers:
         def fake_exec(cmd, timeout=15.0):
             if "visudo" in cmd:
                 return (0, "OK\n", "")
+            if cmd == "whoami":
+                return (0, "root\n", "")
             if "sudo -n whoami" in cmd:
                 return (0, "root\n", "")
             return (0, "", "")

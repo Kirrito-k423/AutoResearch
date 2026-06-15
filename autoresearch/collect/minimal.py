@@ -44,6 +44,7 @@ def collect_minimal(
     config_path: str | Path | None = None,
     workdir_override: str | None = None,
     timeout: float = 30.0,
+    run_id: str | None = None,
 ) -> dict[str, Any]:
     """跑一次 1-step 干跑, 返回 MinimalResult dict (D-44).
 
@@ -70,6 +71,10 @@ def collect_minimal(
     import importlib
     module_path = _LIB_TO_RUNNER[lib]
     runner = importlib.import_module(module_path)
-    return runner.run_minimal(
+    result = runner.run_minimal(
         spec=spec, conda_env=conda_env, workdir=workdir, lib=lib, timeout=timeout,
+        run_id=run_id,
     )
+    if run_id and "remote_log_path" not in result:
+        result["remote_log_path"] = f"{workdir}/runs/{run_id}.log"
+    return result

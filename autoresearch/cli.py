@@ -345,6 +345,17 @@ def config_keyring_list(lang: str) -> None:
     raise click.exceptions.Exit(run_keyring(action="list", name="", lang=lang))
 
 
+@main.group(name="collect")
+def collect() -> None:
+    """数据采集: minimal run + wandb/log/prom/manifest."""
+    pass
+
+
+from autoresearch.collect.cli import run as collect_run_command
+
+collect.add_command(collect_run_command)
+
+
 if __name__ == "__main__":
     main()
 

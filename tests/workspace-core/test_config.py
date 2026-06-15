@@ -28,6 +28,20 @@ servers:
     assert s.port == 22
     assert s.user == "t00906153"
     assert s.host == "192.168.1.10"
+    assert s.workdir == "/root"
+
+
+def test_from_yaml_server_workdir_override():
+    yaml_text = """
+version: 1
+servers:
+  - name: nvidia-01
+    host: 192.168.1.10
+    user: t00906153
+    workdir: /home/t00906153
+"""
+    cfg = from_yaml(yaml_text)
+    assert cfg.servers[0].workdir == "/home/t00906153"
 
 
 def test_from_yaml_resolves_env_placeholder(monkeypatch):

@@ -20,6 +20,7 @@ servers:
     bootstrap_password_secret: OpenTraining1!2@
     sudo_command: ""          # root 用户, 不需要 sudo
     conda_env: verl-env         # Phase 7: conda env 名, 实际按机器配 (D-40.B1)
+    workdir: /root              # Phase 8: 远程实验工作目录 (D-46)
     bmc:
       host: 192.168.12.225    # TODO: 填实际 BMC IP
       port: 443
@@ -36,6 +37,7 @@ servers:
     bootstrap_password_secret: OpenTraining1!2@
     sudo_command: ""
     conda_env: verl-env         # Phase 7: conda env 名, 实际按机器配 (D-40.B1)
+    workdir: /root              # Phase 8: 远程实验工作目录 (D-46)
     bmc:
       host: 192.168.12.182
       port: 443
@@ -52,6 +54,7 @@ servers:
     bootstrap_password_secret: OpenTraining1!2@
     sudo_command: ""
     conda_env: verl-env         # Phase 7: conda env 名, 实际按机器配 (D-40.B1)
+    workdir: /root              # Phase 8: 远程实验工作目录 (D-46)
     bmc:
       host: 192.168.12.180    # TODO: 填实际 BMC IP
       port: 443
@@ -68,6 +71,7 @@ servers:
     bootstrap_password_secret: Huawei@123
     sudo_command: ""          # root 直连, 不需要 sudo (D-34)
     conda_env: verl-env         # Phase 7: conda env 名, 实际按机器配 (D-40.B1)
+    workdir: /root              # Phase 8: 远程实验工作目录 (D-46)
     bmc:
       host: 192.168.12.102    # TODO: 填实际 BMC IP
       port: 443

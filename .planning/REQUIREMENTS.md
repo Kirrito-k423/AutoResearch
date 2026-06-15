@@ -79,31 +79,33 @@
 
 ## REACH — Skill 05: service-reachability
 
-- [ ] **REACH-WB-01** — `ar-reach test --server X` 测远程到本地 wandb 连通
-- [ ] **REACH-WB-02** — 用 04 隧道转发后 curl 本地 wandb /health
-- [ ] **REACH-PROM-01** — 测远程到本地 Prometheus 连通
-- [ ] **REACH-PROM-02** — 通过 pushgateway push 一个测试 metric 验证
+- [x] **REACH-WB-01** — `ar-reach test --server X` 测远程到本地 wandb 连通
+- [x] **REACH-WB-02** — 用 04 隧道转发后 curl 本地 wandb /health
+- [x] **REACH-PROM-01** — 测远程到本地 Prometheus 连通
+- [x] **REACH-PROM-02** — 通过 pushgateway push 一个测试 metric 验证
 
 ## STACK — Skill 06: train-stack-health
 
-- [ ] **STACK-VERL-01** — `ar-stack check --server X` 检测 verl conda env
-- [ ] **STACK-VERL-02** — `conda env list | grep verl` + 解析版本
-- [ ] **STACK-VERL-03** — 跑 1-step 干跑（`python -c "import verl; verl.trainer.main(...)"` 最小 1 步）
-- [ ] **STACK-VEOMNI-01** — 同上对 veomni
-- [ ] **STACK-VEOMNI-02** — 同上 conda 检测
-- [ ] **STACK-VEOMNI-03** — 同上 1-step 干跑
+- [x] **STACK-VERL-01** — `ar-stack check --server X` 检测 verl conda env
+- [x] **STACK-VERL-02** — `conda env list | grep verl` + 解析版本
+- [x] **STACK-VERL-03** — 跑 1-step 干跑（`python -c "import verl; verl.trainer.main(...)"` 最小 1 步）
+- [x] **STACK-VEOMNI-01** — 同上对 veomni
+- [x] **STACK-VEOMNI-02** — 同上 conda 检测
+- [x] **STACK-VEOMNI-03** — 同上 1-step 干跑
 
 ## COLL — Skill 07: data-collection
 
-- [ ] **COLL-RUN-01** — `ar-collect run --server X --tag smoke-001` 跑一次最小实验
-- [ ] **COLL-RUN-02** — 实验在远程跑，日志同时落远程和本地
+- [x] **COLL-RUN-01** — `ar-collect run --server X --tag smoke-001` 跑一次最小实验
+- [x] **COLL-RUN-02** — 实验在远程跑，日志同时落远程和本地
 - [ ] **COLL-WB-01** — 远程 wandb 离线模式 → `wandb sync` → 本地 wandb
 - [ ] **COLL-WB-02** — 同步后本地 wandb UI 可见
-- [ ] **COLL-LOG-01** — 远程 log tail + 实时拉回本地
-- [ ] **COLL-LOG-02** — 本地 log 与远程 log 内容一致
+- [x] **COLL-LOG-01** — 远程 log tail + 实时拉回本地
+- [x] **COLL-LOG-02** — 本地 log 与远程 log 内容一致
 - [ ] **COLL-PROM-01** — 远程通过 pushgateway 推资源指标到本地 Prometheus
 - [ ] **COLL-PROM-02** — 本地 Prometheus 可见 NPU/GPU 利用率
-- [ ] **COLL-MANIFEST-01** — 每次 run 写 `manifest.json` 含 run_id / start_time / end_time / server / wandb_url / log_path / prom_query
+- [x] **COLL-MANIFEST-01** — 每次 run 写 `manifest.json` 含 run_id / start_time / end_time / server / wandb_url / log_path / prom_query
+
+> 2026-06-15: Phase 8 代码计划完成且全量单测通过。`COLL-WB-*` 与 `COLL-PROM-*` 的真实本地服务可见性仍受 Docker Desktop backend/socket 超时阻塞; 见 `.planning/phases/08-skill-07-data-collection/08-UAT.md`。
 
 ## RPT — Skill 08: experiment-report
 

@@ -54,6 +54,11 @@ class ServerSpec(BaseModel):
             " 留空 = 走系统 python (没 conda env)."
         ),
     )
+    workdir: str = Field(
+        default="/root",
+        min_length=1,
+        description="Phase 8 (D-46): 远程实验工作目录, 用于 runs/wandb/log/prom 数据落点.",
+    )
     bmc: BMCSpec | None = Field(
         default=None,
         description="带外管理 (BMC) 凭据; 不填则无 BMC 能力",

@@ -45,6 +45,12 @@ def test_resolve_workdir_empty_override_falls_back_to_default():
     assert _resolve_workdir(s, "") == "/root"
 
 
+def test_resolve_workdir_uses_spec_field():
+    """D-46: ServerSpec.workdir 正式落地."""
+    s = ServerSpec(name="t", host="1.2.3.4", user="root", workdir="/home/t00906153")
+    assert _resolve_workdir(s, None) == "/home/t00906153"
+
+
 # === _resolve_spec ===
 
 def test_resolve_spec_found(tmp_path):
@@ -89,7 +95,7 @@ servers:
 """)
     with patch("verl_workspace_adapter.verl.minimal_runner.run_minimal") as mock:
         mock.return_value = {"lib": "verl", "sum_value": 5.29, "npu_count": 8, "exit_code": 0, "elapsed_ms": 22000, "stdout": "SUM= 5.29", "stderr": "", "error": None, "timeout": False}
-        r = collect_minimal("A2-AK-225", lib="verl", config_path=config)
+        r = collect_minimal("A2-AK-225", lib="verl", config_path=config, run_id="run123")
     assert r["sum_value"] == 5.29
     assert r["npu_count"] == 8
     # runner 接到正确参数
@@ -97,6 +103,7 @@ servers:
     assert kwargs["lib"] == "verl"
     assert kwargs["conda_env"] == "verl-qwen3.5"
     assert kwargs["workdir"] == "/root"  # 兜底
+    assert kwargs["run_id"] == "run123"
 
 
 def test_collect_minimal_dispatches_veomni(tmp_path):

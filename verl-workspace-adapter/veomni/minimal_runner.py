@@ -6,6 +6,7 @@
 from __future__ import annotations
 from pathlib import Path
 
+import shlex
 import time
 from typing import TypedDict
 
@@ -26,6 +27,7 @@ def run_minimal(
     workdir: str = "",
     lib: str = "veomni",
     timeout: float = 30.0,
+    run_id: str | None = None,
 ) -> MinimalResult:
     """远程跑 1-step 干跑 (veomni), 返回 MinimalResult (D-44).
 
@@ -56,7 +58,21 @@ def run_minimal(
         sftp.put(str(local_script), remote_script)
     finally:
         _client.close()
-    command = f"mkdir -p {wandb_dir} && WANDB_DIR={wandb_dir} python {remote_script}"
+    remote_log_path = None
+    if run_id:
+        runs_dir = f"{workdir}/runs" if workdir else "runs"
+        remote_log_path = f"{runs_dir}/{run_id}.log"
+        command = (
+            f"mkdir -p {shlex.quote(wandb_dir)} {shlex.quote(runs_dir)} "
+            f"&& : > {shlex.quote(remote_log_path)} "
+            f"&& WANDB_DIR={shlex.quote(wandb_dir)} "
+            f"python {shlex.quote(remote_script)} 2>&1 | tee -a {shlex.quote(remote_log_path)}"
+        )
+    else:
+        command = (
+            f"mkdir -p {shlex.quote(wandb_dir)} "
+            f"&& WANDB_DIR={shlex.quote(wandb_dir)} python {shlex.quote(remote_script)}"
+        )
     _pending_cleanup = local_script
 
 
@@ -68,19 +84,19 @@ def run_minimal(
         return MinimalResult(
             lib=lib, sum_value=None, npu_count=None, elapsed_ms=elapsed,
             exit_code=-1, stdout="", stderr="", error=str(e), timeout=True,
-            wandb_run_id=None,
+            wandb_run_id=None, remote_log_path=remote_log_path,
         )
     except Exception as e:
         elapsed = int((time.perf_counter() - t0) * 1000)
         return MinimalResult(
             lib=lib, sum_value=None, npu_count=None, elapsed_ms=elapsed,
             exit_code=-1, stdout="", stderr="", error=str(e), timeout=False,
-            wandb_run_id=None,
+            wandb_run_id=None, remote_log_path=remote_log_path,
         )
     elapsed = int((time.perf_counter() - t0) * 1000)
     sum_val, npu_count, wandb_run_id = _parse_one_step_output(so)
     return MinimalResult(
         lib=lib, sum_value=sum_val, npu_count=npu_count, elapsed_ms=elapsed,
         exit_code=ec, stdout=so, stderr=se, error=None, timeout=False,
-        wandb_run_id=wandb_run_id,
+        wandb_run_id=wandb_run_id, remote_log_path=remote_log_path,
     )

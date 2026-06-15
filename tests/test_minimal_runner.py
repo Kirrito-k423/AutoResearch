@@ -43,6 +43,14 @@ def test_build_cd_command_escapes_single_quote():
     assert build_cd_command("/root/it's", "ls") == "cd '/root/it'\\''s' && ls"
 
 
+def test_run_in_env_wraps_cd_before_conda():
+    """D-46: cd 必须在 conda run 外层, 否则 conda 会尝试执行 cd 二进制."""
+    spec = _mock_spec()
+    with patch.object(_conda, "_ssh_exec_capture", return_value=(0, "", "")) as mock:
+        run_in_env(spec, "python x.py", conda_env="verl-env", workdir="/root")
+    assert mock.call_args.args[1] == "cd '/root' && conda run -n verl-env python x.py"
+
+
 # === _parse_one_step_output ===
 
 def test_parse_one_step_pass():
@@ -106,6 +114,18 @@ def test_run_minimal_pass():
     assert "WANDB_DIR=/root/wandb" in called_cmd
 
 
+def test_run_minimal_with_run_id_tees_remote_log():
+    spec = _mock_spec()
+    with patch("verl_workspace_adapter.verl.minimal_runner.run_in_env") as mock_run, \
+         patch("workspace_core.ssh.client.SSHClient") as MockClient:
+        MockClient.return_value.sftp.return_value = MagicMock()
+        mock_run.return_value = (0, "SUM= 5.29\nNPU_COUNT= 8\n", "")
+        r = run_minimal(spec, conda_env="verl-qwen3.5", workdir="/root", run_id="run123")
+    called_cmd = mock_run.call_args.args[1]
+    assert "tee -a /root/runs/run123.log" in called_cmd
+    assert r["remote_log_path"] == "/root/runs/run123.log"
+
+
 def test_run_minimal_veomni_lib():
     spec = _mock_spec()
     with patch("verl_workspace_adapter.veomni.minimal_runner.run_in_env") as mock_run, \
@@ -156,5 +176,4 @@ def test_run_minimal_no_sum_in_stdout():
     assert r["sum_value"] is None
     assert r["npu_count"] == 8
     assert r["exit_code"] == 0
-
 

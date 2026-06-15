@@ -139,12 +139,13 @@ Plans:
   2. 远程通过 pushgateway push 一个测试 metric
   3. 隧道挂了给可读错误并提示先跑 05
 
-**Plans**: 2 plans
+**Plans**: 3 plans
 
 Plans:
 
-- [ ] 06-01: 远程 → 本地 wandb 探活
-- [ ] 06-02: 远程 → 本地 Prometheus pushgateway 探活
+- [x] 06-01: 远程 → 本地 wandb 探活
+- [x] 06-02: 远程 → 本地 Prometheus pushgateway 探活
+- [x] 06-03: reach test --all 并发 + 失败重试
 
 ### Phase 7: Skill 06 — train-stack-health
 
@@ -162,9 +163,9 @@ Plans:
 
 Plans:
 
-- [ ] 07-01: 复用 workspace-core SSH + conda env 探测
-- [ ] 07-02: verl 1-step 干跑
-- [ ] 07-03: veomni 1-step 干跑
+- [x] 07-01: 复用 workspace-core SSH + conda env 探测
+- [x] 07-02: verl 1-step 干跑
+- [x] 07-03: veomni 1-step 干跑
 
 ### Phase 8: Skill 07 — data-collection
 
@@ -183,10 +184,12 @@ Plans:
 
 Plans:
 
-- [ ] 08-01: minimal-runner 抽象 + verl/veomni 实例
-- [ ] 08-02: datalake/wandb/sync.py 离线→本地
-- [ ] 08-03: datalake/logs/collector.py 实时拉
-- [ ] 08-04: datalake/prometheus/push_gateway.py + manifest 写入
+- [x] 08-01: minimal-runner 抽象 + verl/veomni 实例
+- [x] 08-02: datalake/wandb/sync.py 离线→本地
+- [x] 08-03: datalake/logs/collector.py 实时拉
+- [x] 08-04: datalake/prometheus/push_gateway.py + manifest 写入
+
+> 2026-06-15: 4/4 代码计划完成, `uv run pytest -q` 为 320 passed. 真实 UAT 仍 partial: 本地 Docker Desktop backend socket `_ping` 超时, wandb/prometheus/pushgateway 服务无法启动/验证。
 
 ### Phase 9: Skill 08 — experiment-report
 
@@ -296,9 +299,9 @@ Phases execute in numeric order: 1 → 2 → 3 → ... → 13
 | 3. Skill 01: customer-config | 2/2 | Complete   | 2026-06-09 |
 | 4. Skill 03: server-hardware-probe | 4/3 | Complete    | 2026-06-12 |
 | 5. Skill 04: network-check | 3/3 | Complete    | 2026-06-12 |
-| 6. Skill 05: service-reachability | 0/2 | Not started | - |
-| 7. Skill 06: train-stack-health | 0/3 | Not started | - |
-| 8. Skill 07: data-collection | 0/4 | Not started | - |
+| 6. Skill 05: service-reachability | 3/3 | Complete    | 2026-06-12 |
+| 7. Skill 06: train-stack-health | 3/3 | Complete    | 2026-06-15 |
+| 8. Skill 07: data-collection | 4/4 | Verification blocked | - |
 | 9. Skill 08: experiment-report | 0/2 | Not started | - |
 | 10. Archon 适配层 | 0/3 | Not started | - |
 | 11. 顶层 CLI 编排 | 0/2 | Not started | - |

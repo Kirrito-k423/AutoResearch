@@ -90,6 +90,6 @@ def run_in_env(
 
     复用 Phase 7 _ssh_exec_capture 模式.
     """
-    cd_cmd = build_cd_command(workdir, command)
-    full_cmd = build_conda_command(conda_env, cd_cmd) if conda_env else cd_cmd
+    env_cmd = build_conda_command(conda_env, command) if conda_env else command
+    full_cmd = build_cd_command(workdir, env_cmd)
     return _ssh_exec_capture(spec, full_cmd, timeout=timeout)
