@@ -97,15 +97,15 @@
 
 - [x] **COLL-RUN-01** — `ar-collect run --server X --tag smoke-001` 跑一次最小实验
 - [x] **COLL-RUN-02** — 实验在远程跑，日志同时落远程和本地
-- [ ] **COLL-WB-01** — 远程 wandb 离线模式 → `wandb sync` → 本地 wandb
-- [ ] **COLL-WB-02** — 同步后本地 wandb UI 可见
+- [x] **COLL-WB-01** — 远程 wandb 离线模式 → `wandb sync` → 本地 wandb
+- [x] **COLL-WB-02** — 同步后本地 wandb UI 可见
 - [x] **COLL-LOG-01** — 远程 log tail + 实时拉回本地
 - [x] **COLL-LOG-02** — 本地 log 与远程 log 内容一致
-- [ ] **COLL-PROM-01** — 远程通过 pushgateway 推资源指标到本地 Prometheus
-- [ ] **COLL-PROM-02** — 本地 Prometheus 可见 NPU/GPU 利用率
+- [x] **COLL-PROM-01** — 远程通过 pushgateway 推资源指标到本地 Prometheus
+- [x] **COLL-PROM-02** — 本地 Prometheus 可见 NPU/GPU 利用率
 - [x] **COLL-MANIFEST-01** — 每次 run 写 `manifest.json` 含 run_id / start_time / end_time / server / wandb_url / log_path / prom_query
 
-> 2026-06-15: Phase 8 代码计划完成且全量单测通过。`COLL-WB-*` 与 `COLL-PROM-*` 的真实本地服务可见性仍受 Docker Desktop backend/socket 超时阻塞; 见 `.planning/phases/08-skill-07-data-collection/08-UAT.md`。
+> 2026-06-15: Phase 8 已完成真实 UAT。A2-AK-225 的 `autoresearch collect run` 成功打通远程 1-step、本地 wandb sync、log 拉回、pushgateway → Prometheus、manifest 写入；见 `.planning/phases/08-skill-07-data-collection/08-UAT.md` 与 `08-VERIFICATION.md`。
 
 ## RPT — Skill 08: experiment-report
 

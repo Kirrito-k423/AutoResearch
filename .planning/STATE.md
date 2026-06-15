@@ -144,7 +144,7 @@ $gsd-progress --next
 ## Metrics
 
 - **Phases planned:** 13
-- **Phases complete:** 8 code-complete (Phase 8 UAT partial)
+- **Phases complete:** 8 complete
 - **Plans complete:** 26 / 26 planned-through-Phase-8 (100% code plans); 27 summaries including historical gap-closure work
 - **Requirements:** 88
 - **Tests:** 322 / 322 passing

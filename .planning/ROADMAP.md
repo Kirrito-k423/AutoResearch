@@ -189,7 +189,7 @@ Plans:
 - [x] 08-03: datalake/logs/collector.py 实时拉
 - [x] 08-04: datalake/prometheus/push_gateway.py + manifest 写入
 
-> 2026-06-15: 4/4 代码计划完成, `uv run pytest -q` 为 320 passed. 真实 UAT 仍 partial: 本地 Docker Desktop backend socket `_ping` 超时, wandb/prometheus/pushgateway 服务无法启动/验证。
+> 2026-06-15: 4/4 代码计划完成且真实 UAT 已通过。A2-AK-225 的 `autoresearch collect run` 已成功验证 wandb sync、Prometheus 指标可见、log 落本地与 manifest 写入。
 
 ### Phase 9: Skill 08 — experiment-report
 
@@ -301,7 +301,7 @@ Phases execute in numeric order: 1 → 2 → 3 → ... → 13
 | 5. Skill 04: network-check | 3/3 | Complete    | 2026-06-12 |
 | 6. Skill 05: service-reachability | 3/3 | Complete    | 2026-06-12 |
 | 7. Skill 06: train-stack-health | 3/3 | Complete    | 2026-06-15 |
-| 8. Skill 07: data-collection | 4/4 | Verification blocked | - |
+| 8. Skill 07: data-collection | 4/4 | Complete | 2026-06-15 |
 | 9. Skill 08: experiment-report | 0/2 | Not started | - |
 | 10. Archon 适配层 | 0/3 | Not started | - |
 | 11. 顶层 CLI 编排 | 0/2 | Not started | - |
