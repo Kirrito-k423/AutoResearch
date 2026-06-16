@@ -1,0 +1,80 @@
+"""Docker command builders for Ascend Verl formal cases."""
+from __future__ import annotations
+
+import shlex
+from pathlib import Path
+
+
+ASCEND_DEVICES = (
+    "/dev/davinci*",
+    "/dev/davinci_manager",
+    "/dev/devmm_svm",
+    "/dev/hisi_hdc",
+)
+
+ASCEND_DRIVER_MOUNTS = (
+    ("/usr/local/Ascend/driver/lib64", "/usr/local/Ascend/driver/lib64"),
+    ("/usr/local/Ascend/driver/tools", "/usr/local/Ascend/driver/tools"),
+    ("/usr/local/Ascend/add-ons", "/usr/local/Ascend/add-ons"),
+)
+
+
+def _q(value: str | Path) -> str:
+    return shlex.quote(str(value))
+
+
+def build_docker_pull_command(image: str) -> str:
+    """Build a docker pull command for the selected Verl image."""
+    return f"docker pull {_q(image)}"
+
+
+def build_docker_run_command(
+    *,
+    image: str,
+    run_id: str,
+    model_mount: str | Path,
+    dataset_mount: str | Path,
+    output_mount: str | Path,
+    command: str = "/bin/bash",
+    proxy_url: str | None = None,
+    shm_size: str = "64G",
+    container_name: str | None = None,
+) -> str:
+    """Build an Ascend A2 compatible docker run command.
+
+    The shape follows the VeOmni Ascend Docker guide while keeping host paths
+    shell-quoted and all mounts explicit.
+    """
+    name = container_name or f"autoresearch-verl-{run_id}"
+    parts = [
+        "docker",
+        "run",
+        "--rm",
+        "--runtime=runc",
+        "-i",
+        "--ulimit",
+        "nproc=65535",
+        "--ulimit",
+        "nofile=65535",
+    ]
+    for device in ASCEND_DEVICES:
+        parts.append(f"--device={device}")
+    parts.append(f"--shm-size={shm_size}")
+    for host_path, container_path in ASCEND_DRIVER_MOUNTS:
+        parts.extend(["-v", f"{_q(host_path)}:{_q(container_path)}:ro"])
+    parts.extend(
+        [
+            "-v",
+            f"{_q(model_mount)}:/app/ckpt:ro",
+            "-v",
+            f"{_q(dataset_mount)}:/app/dataset:ro",
+            "-v",
+            f"{_q(output_mount)}:/app/output",
+        ]
+    )
+    if proxy_url:
+        for key in ("http_proxy", "https_proxy"):
+            parts.extend(["-e", f"{key}={_q(proxy_url)}"])
+        parts.extend(["-e", "no_proxy=localhost,127.0.0.1,.huawei.com"])
+    parts.extend(["--name", _q(name), _q(image), command])
+    return " ".join(parts)
