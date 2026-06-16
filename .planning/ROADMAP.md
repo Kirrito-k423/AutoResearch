@@ -32,20 +32,34 @@
 | Milestone | Phases | Plans Complete | Status | Completed |
 |---|---:|---:|---|---|
 | v1.0 MinViable Loop | 13/13 | 37/37 | Shipped | 2026-06-15 |
-| v1.1 Stable | 1/1 | 0/0 | Planning | - |
+| v1.1 Stable | 0/1 | 0/4 | Planned | - |
 | v2.0 Distribute | TBD | 0/0 | Not started | - |
 
 ## Next
 
-Run `$gsd-plan-phase 14` to break down the Verl formal-case experiment loop.
+Run `$gsd-execute-phase 14` to implement the Verl formal-case experiment loop.
 
 ### Phase 14: 跑通 Verl 正式案例并沉淀 workspace-adapter/verl 实验闭环
 
-**Goal:** [To be planned]
+**Goal:** Add `autoresearch run verl-case` and a local-first Verl formal-case loop for Qwen3.5-2B + geometry3k on Ascend, including strict sync/async length matrix execution, immutable config snapshots, multi-repo provenance, observability artifacts, and reportable performance/accuracy results.
 **Requirements**: TBD
 **Depends on:** Phase 13
-**Plans:** 0 plans
+**Plans:** 4 plans
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 14 to break down)
+**Wave 1**
+
+- [ ] 14-01: Formal Case Config, Matrix, Evaluation, And Provenance Models
+
+**Wave 2 *(blocked on Wave 1 completion)***
+
+- [ ] 14-02: Verl Docker, Data Prep, Provenance, And Remote Formal Runner
+
+**Wave 3 *(blocked on Wave 2 completion)***
+
+- [ ] 14-03: `autoresearch run verl-case` Orchestration And Local Artifacts
+
+**Wave 4 *(blocked on Wave 3 completion)***
+
+- [ ] 14-04: Formal Case Report, Verification, And UAT Closure
