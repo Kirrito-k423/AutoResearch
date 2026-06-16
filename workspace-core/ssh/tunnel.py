@@ -48,6 +48,7 @@ def open_reverse_tunnel(
         ssh -N -R <remote_port>:localhost:<local_port> \\
            -o ServerAliveInterval=30 -o ServerAliveCountMax=3 \\
            -o ExitOnForwardFailure=yes \\
+           -o ControlMaster=no -o ControlPath=none \\
            [-i <identity_file>] \\
            <user>@<host>
     """
@@ -62,6 +63,8 @@ def open_reverse_tunnel(
         "-o", "ServerAliveInterval=30",
         "-o", "ServerAliveCountMax=3",
         "-o", "ExitOnForwardFailure=yes",
+        "-o", "ControlMaster=no",
+        "-o", "ControlPath=none",
         "-o", "StrictHostKeyChecking=accept-new",
         "-o", f"UserKnownHostsFile={Path.home() / '.ssh' / 'known_hosts'}",
     ]

@@ -401,7 +401,7 @@ def probe_server(
             bootstrap_password=server.bootstrap_password_secret,
         )
         emit_progress("hw.connect", server=server.name)
-        client.connect(connect_timeout=5.0)
+        client.connect(connect_timeout=5.0, retries=0)
 
         stage = "command"
         emit_progress(

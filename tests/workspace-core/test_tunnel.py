@@ -29,6 +29,8 @@ def test_open_reverse_tunnel_constructs_correct_ssh_command(tmp_path):
     assert "ServerAliveInterval=30" in cmd
     assert "ServerAliveCountMax=3" in cmd
     assert "ExitOnForwardFailure=yes" in cmd
+    assert "ControlMaster=no" in cmd
+    assert "ControlPath=none" in cmd
     assert "-i" in cmd
     assert "/tmp/key" in cmd
     assert cmd[-1] == "u@example.com"

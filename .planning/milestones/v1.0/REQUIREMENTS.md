@@ -55,14 +55,16 @@
 
 ## HW — Skill 03: server-hardware-probe
 
-- [ ] **HW-CONN-01** — `ar-hw probe --server X` 通过 SSH 连上目标
-- [ ] **HW-CONN-02** — 5s connect timeout，超时给可读错误
+- [x] **HW-CONN-01** — `ar-hw probe --server X` 通过 SSH 连上目标
+- [x] **HW-CONN-02** — 5s connect timeout，超时给可读错误
 - [x] **HW-NPU-01** — 解析 `npu-smi info` 输出，列出所有 NPU 卡
 - [x] **HW-NPU-02** — 每张卡含 id / name / memory_total / memory_used / temperature / utilization
 - [x] **HW-NPU-03** — 解析失败 fallback 到 `lspci` 列出 NPU 设备
-- [ ] **HW-OCC-01** — 解析 `npu-smi info` 中的 Processes 列，列出占用方
-- [ ] **HW-OCC-02** — 占用方信息含 pid / user / process_name / memory_used
+- [x] **HW-OCC-01** — 解析 `npu-smi info` 中的 Processes 列，列出占用方
+- [x] **HW-OCC-02** — 占用方信息含 pid / user / process_name / memory_used
 - [x] **HW-DRV-01** — 报告驱动版本（CANN / npu driver）
+
+> 2026-06-16: 当前 4 台配置服务器真实 `hw probe --all` 4/4 通过；有进程的 A3-AK-182 / A2-AK-102 占用方字段全部补齐；详见 `.planning/v1.0-GAP-DIAGNOSIS.md`。
 
 ## NET — Skill 04: network-check
 
@@ -72,10 +74,11 @@
 - [x] **NET-REMOTE-01** — `ar-net probe --server X` 在远程服务器上跑同样测速
 - [x] **NET-REMOTE-02** — 远程测速时复用 workspace-core 的 SSH
 - [x] **NET-REMOTE-03** — 输出"本地 vs 远程"对比矩阵
-- [ ] **NET-TUNNEL-01** — 远程无外网时自动建 `ssh -R` 反向代理
-- [ ] **NET-TUNNEL-02** — 隧道健康检查（每 30s 发心跳，重连可重试）
+- [x] **NET-TUNNEL-01** — 远程无外网时自动建 `ssh -R` 反向代理
+- [x] **NET-TUNNEL-02** — 隧道健康检查（每 30s 发心跳，重连可重试）
 
 > 2026-06-09: 05-03 代码和自动测试已覆盖 NET-TUNNEL-01..02 的实现路径，但全部配置服务器真实网络/隧道 UAT 尚未通过，因此这两个 REQ 保持未完成。
+> 2026-06-16: 复测并修复 SSH ControlMaster / stale remote forward 恢复问题后，当前 4 台配置服务器真实 `net tunnel ensure` 4/4 通过，`net probe` 15 行 0 failed；详见 `.planning/v1.0-GAP-DIAGNOSIS.md`。
 
 ## REACH — Skill 05: service-reachability
 

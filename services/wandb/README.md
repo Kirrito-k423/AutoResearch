@@ -7,23 +7,25 @@
 ```bash
 docker compose -f services/wandb/compose.yml up -d
 # 或
-autoresearch services start
+uv run autoresearch services start
 ```
 
 ## 验证
 
 ```bash
-curl http://localhost:8080/healthz
-# 期望 200 OK 或 404（wandb local 镜像可能不暴露 /healthz，需要查 README 调整）
+curl http://localhost:8080/ready
+# 期望 200 OK
 ```
 
-> **注意**：wandb/local 镜像的 health 端点路径**可能**不是 `/healthz`。
-> 如果 `/healthz` 404，请用以下命令探活：
-> ```bash
-> curl -I http://localhost:8080/
-> ```
-> 然后在 `autoresearch/services/_common.py` 把 `WANDB_HEALTH_URL` 常量改正确。
-> （这是 RESEARCH.md Open Question 1 的解答路径；先按 `/healthz` 走，遇到再修。）
+## Web UI 与登录
+
+- 地址：http://localhost:8080
+- 当前这台 Mac 的本地管理员账号：
+  - email: `autoresearch-local@wandb.com`
+  - password: `AutoResearch2026!`
+- 这是 `ar-wandb-data-v2` Docker volume 内的本机账号，不是 W&B 云端账号。
+- 如果重建 volume 或换机器，账号可能需要重新初始化或重置。
+- AutoResearch 报告会保留 `wandb_run_id` 和本地 W&B 入口链接。
 
 ## 端口
 
@@ -31,4 +33,4 @@ curl http://localhost:8080/healthz
 
 ## 数据持久化
 
-`wandb-data` named volume，docker volume inspect ar-wandb-data 查看位置。
+`ar-wandb-data-v2` named volume，`docker volume inspect ar-wandb-data-v2` 查看位置。

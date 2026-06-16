@@ -213,10 +213,12 @@ def ensure_tunnel(
     heartbeat_fn=heartbeat_tunnel,
     sleep_fn=time.sleep,
     max_retries: int = 3,
+    remote_forward_cleaner=None,
 ) -> TunnelState:
     """Create, reuse, or rebuild a reverse tunnel for remote proxy retry."""
     local_port = _local_proxy_port(local_proxy_url)
     remote_proxy_url = f"http://127.0.0.1:{remote_proxy_port}"
+    cleaner = remote_forward_cleaner or _release_stale_remote_forward
     state = load_tunnel_state(server_name)
     if (
         state is not None
@@ -235,9 +237,10 @@ def ensure_tunnel(
         _stop_process(state["pid"])
     delete_tunnel_state(server_name)
 
-    _, host = resolve_server_host(server_name, config_path)
+    server, host = resolve_server_host(server_name, config_path)
     attempts = max(1, max_retries + 1)
     last_error = "heartbeat failed"
+    cleanup_tried = False
     for attempt_index in range(attempts):
         try:
             tunnel: ReverseTunnel = tunnel_opener(
@@ -269,6 +272,18 @@ def ensure_tunnel(
             last_error = "heartbeat failed"
         except TunnelError as exc:
             last_error = _sanitize_error(str(exc), local_proxy_url)
+            if (
+                "remote port forwarding failed" in str(exc)
+                and not cleanup_tried
+            ):
+                cleanup_tried = True
+                emit_progress(
+                    "net.tunnel.stale_remote_cleanup",
+                    level="warn",
+                    server=server_name,
+                    remote_port=remote_proxy_port,
+                )
+                cleaner(server, host, remote_proxy_port)
 
         if attempt_index < attempts - 1:
             delay = RETRY_BACKOFF_S[min(attempt_index, len(RETRY_BACKOFF_S) - 1)]
@@ -379,6 +394,58 @@ def _stop_process(pid: int, timeout_s: float = 3.0) -> None:
         os.kill(pid, signal.SIGKILL)
     except OSError:
         return
+
+
+def _release_stale_remote_forward(
+    server: ServerSpec,
+    host: HostSpec,
+    remote_port: int,
+    ssh_client_factory=SSHClient,
+) -> bool:
+    """Best-effort cleanup for a stale remote sshd listener on our tunnel port."""
+    if (
+        not isinstance(remote_port, int)
+        or isinstance(remote_port, bool)
+        or remote_port <= 0
+        or remote_port > 65535
+    ):
+        return False
+    client = None
+    try:
+        client = ssh_client_factory(
+            host,
+            bootstrap_password=server.bootstrap_password_secret,
+        )
+        client.connect(connect_timeout=5.0, retries=0)
+        exit_code, stdout, _ = client.exec(
+            _remote_forward_cleanup_command(remote_port),
+            timeout=8,
+        )
+        return exit_code == 0 and "remaining=0" in stdout
+    except Exception:
+        return False
+    finally:
+        if client is not None:
+            client.close()
+
+
+def _remote_forward_cleanup_command(remote_port: int) -> str:
+    script = f"""
+pids=$(ss -H -ltnp 'sport = :{remote_port}' 2>/dev/null \\
+  | sed -n 's/.*pid=\\([0-9][0-9]*\\).*/\\1/p' \\
+  | sort -u)
+for p in $pids; do
+  comm=$(ps -o comm= -p "$p" 2>/dev/null | tr -d ' ')
+  args=$(ps -o args= -p "$p" 2>/dev/null)
+  case "$comm:$args" in
+    sshd:*sshd:*) kill -TERM "$p" 2>/dev/null || true ;;
+  esac
+done
+sleep 0.2
+remaining=$(ss -H -ltnp 'sport = :{remote_port}' 2>/dev/null | wc -l | tr -d ' ')
+printf 'remaining=%s\\n' "$remaining"
+"""
+    return "sh -lc " + shlex.quote(script)
 
 
 def _now() -> str:

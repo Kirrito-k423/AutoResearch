@@ -7,7 +7,7 @@
 ```bash
 docker compose -f services/prometheus/compose.yml up -d
 # 或
-autoresearch services start
+uv run autoresearch services start
 ```
 
 ## 验证
@@ -36,6 +36,15 @@ curl 'http://localhost:9090/api/v1/query?query=up{job="prometheus"}'
 
 `prometheus-data` named volume；`docker volume inspect ar-prometheus-data`。
 
+## Web UI 与登录
+
+| 服务 | 地址 | 登录 |
+|---|---|---|
+| Prometheus | http://localhost:9090 | 无登录 |
+| Targets | http://localhost:9090/targets | 无登录 |
+| Pushgateway | http://localhost:9091 | 无登录 |
+
 ## 端口
 
-默认 9090（D-03c）；可通过 `.env` 里 `PORT_PROMETHEUS=9091` 覆盖。
+默认 9090（D-03c）；可通过 `.env` 里 `PORT_PROMETHEUS=<unused-port>` 覆盖。
+注意不要和 Pushgateway 默认端口 9091 撞。

@@ -76,9 +76,12 @@ archon workflow run ar-min-loop --no-worktree ""
 
 ## autoresearch 与 Archon 的关系
 
-- `autoresearch services status` **会**检查 Archon 的 `/healthz`（端口 8088）
-- `autoresearch services start` **不会**启 Archon；只会起 wandb / prometheus / grafana 3 个
+- `uv run autoresearch services status` **会**检查 Archon 的 `/healthz`（端口 8088）
+- `uv run autoresearch services start` **不会**启 Archon；只会起 wandb / prometheus / grafana 这些 Docker 服务
 - Archon 安装是进入 Phase 1 之前的**前置条件**（README.md quickstart 写明）
+
+如果已经执行 `source .venv/bin/activate`，可以省略 `uv run` 直接使用
+`autoresearch services ...`。
 
 ## 故障排查
 

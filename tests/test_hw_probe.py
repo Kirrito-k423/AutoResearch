@@ -122,11 +122,13 @@ class FakeSSHClient:
         self.responses = responses or {}
         self.connect_error = connect_error
         self.connect_timeouts: list[float] = []
+        self.connect_retries: list[int] = []
         self.commands: list[str] = []
         self.closed = False
 
-    def connect(self, *, connect_timeout: float) -> None:
+    def connect(self, *, connect_timeout: float, retries: int = 3) -> None:
         self.connect_timeouts.append(connect_timeout)
+        self.connect_retries.append(retries)
         if self.connect_error is not None:
             raise self.connect_error
 
@@ -181,6 +183,7 @@ def test_single_server_happy_path_uses_only_fixed_commands(tmp_path):
         DRIVER_VERSION_COMMAND,
     ]
     assert clients[0].connect_timeouts == [5.0]
+    assert clients[0].connect_retries == [0]
     assert clients[0].host.alias == "a2-test"
     assert clients[0].bootstrap_password == "test-bootstrap-password"
     assert clients[0].closed is True

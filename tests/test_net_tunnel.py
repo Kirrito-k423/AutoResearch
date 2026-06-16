@@ -248,6 +248,45 @@ def test_ensure_tunnel_start_error_is_bounded_and_redacted(tmp_path):
     assert len(message) <= 500
 
 
+def test_ensure_tunnel_cleans_stale_remote_forward_after_port_conflict(tmp_path):
+    attempts: list[int] = []
+    cleaned: list[tuple[str, int]] = []
+
+    def opener(host, *, remote_port, local_port, identity_file, log_dir):
+        attempts.append(remote_port)
+        if len(attempts) == 1:
+            raise TunnelError(
+                "remote port forwarding failed for listen port 17890"
+            )
+        return ReverseTunnel(
+            proc=MagicMock(),
+            pid=567,
+            host_alias=host.alias or host.host,
+            remote_port=remote_port,
+            local_port=local_port,
+            log_path=log_dir / "tunnel.log",
+        )
+
+    def cleaner(server, host, remote_port):
+        cleaned.append((server.name, remote_port))
+        return True
+
+    state = ensure_tunnel(
+        "server-0",
+        config_path=_config(tmp_path),
+        tunnel_opener=opener,
+        heartbeat_fn=lambda *args, **kwargs: True,
+        sleep_fn=lambda delay: None,
+        max_retries=1,
+        remote_forward_cleaner=cleaner,
+    )
+
+    assert attempts == [17890, 17890]
+    assert cleaned == [("server-0", 17890)]
+    assert state["pid"] == 567
+    assert state["last_heartbeat_ok"] is True
+
+
 class FakeHeartbeatSSHClient:
     def __init__(self, host, *, bootstrap_password=None, response=(0, "", "")):
         self.host = host

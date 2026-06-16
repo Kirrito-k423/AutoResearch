@@ -7,16 +7,17 @@
 | 服务 | 端口 | 镜像 | compose 文件 | 启动方式 |
 |------|------|------|--------------|----------|
 | **Archon** | 8088 | (本地 CLI) | — | `archon serve --port 8088`（用户自管） |
-| **wandb (local)** | 8080 | `wandb/local:0.17.5` | `wandb/compose.yml` | autoresearch services start |
-| **Prometheus** | 9090 | `prom/prometheus:v2.51.0` | `prometheus/compose.yml` | autoresearch services start |
-| **Grafana** | 3000 | `grafana/grafana:10.4.0` | `grafana/compose.yml` | autoresearch services start |
+| **wandb (local)** | 8080 | `wandb/local:latest` | `wandb/compose.yml` | `uv run autoresearch services start` |
+| **Prometheus** | 9090 | `prom/prometheus:v2.51.0` | `prometheus/compose.yml` | `uv run autoresearch services start` |
+| **Pushgateway** | 9091 | `prom/pushgateway:v1.10.0` | `prometheus/compose.yml` | `uv run autoresearch services start` |
+| **Grafana** | 3000 | `grafana/grafana:10.4.0` | `grafana/compose.yml` | `uv run autoresearch services start` |
 
 ## 启动顺序
 
 1. **前置**：先装 `archon` CLI（见 [archon/README.md](archon/README.md)），再 `archon serve --port 8088 &`
-2. 启动 3 个 docker 服务：
+2. 启动 3 个 compose 栈（wandb、Prometheus + Pushgateway、Grafana）：
    ```bash
-   autoresearch services start
+   uv run autoresearch services start
    # 或手动：
    docker compose -f services/wandb/compose.yml up -d
    docker compose -f services/prometheus/compose.yml up -d
@@ -24,8 +25,23 @@
    ```
 3. 验证全绿：
    ```bash
-   autoresearch services status
+   uv run autoresearch services status --json
    ```
+
+如果你已经执行 `source .venv/bin/activate`，也可以省略 `uv run` 直接使用
+`autoresearch services ...`。
+
+## Web UI 与账号
+
+| 服务 | 地址 | 登录 |
+|------|------|------|
+| Archon | http://localhost:8088 | 本仓未配置 Web 登录账号；依赖本机 Archon/Claude/Codex 配置 |
+| wandb local | http://localhost:8080 | 当前本机：`autoresearch-local@wandb.com` / `AutoResearch2026!` |
+| Prometheus | http://localhost:9090 | 无登录 |
+| Pushgateway | http://localhost:9091 | 无登录 |
+| Grafana | http://localhost:3000 | 初始 `admin` / `admin`，改过后以 Docker volume 中保存的密码为准 |
+
+更完整的可视化入口说明见 [../docs/VISUALIZATION.md](../docs/VISUALIZATION.md)。
 
 ## 端口冲突处理
 

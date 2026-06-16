@@ -7,7 +7,7 @@
 ```bash
 docker compose -f services/grafana/compose.yml up -d
 # 或
-autoresearch services start
+uv run autoresearch services start
 ```
 
 ## 验证
@@ -31,6 +31,18 @@ open http://localhost:3000/datasources
 启动时通过 `datasources.yml` 自动 provisioning：
 - **Prometheus** (default)：`http://prometheus:9090`（容器名服务发现）
 - **wandb**：`http://host.docker.internal:8080`（Mac 主机网络）
+
+## 登录账号
+
+初始账号由 `services/grafana/compose.yml` 配置：
+
+```text
+username: admin
+password: admin
+```
+
+如果首次登录后改过密码，Grafana 会把新密码保存到 Docker volume
+`ar-grafana-data`，之后以新密码为准。
 
 ## 关键点（RESEARCH Pitfall 1）
 
