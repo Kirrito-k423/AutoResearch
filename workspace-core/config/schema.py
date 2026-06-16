@@ -94,6 +94,57 @@ class WandbConfig(BaseModel):
     project: str = "autoresearch"
 
 
+class VerlCaseConfig(BaseModel):
+    """Phase 14 formal Verl case defaults.
+
+    These are non-secret reproducibility defaults only. Tokens and credentials
+    must stay in environment variables or local ignored config.
+    """
+
+    cache_root: str = Field(
+        default="/Users/Zhuanz/autoResearchData",
+        min_length=1,
+        description="Local cache root for <=5GB model, data, and image metadata.",
+    )
+    docker_image: str = Field(
+        default="quay.io/ascend/verl:verl-8.5.2-910b-ubuntu22.04-py3.11-qwen3-5",
+        min_length=1,
+    )
+    model_id: str = Field(default="Qwen/Qwen3.5-2B", min_length=1)
+    dataset_id: str = Field(default="hiyouga/geometry3k", min_length=1)
+    local_asset_limit_gb: int = Field(default=5, ge=1)
+    input_tokens: int = Field(default=1024, ge=1)
+    output_tokens: list[int] = Field(
+        default_factory=lambda: [2048, 4096, 8192, 16384]
+    )
+    ignore_eos: bool = False
+    inference_modes: list[Literal["sync", "async"]] = Field(
+        default_factory=lambda: ["sync", "async"]
+    )
+    github_owner: str = Field(default="Kirrito-k423", min_length=1)
+    remote_workdir: str = Field(default="/home/t00906153", min_length=1)
+
+    @field_validator("output_tokens")
+    @classmethod
+    def _output_tokens_nonempty(cls, v: list[int]) -> list[int]:
+        if not v:
+            raise ValueError("output_tokens 不能为空")
+        if any(item <= 0 for item in v):
+            raise ValueError("output_tokens 必须全部为正整数")
+        return v
+
+    @field_validator("inference_modes")
+    @classmethod
+    def _inference_modes_nonempty(
+        cls, v: list[Literal["sync", "async"]]
+    ) -> list[Literal["sync", "async"]]:
+        if not v:
+            raise ValueError("inference_modes 不能为空")
+        if len(set(v)) != len(v):
+            raise ValueError("inference_modes 不能重复")
+        return v
+
+
 class Config(BaseModel):
     """整份配置 schema."""
 
@@ -102,6 +153,7 @@ class Config(BaseModel):
     network: NetworkProbes = Field(default_factory=NetworkProbes)
     log: LogConfig = Field(default_factory=LogConfig)
     wandb: WandbConfig = Field(default_factory=WandbConfig)
+    verl_case: VerlCaseConfig = Field(default_factory=VerlCaseConfig)
 
     @field_validator("servers")
     @classmethod

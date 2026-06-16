@@ -49,3 +49,24 @@ def test_write_manifest_creates_run_manifest_json(tmp_path):
     data = json.loads(path.read_text())
     assert data["run_id"] == "run123"
     assert data["server"] == "A2-AK-225"
+
+
+def test_run_manifest_accepts_formal_case_fields(tmp_path):
+    manifest = RunManifest(
+        run_id="run123",
+        started_at=datetime(2026, 6, 16, 8, 0, tzinfo=timezone.utc),
+        server="A2-AK-225",
+        conda_env="",
+        lib="verl",
+        workdir_remote="/home/t00906153",
+        workdir_local=tmp_path / "run123",
+        formal_case={"matrix_results_path": str(tmp_path / "matrix-results.jsonl")},
+        config_snapshot=tmp_path / "config-20260616T080000.json",
+        provenance=[{"repo": "AutoResearch", "commit_sha": "abc123", "dirty": False}],
+    )
+
+    payload = manifest.model_dump(mode="json")
+
+    assert payload["formal_case"]["matrix_results_path"].endswith("matrix-results.jsonl")
+    assert payload["config_snapshot"].endswith("config-20260616T080000.json")
+    assert payload["provenance"][0]["repo"] == "AutoResearch"

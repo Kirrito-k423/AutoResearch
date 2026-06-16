@@ -20,8 +20,11 @@ class RunManifest(BaseModel):
     workdir_remote: str
     workdir_local: Path
     one_step: dict[str, Any] | None = None
+    formal_case: dict[str, Any] | None = None
     exit_code: int | None = None
     error: str | None = None
+    config_snapshot: Path | None = None
+    provenance: list[dict[str, Any]] = Field(default_factory=list)
     wandb_run_id: str | None = None
     wandb_path: Path | None = None
     log_files: list[Path] = Field(default_factory=list)

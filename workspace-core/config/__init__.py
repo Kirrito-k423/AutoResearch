@@ -6,6 +6,7 @@ from .schema import (
     NetworkProbes,
     LogConfig,
     WandbConfig,
+    VerlCaseConfig,
 )
 from .loader import from_yaml, from_path, ConfigError
 
@@ -16,6 +17,7 @@ __all__ = [
     "NetworkProbes",
     "LogConfig",
     "WandbConfig",
+    "VerlCaseConfig",
     "from_yaml",
     "from_path",
     "ConfigError",

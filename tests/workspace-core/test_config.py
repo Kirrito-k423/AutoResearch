@@ -9,6 +9,11 @@ def test_from_yaml_minimal():
     cfg = from_yaml("version: 1\n")
     assert cfg.version == 1
     assert cfg.servers == []
+    assert cfg.verl_case.cache_root == "/Users/Zhuanz/autoResearchData"
+    assert cfg.verl_case.model_id == "Qwen/Qwen3.5-2B"
+    assert cfg.verl_case.dataset_id == "hiyouga/geometry3k"
+    assert cfg.verl_case.ignore_eos is False
+    assert cfg.verl_case.output_tokens == [2048, 4096, 8192, 16384]
 
 
 def test_from_yaml_with_servers():
@@ -29,6 +34,20 @@ servers:
     assert s.user == "t00906153"
     assert s.host == "192.168.1.10"
     assert s.workdir == "/root"
+
+
+def test_from_yaml_verl_case_override():
+    yaml_text = """
+version: 1
+verl_case:
+  cache_root: /tmp/ar-cache
+  output_tokens: [2048]
+  inference_modes: [sync]
+"""
+    cfg = from_yaml(yaml_text)
+    assert cfg.verl_case.cache_root == "/tmp/ar-cache"
+    assert cfg.verl_case.output_tokens == [2048]
+    assert cfg.verl_case.inference_modes == ["sync"]
 
 
 def test_from_yaml_server_workdir_override():
