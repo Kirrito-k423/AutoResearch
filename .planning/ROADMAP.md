@@ -32,12 +32,12 @@
 | Milestone | Phases | Plans Complete | Status | Completed |
 |---|---:|---:|---|---|
 | v1.0 MinViable Loop | 13/13 | 37/37 | Shipped | 2026-06-15 |
-| v1.1 Stable | 0/1 | 1/4 | In Progress | - |
+| v1.1 Stable | 0/1 | 2/4 | In Progress | - |
 | v2.0 Distribute | TBD | 0/0 | Not started | - |
 
 ## Next
 
-Run `$gsd-execute-phase 14` to implement the Verl formal-case experiment loop.
+Run `$gsd-execute-phase 14` to continue with Plan 14-03: `autoresearch run verl-case` orchestration and local artifacts.
 
 ### Phase 14: 跑通 Verl 正式案例并沉淀 workspace-adapter/verl 实验闭环
 
@@ -54,7 +54,7 @@ Plans:
 
 **Wave 2 *(blocked on Wave 1 completion)***
 
-- [ ] 14-02: Verl Docker, Data Prep, Provenance, And Remote Formal Runner
+- [x] 14-02: Verl Docker, Data Prep, Provenance, And Remote Formal Runner
 
 **Wave 3 *(blocked on Wave 2 completion)***
 
