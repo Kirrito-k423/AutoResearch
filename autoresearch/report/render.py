@@ -64,6 +64,127 @@ def _metric_svg(points: list[MetricPoint], *, width: int = 220, height: int = 72
     )
 
 
+def _fmt_metric(value: float | None, *, percent: bool = False) -> str:
+    if value is None:
+        return "N/A"
+    if percent:
+        return f"{value * 100:.1f}%"
+    return f"{value:.2f}"
+
+
+def _formal_case_sections(bundle: ReportBundle) -> str:
+    view = bundle.formal_case
+    if view is None:
+        return ""
+    rows = "".join(
+        "<tr>"
+        f"<td>{row.input_tokens}</td>"
+        f"<td>{row.output_tokens}</td>"
+        f"<td>{escape(row.mode)}</td>"
+        f"<td>{escape(row.status)}</td>"
+        f"<td>{escape(_fmt_metric(row.tokens_per_second))}</td>"
+        f"<td>{escape(_fmt_metric(row.latency_ms))}</td>"
+        f"<td>{row.sample_count}</td>"
+        f"<td>{escape(_fmt_metric(row.accuracy, percent=True))}</td>"
+        f"<td>{escape(_fmt_metric(row.consistency, percent=True))}</td>"
+        f"<td>{escape(row.error or '')}</td>"
+        "</tr>"
+        for row in view.rows
+    ) or "<tr><td colspan='10'>No matrix rows</td></tr>"
+    length_rows = "".join(
+        "<tr>"
+        f"<td>{item['output_tokens']}</td>"
+        f"<td>{escape(_fmt_metric(item.get('success_rate'), percent=True))}</td>"
+        f"<td>{escape(_fmt_metric(item.get('tokens_per_second')))}</td>"
+        f"<td>{escape(_fmt_metric(item.get('latency_ms')))}</td>"
+        "</tr>"
+        for item in view.length_summary
+    ) or "<tr><td colspan='4'>No length data</td></tr>"
+    async_rows = "".join(
+        "<tr>"
+        f"<td>{item['output_tokens']}</td>"
+        f"<td>{escape(_fmt_metric(item.get('tokens_per_second_delta')))}</td>"
+        f"<td>{escape(_fmt_metric(item.get('latency_ms_delta')))}</td>"
+        f"<td>{escape(_fmt_metric(item.get('accuracy_delta'), percent=True))}</td>"
+        f"<td>{escape(_fmt_metric(item.get('consistency_delta'), percent=True))}</td>"
+        "</tr>"
+        for item in view.async_comparison
+    ) or "<tr><td colspan='5'>No paired sync/async data</td></tr>"
+    mode_rows = "".join(
+        "<tr>"
+        f"<td>{escape(str(item['mode']))}</td>"
+        f"<td>{escape(_fmt_metric(item.get('success_rate'), percent=True))}</td>"
+        f"<td>{escape(_fmt_metric(item.get('accuracy'), percent=True))}</td>"
+        f"<td>{escape(_fmt_metric(item.get('tokens_per_second')))}</td>"
+        f"<td>{escape(_fmt_metric(item.get('latency_ms')))}</td>"
+        "</tr>"
+        for item in view.mode_summary
+    ) or "<tr><td colspan='5'>No mode data</td></tr>"
+    artifact_rows = "".join(
+        "<tr>"
+        f"<td>{escape(item.name)}</td>"
+        f"<td>{'OK' if item.ok else 'Missing'}</td>"
+        f"<td>{escape(str(item.path) if item.path else '')}</td>"
+        f"<td>{escape(item.warning or '')}</td>"
+        "</tr>"
+        for item in view.artifacts
+    )
+    warnings = "".join(f"<li>{escape(item)}</li>" for item in view.warnings) or "<li>None</li>"
+    status = "complete" if view.complete_matrix else "incomplete"
+    return f"""
+    <section class="section">
+      <h2>Verl Formal Case Matrix</h2>
+      <div class="note {'ok' if view.complete_matrix else 'error'}">Matrix status: {escape(status)}</div>
+      <table>
+        <thead><tr><th>Input</th><th>Output</th><th>Mode</th><th>Status</th><th>Tokens/s</th><th>Latency ms</th><th>Samples</th><th>Accuracy</th><th>Consistency</th><th>Error</th></tr></thead>
+        <tbody>{rows}</tbody>
+      </table>
+    </section>
+
+    <div class="section-grid">
+      <section class="section">
+        <h2>Sequence Length Impact</h2>
+        <table>
+          <thead><tr><th>Output Tokens</th><th>Success</th><th>Tokens/s</th><th>Latency ms</th></tr></thead>
+          <tbody>{length_rows}</tbody>
+        </table>
+      </section>
+      <section class="section">
+        <h2>Sync vs Async Impact</h2>
+        <table>
+          <thead><tr><th>Output Tokens</th><th>Tokens/s Delta</th><th>Latency Delta</th><th>Accuracy Delta</th><th>Consistency Delta</th></tr></thead>
+          <tbody>{async_rows}</tbody>
+        </table>
+      </section>
+    </div>
+
+    <div class="section-grid">
+      <section class="section">
+        <h2>Accuracy</h2>
+        <p>Overall: <strong>{escape(_fmt_metric(view.accuracy_overall, percent=True))}</strong></p>
+        <table>
+          <thead><tr><th>Mode</th><th>Success</th><th>Accuracy</th><th>Tokens/s</th><th>Latency ms</th></tr></thead>
+          <tbody>{mode_rows}</tbody>
+        </table>
+      </section>
+      <section class="section">
+        <h2>Consistency</h2>
+        <p>Overall: <strong>{escape(_fmt_metric(view.consistency_overall, percent=True))}</strong></p>
+        <h3>Warnings</h3>
+        <ul>{warnings}</ul>
+      </section>
+    </div>
+
+    <section class="section">
+      <h2>Provenance</h2>
+      <table>
+        <thead><tr><th>Artifact</th><th>Status</th><th>Path</th><th>Warning</th></tr></thead>
+        <tbody>{artifact_rows}</tbody>
+      </table>
+    </section>
+    """
+
+
 def render_report(bundle: ReportBundle, output_path: Path) -> Path:
     """Write a single-file static HTML report and return its path."""
     if bundle.exit_code == 0 and not bundle.error and not bundle.warnings:
@@ -191,7 +312,7 @@ def render_report(bundle: ReportBundle, output_path: Path) -> Path:
       white-space: pre-wrap;
       overflow-wrap: anywhere;
     }}
-    .chart {{
+	    .chart {{
       width: 100%;
       max-width: 260px;
       height: auto;
@@ -201,7 +322,7 @@ def render_report(bundle: ReportBundle, output_path: Path) -> Path:
       border-radius: 6px;
       background: #f8fafc;
     }}
-    .empty {{
+	    .empty {{
       margin-top: 12px;
       padding: 14px;
       border: 1px dashed var(--line);
@@ -209,9 +330,22 @@ def render_report(bundle: ReportBundle, output_path: Path) -> Path:
       color: var(--muted);
       font-size: 14px;
     }}
-    a {{ color: var(--blue); text-decoration: none; }}
-    a:hover {{ text-decoration: underline; }}
-  </style>
+	    a {{ color: var(--blue); text-decoration: none; }}
+	    a:hover {{ text-decoration: underline; }}
+	    table {{
+	      width: 100%;
+	      border-collapse: collapse;
+	      margin-top: 10px;
+	      font-size: 14px;
+	    }}
+	    th, td {{
+	      border-bottom: 1px solid var(--line);
+	      padding: 8px 6px;
+	      text-align: left;
+	      vertical-align: top;
+	    }}
+	    th {{ color: var(--muted); font-size: 12px; text-transform: uppercase; }}
+	  </style>
 </head>
 <body>
   <main>
@@ -239,12 +373,14 @@ def render_report(bundle: ReportBundle, output_path: Path) -> Path:
       {"<p class='error'><strong>Error:</strong> " + escape(bundle.error) + "</p>" if bundle.error else ""}
     </section>
 
-    <section class="section">
-      <h2>Raw Artifacts</h2>
-      <ul>{artifact_links}</ul>
-    </section>
+	    <section class="section">
+	      <h2>Raw Artifacts</h2>
+	      <ul>{artifact_links}</ul>
+	    </section>
 
-    <div class="section-grid">
+	    {_formal_case_sections(bundle)}
+
+	    <div class="section-grid">
       <section class="section">
         <h2>Log View</h2>
         <div class="note {'warning' if bundle.log.warning else 'ok'}">{escape(bundle.log.warning or 'Local log loaded.')}</div>

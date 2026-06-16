@@ -15,6 +15,7 @@ def check_report_completeness(
     run_id: str,
     runs_root: Path | None = None,
     prometheus_url: str = DEFAULT_PROMETHEUS_URL,
+    formal_case: bool = False,
 ) -> tuple[int, dict[str, Any]]:
     """Verify that a rendered report has log, wandb, and Prometheus views."""
     try:
@@ -56,6 +57,24 @@ def check_report_completeness(
             "warning": bundle.prometheus.warning,
         },
     }
+    if formal_case:
+        view = bundle.formal_case
+        checks["formal_case"] = {
+            "ok": view is not None,
+            "warning": None if view is not None else "formal_case missing from manifest",
+        }
+        if view is not None:
+            checks["formal_matrix"] = {
+                "ok": view.complete_matrix,
+                "warning": None if view.complete_matrix else "; ".join(view.warnings[:5]),
+            }
+            for artifact in view.artifacts:
+                key = "formal_" + artifact.name.replace(" ", "_")
+                checks[key] = {
+                    "ok": artifact.ok,
+                    "path": str(artifact.path) if artifact.path else None,
+                    "warning": artifact.warning,
+                }
     missing = [name for name, item in checks.items() if not item["ok"]]
     payload = {
         "ok": not missing,

@@ -64,6 +64,48 @@ class PrometheusView:
     warning: str | None = None
 
 
+@dataclass(frozen=True)
+class ArtifactStatus:
+    """Local formal-case artifact availability."""
+
+    name: str
+    path: Path | None
+    ok: bool
+    warning: str | None = None
+
+
+@dataclass(frozen=True)
+class VerlCaseMatrixRowView:
+    """One formal Verl case matrix row for reports."""
+
+    input_tokens: int
+    output_tokens: int
+    mode: str
+    status: str
+    tokens_per_second: float | None
+    latency_ms: float | None
+    sample_count: int
+    accuracy: float | None
+    consistency: float | None
+    error: str | None = None
+
+
+@dataclass
+class VerlCaseView:
+    """Normalized formal Verl case report data."""
+
+    available: bool
+    complete_matrix: bool
+    rows: list[VerlCaseMatrixRowView] = field(default_factory=list)
+    length_summary: list[dict[str, Any]] = field(default_factory=list)
+    mode_summary: list[dict[str, Any]] = field(default_factory=list)
+    async_comparison: list[dict[str, Any]] = field(default_factory=list)
+    accuracy_overall: float | None = None
+    consistency_overall: float | None = None
+    artifacts: list[ArtifactStatus] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+
+
 @dataclass
 class ReportBundle:
     """Normalized, partial-friendly report payload."""
@@ -85,3 +127,4 @@ class ReportBundle:
     log: LogView
     wandb: WandbView
     prometheus: PrometheusView
+    formal_case: VerlCaseView | None = None

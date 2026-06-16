@@ -19,8 +19,9 @@ def _bundle(
     report_html: bool = True,
     log: bool = True,
     wandb: bool = True,
-    prometheus: bool = True,
-):
+	    prometheus: bool = True,
+	    formal_case=None,
+	):
     run_root = tmp_path / "run123"
     run_root.mkdir(parents=True, exist_ok=True)
     manifest_path = run_root / "manifest.json"
@@ -41,12 +42,13 @@ def _bundle(
             local_path=tmp_path / "wandb" if wandb else None,
             warning=None if wandb else "缺少 wandb artifact",
         ),
-        prometheus=SimpleNamespace(
-            available=prometheus,
-            query='autoresearch_npu_count{run_id="run123"}',
-            warning=None if prometheus else "Prometheus missing metric",
-        ),
-    )
+	        prometheus=SimpleNamespace(
+	            available=prometheus,
+	            query='autoresearch_npu_count{run_id="run123"}',
+	            warning=None if prometheus else "Prometheus missing metric",
+	        ),
+	        formal_case=formal_case,
+	    )
 
 
 def test_check_report_completeness_passes_when_all_views_exist(tmp_path):
@@ -81,6 +83,22 @@ def test_check_report_completeness_fails_when_html_missing(tmp_path):
 
     assert exit_code == 1
     assert payload["missing"] == ["html"]
+
+
+def test_check_report_completeness_formal_case_fails_when_matrix_incomplete(tmp_path):
+    formal_case = SimpleNamespace(
+        complete_matrix=False,
+        warnings=["missing or failed matrix row: async 1024->16384"],
+        artifacts=[],
+    )
+    bundle = _bundle(tmp_path, formal_case=formal_case)
+
+    with patch("autoresearch.e2e.report_check.load_report_bundle", return_value=bundle):
+        exit_code, payload = check_report_completeness(run_id="run123", formal_case=True)
+
+    assert exit_code == 1
+    assert payload["missing"] == ["formal_matrix"]
+    assert "async" in payload["checks"]["formal_matrix"]["warning"]
 
 
 def _patch_e2e_success():

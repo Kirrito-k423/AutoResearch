@@ -9,6 +9,7 @@ from workspace_core.layout.paths import RUNS_DIR, run_dir
 from .logs import load_log_view
 from .models import ArtifactLink, ReportBundle
 from .prometheus import build_prom_query_url, load_prometheus_view
+from .verl_case import load_verl_case_view
 from .wandb import load_wandb_view
 
 
@@ -37,12 +38,15 @@ def load_report_bundle(
     log_view = load_log_view(manifest)
     wandb_view = load_wandb_view(manifest, base_url=wandb_base_url)
     prom_view = load_prometheus_view(manifest, base_url=prometheus_base_url)
+    formal_case_view = load_verl_case_view(manifest, manifest_path=manifest_path)
 
     warnings = [
         warning
         for warning in (log_view.warning, wandb_view.warning, prom_view.warning)
         if warning
     ]
+    if formal_case_view:
+        warnings.extend(formal_case_view.warnings)
     artifact_links = [ArtifactLink(label="manifest.json", href=manifest_path.as_uri())]
     if log_view.path is not None:
         artifact_links.append(ArtifactLink(label="log.txt", href=log_view.path.as_uri()))
@@ -57,6 +61,15 @@ def load_report_bundle(
             note=manifest.run_id,
         )
     )
+    if formal_case_view:
+        for artifact in formal_case_view.artifacts:
+            if artifact.path is not None and artifact.path.exists():
+                artifact_links.append(
+                    ArtifactLink(
+                        label=artifact.name,
+                        href=artifact.path.as_uri(),
+                    )
+                )
 
     return ReportBundle(
         run_id=manifest.run_id,
@@ -76,4 +89,5 @@ def load_report_bundle(
         log=log_view,
         wandb=wandb_view,
         prometheus=prom_view,
+        formal_case=formal_case_view,
     )

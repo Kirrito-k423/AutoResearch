@@ -1,0 +1,187 @@
+"""Tests for formal Verl case report loading and rendering."""
+from __future__ import annotations
+
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+from datalake.manifest import RunManifest, write
+
+from autoresearch.e2e.report_check import check_report_completeness
+from autoresearch.report.loader import load_report_bundle
+from autoresearch.report.render import render_report
+from autoresearch.report.verl_case import load_verl_case_view
+
+
+class _Response:
+    def __init__(self, payload):
+        self.payload = payload
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def read(self):
+        return json.dumps(self.payload).encode("utf-8")
+
+
+def _prometheus_payload():
+    return {"status": "success", "data": {"result": [{"value": [1718452800, "8"]}]}}
+
+
+def _matrix_rows(*, missing_async_16k: bool = False) -> list[dict[str, object]]:
+    rows = []
+    for output_tokens in (2048, 4096, 8192, 16384):
+        for mode in ("sync", "async"):
+            if missing_async_16k and output_tokens == 16384 and mode == "async":
+                continue
+            rows.append(
+                {
+                    "run_id": "run123",
+                    "input_tokens": 1024,
+                    "output_tokens": output_tokens,
+                    "inference_mode": mode,
+                    "ignore_eos": False,
+                    "status": "passed",
+                    "elapsed_seconds": 2.0,
+                    "tokens_per_second": 1000.0 / (output_tokens / 2048),
+                    "latency_ms": float(output_tokens / 2),
+                    "sample_count": 3,
+                    "accuracy": 0.75 if mode == "sync" else 0.74,
+                    "consistency": 0.95,
+                }
+            )
+    return rows
+
+
+def _seed_formal_run(tmp_path: Path, *, missing_async_16k: bool = False) -> Path:
+    run_root = tmp_path / "run123"
+    run_root.mkdir(parents=True, exist_ok=True)
+    matrix_path = run_root / "matrix-results.jsonl"
+    matrix_path.write_text(
+        "".join(json.dumps(row) + "\n" for row in _matrix_rows(missing_async_16k=missing_async_16k)),
+        encoding="utf-8",
+    )
+    config_path = run_root / "config-20260616T155609.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "run_id": "run123",
+                "config": {
+                    "input_tokens": 1024,
+                    "output_tokens": [2048, 4096, 8192, 16384],
+                    "inference_modes": ["sync", "async"],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    provenance_path = run_root / "provenance.json"
+    provenance_path.write_text(json.dumps([{"repo": "AutoResearch", "commit_sha": "abc123"}]), encoding="utf-8")
+    log_path = run_root / "verl-case.log"
+    log_path.write_text("run_id=run123\nmatrix_rows=8\n", encoding="utf-8")
+    wandb_dir = run_root / "wandb"
+    (wandb_dir / "files").mkdir(parents=True)
+    (wandb_dir / "files" / "wandb-summary.json").write_text(
+        json.dumps({"accuracy": 0.75, "_step": 1}),
+        encoding="utf-8",
+    )
+    prom_path = run_root / "prom" / "formal-case-prometheus.json"
+    prom_path.parent.mkdir(parents=True)
+    prom_path.write_text(json.dumps({"run_id": "run123"}), encoding="utf-8")
+    manifest = RunManifest(
+        run_id="run123",
+        started_at=datetime(2026, 6, 16, 15, 0, tzinfo=timezone.utc),
+        finished_at=datetime(2026, 6, 16, 15, 30, tzinfo=timezone.utc),
+        server="A2-AK-225",
+        conda_env="verl-env",
+        lib="verl",
+        workdir_remote="/home/t00906153",
+        workdir_local=run_root,
+        formal_case={
+            "kind": "verl-case",
+            "matrix_results": str(matrix_path),
+            "log_path": str(log_path),
+        },
+        exit_code=0,
+        config_snapshot=config_path,
+        provenance=[{"repo": "AutoResearch", "commit_sha": "abc123"}],
+        wandb_run_id="run123",
+        wandb_path=wandb_dir,
+        log_files=[log_path],
+        prom_pushed=False,
+        prom_metrics_file=prom_path,
+    )
+    return write(manifest, root=tmp_path)
+
+
+def test_load_verl_case_view_reports_complete_matrix(tmp_path):
+    manifest_path = _seed_formal_run(tmp_path)
+    manifest = RunManifest.model_validate_json(manifest_path.read_text(encoding="utf-8"))
+
+    view = load_verl_case_view(manifest, manifest_path=manifest_path)
+
+    assert view is not None
+    assert view.complete_matrix is True
+    assert len(view.rows) == 8
+    assert {item["output_tokens"] for item in view.length_summary} == {2048, 4096, 8192, 16384}
+    assert isinstance(view.accuracy_overall, float)
+    assert isinstance(view.consistency_overall, float)
+
+
+def test_load_verl_case_view_warns_when_async_16k_missing(tmp_path):
+    manifest_path = _seed_formal_run(tmp_path, missing_async_16k=True)
+    manifest = RunManifest.model_validate_json(manifest_path.read_text(encoding="utf-8"))
+
+    view = load_verl_case_view(manifest, manifest_path=manifest_path)
+
+    assert view is not None
+    assert view.complete_matrix is False
+    assert any("async" in warning and "16384" in warning for warning in view.warnings)
+
+
+def test_render_formal_case_sections(tmp_path, monkeypatch):
+    _seed_formal_run(tmp_path)
+    monkeypatch.setattr("autoresearch.report.prometheus.urlopen", lambda *args, **kwargs: _Response(_prometheus_payload()))
+    bundle = load_report_bundle("run123", root=tmp_path)
+    output = tmp_path / "run123" / "report.html"
+
+    render_report(bundle, output)
+
+    html = output.read_text(encoding="utf-8")
+    assert "Verl Formal Case Matrix" in html
+    assert "Sequence Length Impact" in html
+    assert "Sync vs Async Impact" in html
+    assert "Accuracy" in html
+    assert "Consistency" in html
+    assert "Provenance" in html
+    assert "config snapshot" in html
+    assert "matrix results" in html
+
+
+def test_formal_report_completeness_fails_when_matrix_row_missing(tmp_path, monkeypatch):
+    _seed_formal_run(tmp_path, missing_async_16k=True)
+    (tmp_path / "run123" / "report.html").write_text("<html></html>", encoding="utf-8")
+    monkeypatch.setattr("autoresearch.report.prometheus.urlopen", lambda *args, **kwargs: _Response(_prometheus_payload()))
+
+    exit_code, payload = check_report_completeness(
+        run_id="run123",
+        runs_root=tmp_path,
+        formal_case=True,
+    )
+
+    assert exit_code == 1
+    assert payload["ok"] is False
+    assert "formal_matrix" in payload["missing"]
+
+
+def test_verl_case_docs_cover_command_and_sources():
+    text = Path("docs/verl-case.md").read_text(encoding="utf-8")
+
+    assert "autoresearch run verl-case" in text
+    assert "/Users/Zhuanz/autoResearchData" in text
+    assert "Qwen/Qwen3.5-2B" in text
+    assert "hiyouga/geometry3k" in text
+    assert "quay.io/ascend/verl:verl-8.5.2-910b-ubuntu22.04-py3.11-qwen3-5" in text

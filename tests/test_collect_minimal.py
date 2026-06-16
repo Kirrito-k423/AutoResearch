@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import importlib
 import pytest
 from unittest.mock import patch, MagicMock
 
@@ -12,6 +13,10 @@ from autoresearch.collect.minimal import (
     _resolve_spec,
     _LIB_TO_RUNNER,
 )
+
+
+_verl_runner = importlib.import_module("workspace-adapter.verl.minimal_runner")
+_veomni_runner = importlib.import_module("workspace-adapter.veomni.minimal_runner")
 
 
 def _spec_dict(name="A2-AK-225", conda_env="verl-qwen3.5", workdir="/root"):
@@ -93,7 +98,7 @@ servers:
     user: root
     conda_env: verl-qwen3.5
 """)
-    with patch("workspace-adapter.verl.minimal_runner.run_minimal") as mock:
+    with patch.object(_verl_runner, "run_minimal") as mock:
         mock.return_value = {"lib": "verl", "sum_value": 5.29, "npu_count": 8, "exit_code": 0, "elapsed_ms": 22000, "stdout": "SUM= 5.29", "stderr": "", "error": None, "timeout": False}
         r = collect_minimal("A2-AK-225", lib="verl", config_path=config, run_id="run123")
     assert r["sum_value"] == 5.29
@@ -116,7 +121,7 @@ servers:
     user: root
     conda_env: veomni_qwen35
 """)
-    with patch("workspace-adapter.veomni.minimal_runner.run_minimal") as mock:
+    with patch.object(_veomni_runner, "run_minimal") as mock:
         mock.return_value = {"lib": "veomni", "sum_value": 7.58, "npu_count": 8, "exit_code": 0, "elapsed_ms": 19000, "stdout": "SUM= 7.58", "stderr": "", "error": None, "timeout": False}
         r = collect_minimal("A2-AK-225", lib="veomni", config_path=config)
     assert r["sum_value"] == 7.58
