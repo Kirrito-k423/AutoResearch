@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: MinViable Loop
-status: v1.0 MinViable Loop archived and tagged — PR #1
-stopped_at: v1.0 milestone archived and tagged; next route is v1.1 planning via gsd-new-milestone
-last_updated: "2026-06-15T17:02:00Z"
-last_activity: 2026-06-15
+milestone: v1.1
+milestone_name: Stable
+status: Phase 14 context captured for Verl formal-case experiment planning
+stopped_at: Phase 14 context gathered; next route is gsd-plan-phase 14
+last_updated: "2026-06-16T15:15:40Z"
+last_activity: 2026-06-16
 progress:
-  total_phases: 13
+  total_phases: 14
   completed_phases: 13
   total_plans: 37
   completed_plans: 37
-  percent: 100
+  percent: 93
 ---
 
-# State: AutoResearch v1.0
+# State: AutoResearch v1.1
 
 ## Project Reference
 
@@ -22,16 +22,18 @@ See: .planning/PROJECT.md (updated 2026-06-15 after v1.0 milestone)
 
 **Core value:** "常实践，详记录，知得失，会设计，有整理"——每个 skill 跑一次都留下可被复盘、可被二次开发的产物。
 
-**Current focus:** v1.0 is archived; next immediate step is defining v1.1.
+**Current focus:** Phase 14 planning for a formal Verl case, including remote Ascend container setup, Qwen/Geo3K data preparation, local observability persistence, code-version provenance, and workspace-adapter/verl skill sedimentation.
 
 ## Position
 
-- **Milestone:** v1.0 MinViable Loop archived
-- **Phase:** v1.1 planning
-- **Plan:** Next milestone
-- **Last activity:** 2026-06-15
+- **Milestone:** v1.1 Stable planning
+- **Phase:** Phase 14 — 跑通 Verl 正式案例并沉淀 workspace-adapter/verl 实验闭环
+- **Plan:** Not planned yet
+- **Last activity:** 2026-06-16
 
 ## Session Continuity
+
+**Resume file:** `.planning/phases/14-verl-workspace-adapter-verl/14-CONTEXT.md`
 
 - **Last session:** 2026-06-15T10:28:47Z
 - **Stopped At:** v1.0 archive created and living requirements removed after snapshot
@@ -188,21 +190,27 @@ Items acknowledged and deferred at milestone close on 2026-06-15:
 - **5 台 BMC iBMC 协议未确认**（2026-06-12）— 待用户确认走 Redfish 还是 `/api/`
 - **A3-AX-153 暂宕机**（2026-06-12）— 用户说明动态 IP 修好再加
 
+## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 14 added: 跑通 Verl 正式案例并沉淀 workspace-adapter/verl 实验闭环
+
 ## Next Steps
 
-1. `$gsd-new-milestone` 进入 v1.1 规划
-2. Define v1.1 requirements around hardening and remaining hardware/network gaps
+1. `$gsd-plan-phase 14` 拆解 Verl 正式案例闭环计划
+2. Capture requirements for remote Ascend container setup, Qwen/Geo3K datasets, local wandb/Prometheus persistence, and multi-repo code provenance
 3. Keep PR #1 open until user is ready to merge
 
 ## Continuation Prompts
 
 ```
-$gsd-new-milestone
+$gsd-plan-phase 14
 ```
 
 ## Metrics
 
-- **Phases planned:** 13
+- **Phases planned:** 14
 - **Phases complete:** 13 complete
 - **Plans complete:** 37 summaries through Phase 13
 - **Requirements:** 88 archived, 82 checked, 6 known gaps

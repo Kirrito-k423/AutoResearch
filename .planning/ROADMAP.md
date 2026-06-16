@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 MinViable Loop** — Phases 1-13, shipped 2026-06-15. Archive: `.planning/milestones/v1.0/`
-- 📋 **v1.1 Stable** — resilience, multi-server hardening, CI, and remaining hardware/network gaps (planned)
+- 📋 **v1.1 Stable** — Phase 14 formal Verl case loop plus resilience, multi-server hardening, CI, and remaining hardware/network gaps (planning)
 - 📋 **v2.0 Distribute** — multi-node scheduling and broader infrastructure support (planned)
 
 ## Phases
@@ -32,9 +32,20 @@
 | Milestone | Phases | Plans Complete | Status | Completed |
 |---|---:|---:|---|---|
 | v1.0 MinViable Loop | 13/13 | 37/37 | Shipped | 2026-06-15 |
-| v1.1 Stable | TBD | 0/0 | Not started | - |
+| v1.1 Stable | 1/1 | 0/0 | Planning | - |
 | v2.0 Distribute | TBD | 0/0 | Not started | - |
 
 ## Next
 
-Run `$gsd-new-milestone` to define v1.1 requirements and roadmap.
+Run `$gsd-plan-phase 14` to break down the Verl formal-case experiment loop.
+
+### Phase 14: 跑通 Verl 正式案例并沉淀 workspace-adapter/verl 实验闭环
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 13
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 14 to break down)
