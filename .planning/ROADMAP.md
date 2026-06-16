@@ -32,7 +32,7 @@
 | Milestone | Phases | Plans Complete | Status | Completed |
 |---|---:|---:|---|---|
 | v1.0 MinViable Loop | 13/13 | 37/37 | Shipped | 2026-06-15 |
-| v1.1 Stable | 0/1 | 0/4 | Planned | - |
+| v1.1 Stable | 0/1 | 1/4 | In Progress | - |
 | v2.0 Distribute | TBD | 0/0 | Not started | - |
 
 ## Next
@@ -50,7 +50,7 @@ Plans:
 
 **Wave 1**
 
-- [ ] 14-01: Formal Case Config, Matrix, Evaluation, And Provenance Models
+- [x] 14-01: Formal Case Config, Matrix, Evaluation, And Provenance Models
 
 **Wave 2 *(blocked on Wave 1 completion)***
 
