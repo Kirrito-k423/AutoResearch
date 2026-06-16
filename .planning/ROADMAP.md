@@ -32,12 +32,12 @@
 | Milestone | Phases | Plans Complete | Status | Completed |
 |---|---:|---:|---|---|
 | v1.0 MinViable Loop | 13/13 | 37/37 | Shipped | 2026-06-15 |
-| v1.1 Stable | 0/1 | 2/4 | In Progress | - |
+| v1.1 Stable | 0/1 | 3/4 | In Progress | - |
 | v2.0 Distribute | TBD | 0/0 | Not started | - |
 
 ## Next
 
-Run `$gsd-execute-phase 14` to continue with Plan 14-03: `autoresearch run verl-case` orchestration and local artifacts.
+Run `$gsd-execute-phase 14` to continue with Plan 14-04: formal report, verification, and UAT closure.
 
 ### Phase 14: 跑通 Verl 正式案例并沉淀 workspace-adapter/verl 实验闭环
 
@@ -58,7 +58,7 @@ Plans:
 
 **Wave 3 *(blocked on Wave 2 completion)***
 
-- [ ] 14-03: `autoresearch run verl-case` Orchestration And Local Artifacts
+- [x] 14-03: `autoresearch run verl-case` Orchestration And Local Artifacts
 
 **Wave 4 *(blocked on Wave 3 completion)***
 
