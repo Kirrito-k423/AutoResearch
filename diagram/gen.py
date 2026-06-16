@@ -216,10 +216,10 @@ add(rect(MD_X+MD_W/2-180, DFX_Y+DFX_H+6, 360, 18, fill="#FFFFFF", stroke="#CBD5E
 add(text(MD_X+MD_W/2, DFX_Y+DFX_H+18, "通过 mode=x 使能不同 skill 且场景需要的代码", size=10, color="#475569"))
 add(arrow(MD_X + MD_W/2, DFX_Y+DFX_H+24, MD_X + MD_W/2, ADAP_Y-4, color=ARROW, sw=1.2, head=True))
 
-# verl-workspace-adapter
+# workspace-adapter
 ADAP_H = 220
 add(rect(MD_X, ADAP_Y, MD_W, ADAP_H, fill=BLUE_FILL, stroke=BLUE_LINE, sw=1.6))
-add(text(MD_X+16, ADAP_Y+20, "verl-workspace-adapter  ·  场景经验 / 治理与约束", size=13, color=BLUE_TEXT, weight=700, anchor="start"))
+add(text(MD_X+16, ADAP_Y+20, "workspace-adapter  ·  场景经验 / 治理与约束", size=13, color=BLUE_TEXT, weight=700, anchor="start"))
 add(text(MD_X+MD_W-16, ADAP_Y+20, "(对接 DFX · 训练全流程 Skill 集)", size=11, color="#475569", weight=500, anchor="end"))
 
 sk_y = ADAP_Y+38

@@ -1,6 +1,6 @@
 # workspace-core — 沉淀 1：通用底座
 
-> 8 skill 共用的通用工具。**不依赖** verl-workspace-adapter 或 datalake。
+> 8 skill 共用的通用工具。**不依赖** workspace-adapter 或 datalake。
 
 ## 职责
 

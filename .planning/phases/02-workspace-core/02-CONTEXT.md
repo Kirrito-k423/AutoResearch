@@ -6,8 +6,8 @@
 <domain>
 ## Phase Boundary
 
-三沉淀层（`workspace-core/` / `verl-workspace-adapter/` / `datalake/`）中的 `workspace-core/` 全部跑通：7 子模块（ssh / secrets / config / progress / log / layout / result）提供统一接口，下游 8 skill 可直接 import 使用。`ar-ping` CLI 端到端验证 SSH + 反向代理能力。
-本阶段不交付 verl-workspace-adapter / datalake（Phase 11 范围），不交付 8 skill 业务逻辑（Phase 3-10 范围）。
+三沉淀层（`workspace-core/` / `workspace-adapter/` / `datalake/`）中的 `workspace-core/` 全部跑通：7 子模块（ssh / secrets / config / progress / log / layout / result）提供统一接口，下游 8 skill 可直接 import 使用。`ar-ping` CLI 端到端验证 SSH + 反向代理能力。
+本阶段不交付 workspace-adapter / datalake（Phase 11 范围），不交付 8 skill 业务逻辑（Phase 3-10 范围）。
 </domain>
 
 <decisions>

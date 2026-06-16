@@ -1,4 +1,4 @@
-"""Tests for verl-workspace-adapter minimal runners (Phase 08-01, D-44)."""
+"""Tests for workspace-adapter minimal runners (Phase 08-01, D-44)."""
 from __future__ import annotations
 
 from unittest.mock import patch, MagicMock
@@ -7,15 +7,15 @@ import pytest
 from workspace_core.config import ServerSpec
 from workspace_core.ssh import CommandTimeoutError
 
-from verl_workspace_adapter.common import conda_utils as _conda
-from verl_workspace_adapter.common.conda_utils import run_in_env, build_conda_command, build_cd_command
-from verl_workspace_adapter.verl.minimal_runner import (
+from workspace-adapter.common import conda_utils as _conda
+from workspace-adapter.common.conda_utils import run_in_env, build_conda_command, build_cd_command
+from workspace-adapter.verl.minimal_runner import (
     run_minimal,
     _parse_one_step_output,
     ONE_STEP_SCRIPT_TMPL,
     MinimalResult,
 )
-from verl_workspace_adapter.veomni.minimal_runner import run_minimal as run_minimal_veomni
+from workspace-adapter.veomni.minimal_runner import run_minimal as run_minimal_veomni
 
 
 # === conda_utils ===
@@ -84,7 +84,7 @@ from contextlib import contextmanager
 @contextmanager
 def _patch_runner_io(remote_return):
     """统一 patch runner 用的 SSHClient.sftp + run_in_env (D-45 1-step)."""
-    with patch("verl_workspace_adapter.verl.minimal_runner.run_in_env") as mock_run, \
+    with patch("workspace-adapter.verl.minimal_runner.run_in_env") as mock_run, \
          patch("workspace_core.ssh.client.SSHClient") as MockClient, \
          patch("workspace_core.secrets.resolve_secret", return_value=None):
         MockClient.return_value.sftp.return_value = MagicMock()
@@ -95,7 +95,7 @@ def _patch_runner_io(remote_return):
 
 def test_run_minimal_pass():
     spec = _mock_spec()
-    with patch("verl_workspace_adapter.verl.minimal_runner.run_in_env") as mock_run, \
+    with patch("workspace-adapter.verl.minimal_runner.run_in_env") as mock_run, \
          patch("workspace_core.ssh.client.SSHClient") as MockClient:
         MockClient.return_value.sftp.return_value = MagicMock()  # sftp.put mock
         mock_run.return_value = (0, "[INFO] init\nSUM= 5.29\nNPU_COUNT= 8\n", "")
@@ -116,7 +116,7 @@ def test_run_minimal_pass():
 
 def test_run_minimal_with_run_id_tees_remote_log():
     spec = _mock_spec()
-    with patch("verl_workspace_adapter.verl.minimal_runner.run_in_env") as mock_run, \
+    with patch("workspace-adapter.verl.minimal_runner.run_in_env") as mock_run, \
          patch("workspace_core.ssh.client.SSHClient") as MockClient:
         MockClient.return_value.sftp.return_value = MagicMock()
         mock_run.return_value = (0, "SUM= 5.29\nNPU_COUNT= 8\n", "")
@@ -128,7 +128,7 @@ def test_run_minimal_with_run_id_tees_remote_log():
 
 def test_run_minimal_veomni_lib():
     spec = _mock_spec()
-    with patch("verl_workspace_adapter.veomni.minimal_runner.run_in_env") as mock_run, \
+    with patch("workspace-adapter.veomni.minimal_runner.run_in_env") as mock_run, \
          patch("workspace_core.ssh.client.SSHClient") as MockClient:
         MockClient.return_value.sftp.return_value = MagicMock()
         mock_run.return_value = (0, "SUM= 7.58\nNPU_COUNT= 8\n", "")
@@ -144,7 +144,7 @@ def test_run_minimal_veomni_lib():
 
 def test_run_minimal_timeout():
     spec = _mock_spec()
-    with patch("verl_workspace_adapter.verl.minimal_runner.run_in_env") as mock_run, \
+    with patch("workspace-adapter.verl.minimal_runner.run_in_env") as mock_run, \
          patch("workspace_core.ssh.client.SSHClient") as MockClient:
         MockClient.return_value.sftp.return_value = MagicMock()
         mock_run.side_effect = CommandTimeoutError("test timeout 30s")
@@ -156,7 +156,7 @@ def test_run_minimal_timeout():
 
 def test_run_minimal_exit_nonzero():
     spec = _mock_spec()
-    with patch("verl_workspace_adapter.verl.minimal_runner.run_in_env") as mock_run, \
+    with patch("workspace-adapter.verl.minimal_runner.run_in_env") as mock_run, \
          patch("workspace_core.ssh.client.SSHClient") as MockClient:
         MockClient.return_value.sftp.return_value = MagicMock()
         mock_run.return_value = (1, "", "ModuleNotFoundError: No module named 'verl'")
@@ -168,7 +168,7 @@ def test_run_minimal_exit_nonzero():
 
 def test_run_minimal_no_sum_in_stdout():
     spec = _mock_spec()
-    with patch("verl_workspace_adapter.verl.minimal_runner.run_in_env") as mock_run, \
+    with patch("workspace-adapter.verl.minimal_runner.run_in_env") as mock_run, \
          patch("workspace_core.ssh.client.SSHClient") as MockClient:
         MockClient.return_value.sftp.return_value = MagicMock()
         mock_run.return_value = (0, "wandb init...\nNPU_COUNT= 8\n", "")

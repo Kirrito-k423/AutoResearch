@@ -150,7 +150,7 @@ uv run pytest -q
 
 ## Issues Encountered
 
-- hatch editable 的 `force-include` 目录不会把连字符目录直接作为可编辑包导入。修改 `workspace-core/` / `verl-workspace-adapter/` 后需要执行 `uv pip install -e .` 同步到 `.venv/site-packages`.
+- hatch editable 的 `force-include` 目录不会把连字符目录直接作为可编辑包导入。修改 `workspace-core/` / `workspace-adapter/` 后需要执行 `uv pip install -e .` 同步到 `.venv/site-packages`.
 - 既有 `tests/test_ssh_bootstrap.py::test_install_nopasswd_sudo_root_user_skips_sudo_prefix` 的 mock 未处理 root 用户 `whoami` 验证, 全量测试暴露后补齐 fixture。
 
 ## Next Steps

@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from workspace_core.config import ServerSpec
-from verl_workspace_adapter.common.conda_utils import _ssh_exec_capture
+from workspace-adapter.common.conda_utils import _ssh_exec_capture
 
 
 # === Exceptions (D-45: 4 类错误诊断) ===

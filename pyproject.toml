@@ -37,7 +37,7 @@ packages = ["autoresearch"]
 # hyphen 目录 → underscore 模块 (D-44: 训练栈适配, 08-04: datalake)
 [tool.hatch.build.targets.wheel.force-include]
 "workspace-core" = "workspace_core"
-"verl-workspace-adapter" = "verl_workspace_adapter"
+"workspace-adapter" = "workspace-adapter"
 "datalake" = "datalake"
 
 [tool.pytest.ini_options]

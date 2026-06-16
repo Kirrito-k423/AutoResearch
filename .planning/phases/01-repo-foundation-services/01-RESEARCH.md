@@ -540,7 +540,7 @@ services:
 
 ## 三沉淀层
 - `workspace-core/`：通用（SSH / config / secrets / progress / log / layout）
-- `verl-workspace-adapter/`：训练栈适配
+- `workspace-adapter/`：训练栈适配
 - `datalake/`：数据采集与持久化
 
 ## 进度协议

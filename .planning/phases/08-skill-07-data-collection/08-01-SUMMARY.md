@@ -26,13 +26,13 @@ tech-stack:
 
 key-files:
   created:
-    - verl-workspace-adapter/__init__.py
-    - verl-workspace-adapter/common/__init__.py
-    - verl-workspace-adapter/common/conda_utils.py
-    - verl-workspace-adapter/verl/__init__.py
-    - verl-workspace-adapter/verl/minimal_runner.py
-    - verl-workspace-adapter/veomni/__init__.py
-    - verl-workspace-adapter/veomni/minimal_runner.py
+    - workspace-adapter/__init__.py
+    - workspace-adapter/common/__init__.py
+    - workspace-adapter/common/conda_utils.py
+    - workspace-adapter/verl/__init__.py
+    - workspace-adapter/verl/minimal_runner.py
+    - workspace-adapter/veomni/__init__.py
+    - workspace-adapter/veomni/minimal_runner.py
     - autoresearch/collect/__init__.py
     - autoresearch/collect/minimal.py
     - tests/test_minimal_runner.py
@@ -44,7 +44,7 @@ key-decisions:
   - "D-44 决策 (CONTEXT 锁): minimal_runner 复用 Phase 7 1-step 脚本, 不引 framework SDK"
   - "D-46 兜底: 08-01 暂不改 schema, getattr(spec, 'workdir', '/root') 兼容 08-03"
   - "D-44 lib 派发: 动态 importlib.import_module, 避免 hard dep"
-  - "hyphen 目录: pyproject.toml force-include 把 'verl-workspace-adapter' → 'verl_workspace_adapter', 同 workspace-core 模式"
+  - "hyphen 目录: pyproject.toml force-include 把 'workspace-adapter' → 'workspace-adapter', 同 workspace-core 模式"
 
 patterns-established:
   - "D-44 'runner 单进程 python -c' 模式: 跑一次, 拿 stdout, 解析 SUM= / NPU_COUNT="
@@ -60,11 +60,11 @@ completed: 2026-06-15
 
 # Phase 08 Plan 01: minimal-runner 抽象 + verl/veomni 实例 (D-44) Summary
 
-**minimal_runner 抽象落地: `verl-workspace-adapter/` 包骨架 + `common/conda_utils.py` + `verl/minimal_runner.py` + `veomni/minimal_runner.py` + `autoresearch/collect/minimal.py` 编排层. 22 个新单测覆盖 5 路径 (PASS / timeout / exit!=0 / no-SUM / lib dispatch), 全测试 285/286 通过 (1 预存在 ssh_bootstrap 失败无关). 真机 A2-AK-225 跑通: sum_value=7.91, npu_count=8, 20s 完成.**
+**minimal_runner 抽象落地: `workspace-adapter/` 包骨架 + `common/conda_utils.py` + `verl/minimal_runner.py` + `veomni/minimal_runner.py` + `autoresearch/collect/minimal.py` 编排层. 22 个新单测覆盖 5 路径 (PASS / timeout / exit!=0 / no-SUM / lib dispatch), 全测试 285/286 通过 (1 预存在 ssh_bootstrap 失败无关). 真机 A2-AK-225 跑通: sum_value=7.91, npu_count=8, 20s 完成.**
 
 ## Accomplishments
 
-### 1. `verl-workspace-adapter/common/conda_utils.py` (D-44, D-46)
+### 1. `workspace-adapter/common/conda_utils.py` (D-44, D-46)
 
 ```python
 def build_conda_command(conda_env: str, command: str) -> str:
@@ -79,7 +79,7 @@ def run_in_env(spec, command, conda_env="", workdir="", timeout=30.0):
 
 复用 Phase 7 `_ssh_exec_capture` 模式 + `workspace_core.ssh.SSHClient`.
 
-### 2. `verl-workspace-adapter/verl/minimal_runner.py` (D-44)
+### 2. `workspace-adapter/verl/minimal_runner.py` (D-44)
 
 ```python
 ONE_STEP_SCRIPT_TMPL = """\
@@ -103,8 +103,8 @@ def run_minimal(spec, conda_env="", workdir="", lib="verl", timeout=30.0) -> Min
 
 ```python
 _LIB_TO_RUNNER = {
-    "verl": "verl_workspace_adapter.verl.minimal_runner",
-    "veomni": "verl_workspace_adapter.veomni.minimal_runner",
+    "verl": "workspace-adapter.verl.minimal_runner",
+    "veomni": "workspace-adapter.veomni.minimal_runner",
 }
 
 def collect_minimal(server, lib="verl", config_path=None, workdir_override=None, timeout=30.0):
@@ -121,7 +121,7 @@ def collect_minimal(server, lib="verl", config_path=None, workdir_override=None,
 ```toml
 [tool.hatch.build.targets.wheel.force-include]
 "workspace-core" = "workspace_core"
-"verl-workspace-adapter" = "verl_workspace_adapter"
+"workspace-adapter" = "workspace-adapter"
 "datalake" = "datalake"
 ```
 

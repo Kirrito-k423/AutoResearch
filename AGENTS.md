@@ -29,7 +29,7 @@
 ## 三沉淀层
 
 - `workspace-core/`：通用（SSH / config / secrets / progress / log / layout）
-- `verl-workspace-adapter/`：训练栈适配（verl / veomni）
+- `workspace-adapter/`：训练栈适配（verl / veomni）
 - `datalake/`：数据采集与持久化（wandb / log / prom / manifest）
 
 互不混用；每个 skill 可独立维护。

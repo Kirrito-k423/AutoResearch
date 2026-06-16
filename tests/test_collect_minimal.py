@@ -93,7 +93,7 @@ servers:
     user: root
     conda_env: verl-qwen3.5
 """)
-    with patch("verl_workspace_adapter.verl.minimal_runner.run_minimal") as mock:
+    with patch("workspace-adapter.verl.minimal_runner.run_minimal") as mock:
         mock.return_value = {"lib": "verl", "sum_value": 5.29, "npu_count": 8, "exit_code": 0, "elapsed_ms": 22000, "stdout": "SUM= 5.29", "stderr": "", "error": None, "timeout": False}
         r = collect_minimal("A2-AK-225", lib="verl", config_path=config, run_id="run123")
     assert r["sum_value"] == 5.29
@@ -116,7 +116,7 @@ servers:
     user: root
     conda_env: veomni_qwen35
 """)
-    with patch("verl_workspace_adapter.veomni.minimal_runner.run_minimal") as mock:
+    with patch("workspace-adapter.veomni.minimal_runner.run_minimal") as mock:
         mock.return_value = {"lib": "veomni", "sum_value": 7.58, "npu_count": 8, "exit_code": 0, "elapsed_ms": 19000, "stdout": "SUM= 7.58", "stderr": "", "error": None, "timeout": False}
         r = collect_minimal("A2-AK-225", lib="veomni", config_path=config)
     assert r["sum_value"] == 7.58
@@ -135,5 +135,5 @@ def test_collect_minimal_unsupported_lib_raises(tmp_path):
 def test_collect_minimal_lib_dispatch_map():
     """D-43 决策: 仅 verl/veomni, 派发表锁定 2 入口."""
     assert set(_LIB_TO_RUNNER.keys()) == {"verl", "veomni"}
-    assert _LIB_TO_RUNNER["verl"] == "verl_workspace_adapter.verl.minimal_runner"
-    assert _LIB_TO_RUNNER["veomni"] == "verl_workspace_adapter.veomni.minimal_runner"
+    assert _LIB_TO_RUNNER["verl"] == "workspace-adapter.verl.minimal_runner"
+    assert _LIB_TO_RUNNER["veomni"] == "workspace-adapter.veomni.minimal_runner"

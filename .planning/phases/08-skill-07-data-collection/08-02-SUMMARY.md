@@ -29,8 +29,8 @@ key-files:
     - datalake/wandb/sync.py
     - tests/test_datalake_wandb_sync.py
   modified:
-    - verl-workspace-adapter/verl/minimal_runner.py  # 加 wandb 离线 + SFTP 上传
-    - verl-workspace-adapter/veomni/minimal_runner.py  # 同上
+    - workspace-adapter/verl/minimal_runner.py  # 加 wandb 离线 + SFTP 上传
+    - workspace-adapter/veomni/minimal_runner.py  # 同上
     - tests/test_minimal_runner.py  # mock SSHClient 走通
 
 key-decisions:

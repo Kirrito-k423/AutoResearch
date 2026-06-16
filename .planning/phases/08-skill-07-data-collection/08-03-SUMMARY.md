@@ -32,9 +32,9 @@ key-files:
     - workspace-core/config/schema.py
     - config/config.example.yaml
     - autoresearch/collect/minimal.py
-    - verl-workspace-adapter/common/conda_utils.py
-    - verl-workspace-adapter/verl/minimal_runner.py
-    - verl-workspace-adapter/veomni/minimal_runner.py
+    - workspace-adapter/common/conda_utils.py
+    - workspace-adapter/verl/minimal_runner.py
+    - workspace-adapter/veomni/minimal_runner.py
     - tests/workspace-core/test_config.py
     - tests/test_collect_minimal.py
     - tests/test_minimal_runner.py

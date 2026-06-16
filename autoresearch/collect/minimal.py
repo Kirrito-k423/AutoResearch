@@ -1,8 +1,8 @@
 """autoresearch.collect.minimal — minimal-runner 编排 (D-44, Phase 08-01).
 
 `collect_minimal(server, lib, ...)` 读 config → 找 spec → 派发到对应 runner
-(verl → verl-workspace-adapter.verl.minimal_runner,
- veomni → verl-workspace-adapter.veomni.minimal_runner).
+(verl → workspace-adapter.verl.minimal_runner,
+ veomni → workspace-adapter.veomni.minimal_runner).
 """
 from __future__ import annotations
 
@@ -15,8 +15,8 @@ from workspace_core.config import ConfigError, ServerSpec, from_path
 # === Lib dispatch (D-44: verl / veomni 对称) ===
 
 _LIB_TO_RUNNER = {
-    "verl": "verl_workspace_adapter.verl.minimal_runner",
-    "veomni": "verl_workspace_adapter.veomni.minimal_runner",
+    "verl": "workspace-adapter.verl.minimal_runner",
+    "veomni": "workspace-adapter.veomni.minimal_runner",
 }
 
 

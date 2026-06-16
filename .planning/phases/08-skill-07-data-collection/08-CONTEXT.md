@@ -25,8 +25,8 @@ locks:
 **Rationale:** Phase 7 1-step 已经在 A2-AK-225 真机验证 (SUM=5.29, NPU=8, 22s 完成). 复用避免重新设计 / 重新验证.
 
 **Affected files:**
-- `verl-workspace-adapter/verl/runner.py` — `MinimalRunner.run(server, lib='verl')` 包成 1-step
-- `verl-workspace-adapter/veomni/runner.py` — 同上 lib='veomni'
+- `workspace-adapter/verl/runner.py` — `MinimalRunner.run(server, lib='verl')` 包成 1-step
+- `workspace-adapter/veomni/runner.py` — 同上 lib='veomni'
 - `autoresearch/collect/minimal.py` — orchestrator, 调 runner + 落 3 路数据
 
 ## D-45 wandb 路径 = 离线模式 + 本地 sync (locked, recommended)
@@ -88,7 +88,7 @@ class RunManifest(BaseModel):
 
 | Plan | 内容 | 关键文件 |
 |---|---|---|
-| 08-01 | minimal-runner 抽象 + verl/veomni 实例 | `verl-workspace-adapter/verl/runner.py`, `verl-workspace-adapter/veomni/runner.py`, `autoresearch/collect/minimal.py` |
+| 08-01 | minimal-runner 抽象 + verl/veomni 实例 | `workspace-adapter/verl/runner.py`, `workspace-adapter/veomni/runner.py`, `autoresearch/collect/minimal.py` |
 | 08-02 | datalake/wandb/sync.py 离线→本地 | `datalake/wandb/sync.py` |
 | 08-03 | datalake/logs/collector.py 实时拉 | `datalake/logs/collector.py` (rsync 增量) |
 | 08-04 | datalake/prometheus/push_gateway.py + manifest 写入 | `datalake/prometheus/push_gateway.py`, `datalake/manifest/{schema,writer}.py`, `autoresearch/collect/manifest.py` |

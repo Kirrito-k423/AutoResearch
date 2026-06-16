@@ -16,7 +16,7 @@ autoresearch/
 ├── docs/                               # 用户文档
 │
 ├── workspace-core/                     # 沉淀 1：通用底座
-├── verl-workspace-adapter/             # 沉淀 2：训练栈适配
+├── workspace-adapter/             # 沉淀 2：训练栈适配
 ├── datalake/                           # 沉淀 3：数据层
 │
 ├── .agents/                            # AI 协作者入口
@@ -108,7 +108,7 @@ autoresearch report <run-id> # 只跑 08
 | `autoresearch services {status,start,stop}` CLI | ✅ | Phase 1 |
 | 11 个 pytest 单测 | ✅ | Phase 1 |
 | `workspace-core/` 沉淀 | ⏳ | Phase 2 |
-| `verl-workspace-adapter/` | ⏳ | Phase 11 |
+| `workspace-adapter/` | ⏳ | Phase 11 |
 | `datalake/` | ⏳ | Phase 11 |
 | `.agents/skills/0X-*/SKILL.md` | ⏳ 占位 (本目录已建) | Phase 3-10 |
 | 顶层 `autoresearch check all` | ⏳ | Phase 12 |

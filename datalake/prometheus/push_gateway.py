@@ -5,7 +5,7 @@ import re
 import shlex
 
 from workspace_core.config import ServerSpec
-from verl_workspace_adapter.common.conda_utils import run_in_env
+from workspace-adapter.common.conda_utils import run_in_env
 
 
 class PushError(Exception):

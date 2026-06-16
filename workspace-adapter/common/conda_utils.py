@@ -1,4 +1,4 @@
-"""verl-workspace-adapter.common.conda_utils — 共享 SSH + conda 工具 (D-44).
+"""workspace-adapter.common.conda_utils — 共享 SSH + conda 工具 (D-44).
 
 复用 workspace_core.ssh.SSHClient, 单次干净执行 `conda run -n <env>` 命令.
 不引第三方客户端 (D-39 决策).
