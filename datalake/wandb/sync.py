@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import importlib
 import shutil
 import subprocess
 import time
@@ -15,7 +16,8 @@ from pathlib import Path
 from typing import Any
 
 from workspace_core.config import ServerSpec
-from workspace-adapter.common.conda_utils import _ssh_exec_capture
+
+_ssh_exec_capture = importlib.import_module("workspace-adapter.common.conda_utils")._ssh_exec_capture
 
 
 # === Exceptions (D-45: 4 类错误诊断) ===

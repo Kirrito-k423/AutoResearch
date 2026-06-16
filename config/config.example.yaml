@@ -115,3 +115,10 @@ verl_case:
   inference_modes: [sync, async]
   github_owner: Kirrito-k423
   remote_workdir: /home/t00906153
+  # Optional dependency checkouts for provenance / optional commit+push.
+  # Missing paths become warnings, not hard failures.
+  dependency_repo_paths:
+    verl: /home/t00906153/verl
+    vllm: /home/t00906153/vllm
+    transformers: /home/t00906153/transformers
+    mindspeed: /home/t00906153/MindSpeed

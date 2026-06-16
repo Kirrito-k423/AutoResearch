@@ -476,6 +476,74 @@ def run_smoke_cmd(
     raise click.exceptions.Exit(exit_code)
 
 
+@run_group.command(name="verl-case")
+@click.option("--server", default=None, help="config 中的服务器名称；不传则使用第一台。")
+@click.option("--config", "cfg_path", default=None, help="配置文件路径。")
+@click.option("--workdir", default=None, help="覆盖 config.servers[].workdir。")
+@click.option("--timeout", default=3600.0, type=float, help="formal case timeout 秒数。")
+@click.option("--run-id", default=None, help="指定 run id；默认自动生成。")
+@click.option("--cache-root", default=None, help="覆盖 verl_case.cache_root。")
+@click.option(
+    "--pushgateway-url",
+    default="http://127.0.0.1:17891",
+    help="远程可访问的 Pushgateway URL。",
+)
+@click.option("--prometheus-url", default="http://localhost:9090", help="本机 Prometheus URL。")
+@click.option(
+    "--local-proxy-url",
+    default="http://127.0.0.1:7890",
+    help="用于 Docker env 的代理 URL；传空字符串可关闭。",
+)
+@click.option(
+    "--remote-proxy-port",
+    default=17892,
+    type=int,
+    help="readiness network-check 使用的远端代理端口。",
+)
+@click.option("--allow-git-push", is_flag=True, help="允许对实验相关仓库自动 commit/push。")
+@click.option("--skip-readiness", is_flag=True, help="跳过 1-6 skill readiness 检查。")
+@click.option("--open", "open_report", is_flag=True, help="渲染后打开 report.html。")
+def run_verl_case_cmd(
+    server: str | None,
+    cfg_path: str | None,
+    workdir: str | None,
+    timeout: float,
+    run_id: str | None,
+    cache_root: str | None,
+    pushgateway_url: str,
+    prometheus_url: str,
+    local_proxy_url: str,
+    remote_proxy_port: int,
+    allow_git_push: bool,
+    skip_readiness: bool,
+    open_report: bool,
+) -> None:
+    """跑 Qwen3.5-2B + geometry3k 的 Verl 正式案例。"""
+    from autoresearch.orchestrator.verl_case import run_verl_case_orchestration
+
+    try:
+        exit_code, payload = run_verl_case_orchestration(
+            server=server,
+            config=cfg_path,
+            workdir=workdir,
+            timeout=timeout,
+            run_id=run_id,
+            cache_root=cache_root,
+            pushgateway_url=pushgateway_url,
+            prometheus_url=prometheus_url,
+            local_proxy_url=local_proxy_url or None,
+            remote_proxy_port=remote_proxy_port,
+            allow_git_push=allow_git_push,
+            skip_readiness=skip_readiness,
+            open_report=open_report,
+        )
+    except Exception as exc:
+        payload = {"ok": False, "command": "verl-case", "failed_step": "orchestrator", "error": str(exc)}
+        exit_code = 2
+    click.echo(json.dumps(payload, ensure_ascii=False, indent=2))
+    raise click.exceptions.Exit(exit_code)
+
+
 @main.group(name="e2e")
 def e2e() -> None:
     """端到端验证: readiness + smoke + report completeness。"""

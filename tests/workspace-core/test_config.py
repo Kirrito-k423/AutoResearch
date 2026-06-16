@@ -14,6 +14,7 @@ def test_from_yaml_minimal():
     assert cfg.verl_case.dataset_id == "hiyouga/geometry3k"
     assert cfg.verl_case.ignore_eos is False
     assert cfg.verl_case.output_tokens == [2048, 4096, 8192, 16384]
+    assert cfg.verl_case.dependency_repo_paths == {}
 
 
 def test_from_yaml_with_servers():
@@ -43,11 +44,14 @@ verl_case:
   cache_root: /tmp/ar-cache
   output_tokens: [2048]
   inference_modes: [sync]
+  dependency_repo_paths:
+    verl: /home/t00906153/verl
 """
     cfg = from_yaml(yaml_text)
     assert cfg.verl_case.cache_root == "/tmp/ar-cache"
     assert cfg.verl_case.output_tokens == [2048]
     assert cfg.verl_case.inference_modes == ["sync"]
+    assert cfg.verl_case.dependency_repo_paths["verl"] == "/home/t00906153/verl"
 
 
 def test_from_yaml_server_workdir_override():

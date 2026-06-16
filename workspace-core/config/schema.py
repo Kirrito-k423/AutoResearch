@@ -123,6 +123,13 @@ class VerlCaseConfig(BaseModel):
     )
     github_owner: str = Field(default="Kirrito-k423", min_length=1)
     remote_workdir: str = Field(default="/home/t00906153", min_length=1)
+    dependency_repo_paths: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "Optional local or remote checkout paths for dependency provenance, "
+            "for example verl/vllm/transformers/mindspeed."
+        ),
+    )
 
     @field_validator("output_tokens")
     @classmethod

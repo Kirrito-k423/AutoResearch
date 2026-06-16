@@ -26,6 +26,7 @@ class VerlCaseConfig(BaseModel):
     inference_modes: list[InferenceMode] = Field(default_factory=lambda: ["sync", "async"])
     github_owner: str = "Kirrito-k423"
     remote_workdir: str = "/home/t00906153"
+    dependency_repo_paths: dict[str, str] = Field(default_factory=dict)
 
 
 class VerlCaseMatrixRow(BaseModel):

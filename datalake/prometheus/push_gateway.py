@@ -3,9 +3,11 @@ from __future__ import annotations
 
 import re
 import shlex
+import importlib
 
 from workspace_core.config import ServerSpec
-from workspace-adapter.common.conda_utils import run_in_env
+
+run_in_env = importlib.import_module("workspace-adapter.common.conda_utils").run_in_env
 
 
 class PushError(Exception):
