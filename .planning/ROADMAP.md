@@ -32,12 +32,12 @@
 | Milestone | Phases | Plans Complete | Status | Completed |
 |---|---:|---:|---|---|
 | v1.0 MinViable Loop | 13/13 | 37/37 | Shipped | 2026-06-15 |
-| v1.1 Stable | 0/1 | 3/4 | In Progress | - |
+| v1.1 Stable | 0/1 | 4/4 | Blocked on real UAT | - |
 | v2.0 Distribute | TBD | 0/0 | Not started | - |
 
 ## Next
 
-Run `$gsd-execute-phase 14` to continue with Plan 14-04: formal report, verification, and UAT closure.
+Phase 14 execution artifacts are in place. The next operational step is to clear the remaining real-UAT blockers, then rerun `$gsd-verify-work 14` against a successful formal-case run before any milestone-complete action.
 
 ### Phase 14: 跑通 Verl 正式案例并沉淀 workspace-adapter/verl 实验闭环
 
@@ -62,4 +62,4 @@ Plans:
 
 **Wave 4 *(blocked on Wave 3 completion)***
 
-- [ ] 14-04: Formal Case Report, Verification, And UAT Closure
+- [ ] 14-04: Formal Case Report, Verification, And UAT Closure *(implemented; blocked on successful real formal-case UAT)*

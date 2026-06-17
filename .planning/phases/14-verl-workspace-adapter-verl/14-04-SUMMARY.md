@@ -56,7 +56,7 @@ completed: 2026-06-17
 
 # Phase 14 Plan 04: Formal Case Report, Verification, And UAT Closure Summary
 
-**报告层、完整性校验和文档已经落地并通过全量测试，但真实 formal case 仍被外部运行时条件卡住：本地 `Qwen3.5-2B` 需要继续缓存，A2-AK-225 先前确认的 `torch_npu aclInit 507899 / Resource_Busy` 也还没有被消掉。**
+**报告层、完整性校验和文档已经落地并通过全量测试，但真实 formal case 仍被外部运行时条件卡住：本地 `Qwen3.5-2B` 需要继续缓存，而 A2-AK-225 现已收敛到“fresh container 拿不到 NPU、老容器 namespace 持有设备句柄”的运行时冲突。**
 
 ## Performance
 
@@ -96,7 +96,14 @@ High-signal observations from the real attempts:
   - `stack`: pass
 - The formal-case orchestrator continued past the non-fatal readiness issues and entered local asset preparation as designed.
 - The new Qwen3.5 cache root `/Users/Zhuanz/autoResearchData/models/Qwen__Qwen3.5-2B` was populated with config/tokenizer sidecars plus `model.safetensors.index.json`; partial size after the aborted bootstrap is `32M`, confirming resumable local warming.
-- Prior A2 diagnostic runs had already reached remote `torch_npu` device setup and still failed with `aclInit` / `torch_npu.set_device()` error code `507899`, `Resource_Busy`, including a single-card run. That is still the strongest blocker for claiming the formal case can finish on A2 today.
+- Prior A2 diagnostic runs had already reached remote `torch_npu` device setup and still failed with `aclInit` / `torch_npu.set_device()` error code `507899`, `Resource_Busy`, including a single-card run.
+- Host-vs-container follow-up on `A2-AK-225` narrowed the blocker further:
+  - host `conda run -n verl-qwen3.5 python -c '... torch.tensor([1.0]).npu()'` succeeds;
+  - `docker exec verl-8.5.2-a2 ... torch.tensor([1.0]).npu()` succeeds inside the long-lived existing Verl container;
+  - a fresh `docker run --rm quay.io/ascend/verl:... python -c '... torch.tensor([1.0]).npu()'` fails with `aclInit 507899 / Resource_Busy`;
+  - `dmesg` reports repeated `uda_occupy_dev_by_ns ... Conflict open udevid` errors;
+  - host `/proc/*/fd` inspection shows long-lived `asc_dumper` processes inside `/verl-8.5.2-a2` holding `/dev/davinci_manager` and `/dev/hisi_hdc`.
+- This points to stale container namespace/device-handle contention on A2, not a host-level inability to run `torch_npu`.
 
 ## Provenance Snapshot
 
@@ -118,12 +125,12 @@ High-signal observations from the real attempts:
 
 - `Qwen/Qwen3.5-2B` was not cached locally yet, so the first real command had to start a fresh local cache warm-up under the configured proxy.
 - The public Hugging Face download ran unauthenticated and slow on this Mac/proxy path, so letting the full 4.57GB weight finish would not have produced new signal about the known A2 runtime blocker during this turn.
-- The main hardware blocker remains external to the Python/report layer: on A2-AK-225, prior real runs reached the remote `torch_npu` worker setup and failed with `507899 / Resource_Busy`.
+- The main hardware/runtime blocker remains external to the Python/report layer: on A2-AK-225, fresh containers fail with `507899 / Resource_Busy` while the host env and a long-lived existing Verl container can still allocate `npu:0`.
 
 ## User Setup Required
 
 - If we want the local Qwen3.5 cache to finish materially faster, provide a usable `HF_TOKEN` in the environment before the next resume.
-- For A2 root-cause isolation, the most useful manual help is still machine-side evidence around guard/watchdog jobs, active NPU consumers, and the exact `torch_npu` minimum repro on `A2-AK-225`.
+- For A2 root-cause isolation, the most consequential manual decision is whether AutoResearch may temporarily reuse or reset the existing `/verl-8.5.2-a2` container namespace. That action could affect whoever currently owns that long-lived container, so it should not be automated silently.
 
 ## Next Phase Readiness
 
@@ -141,7 +148,7 @@ High-signal observations from the real attempts:
 - **PASS:** Real formal-case command now aligns to `Qwen/Qwen3.5-2B` and starts resumable local cache warming successfully.
 - **FAIL:** No completed 8-row real matrix exists yet.
 - **FAIL:** No clean shipped commit+GitHub-link provenance bundle has been captured from a successful formal run.
-- **FAIL:** `A2-AK-225` remains externally blocked by prior observed `torch_npu aclInit 507899 / Resource_Busy` behavior until disproven by a fresh completed run.
+- **FAIL:** `A2-AK-225` remains externally blocked by fresh-container namespace/device contention (`torch_npu aclInit 507899 / Resource_Busy`) until we either clear the stale device-holding container state or choose a different qualifying host.
 
 ---
 *Phase: 14-verl-workspace-adapter-verl*

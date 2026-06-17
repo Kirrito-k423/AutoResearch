@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Stable
-status: Phase 14 execution in progress
-stopped_at: Phase 14 Plan 14-03 complete; next route is gsd-execute-phase 14
-last_updated: "2026-06-16T15:56:09Z"
-last_activity: 2026-06-16
+status: Phase 14 verification blocked on external formal-case runtime
+stopped_at: Phase 14 UAT is partial; next route is rerun the real formal case after clearing A2/runtime blockers
+last_updated: "2026-06-17T13:59:37Z"
+last_activity: 2026-06-17
 progress:
   total_phases: 14
   completed_phases: 13
   total_plans: 41
-  completed_plans: 40
-  percent: 98
+  completed_plans: 41
+  percent: 99
 ---
 
 # State: AutoResearch v1.1
@@ -22,14 +22,14 @@ See: .planning/PROJECT.md (updated 2026-06-15 after v1.0 milestone)
 
 **Core value:** "常实践，详记录，知得失，会设计，有整理"——每个 skill 跑一次都留下可被复盘、可被二次开发的产物。
 
-**Current focus:** Continue Phase 14 execution with Plan 14-04: formal report, verification, and UAT closure.
+**Current focus:** Phase 14 code/report work is complete; the remaining gap is a successful real formal-case run with full 8-row matrix evidence.
 
 ## Position
 
 - **Milestone:** v1.1 Stable planning
 - **Phase:** Phase 14 — 跑通 Verl 正式案例并沉淀 workspace-adapter/verl 实验闭环
-- **Plan:** 14-03 complete; 14-04 next
-- **Last activity:** 2026-06-16
+- **Plan:** 14-04 executed; verification remains blocked on real UAT
+- **Last activity:** 2026-06-17
 
 ## Session Continuity
 
@@ -198,23 +198,23 @@ Items acknowledged and deferred at milestone close on 2026-06-15:
 
 ## Next Steps
 
-1. `$gsd-execute-phase 14` 实现 Verl 正式案例闭环
-2. Run focused Phase 14 tests and real A2 formal-case UAT before verification
-3. Keep PR #1 open until user is ready to merge
+1. Finish the local `Qwen/Qwen3.5-2B` cache or provide a faster authenticated HF path
+2. Capture fresh `torch_npu` minimum-repro and guard/watchdog evidence on `A2-AK-225`
+3. Re-run the real formal case and close the remaining 8-row matrix / artifact-bundle UAT gaps
 
 ## Continuation Prompts
 
 ```
-$gsd-execute-phase 14
+$gsd-verify-work 14
 ```
 
 ## Metrics
 
 - **Phases planned:** 14
 - **Phases complete:** 13 complete
-- **Plans complete:** 40/41 summaries; Phase 14 has 1 plan pending execution
+- **Plans complete:** 41/41 summaries; Phase 14 is blocked in verification, not execution
 - **Requirements:** 88 archived, 82 checked, 6 known gaps
-- **Tests:** 361 / 361 passing
+- **Tests:** 408 / 408 passing
 - **Phase 11 UAT:** pass; smoke run `01KV60QS8PMSEG02MQEB0Z27FT`
 - **Phase 12 UAT:** pass; E2E run `01KV62JVH0N3ZRVRMH4PYWF1VB`
 - **Phase 13 archive:** `.planning/milestones/v1.0/`
@@ -223,9 +223,9 @@ $gsd-execute-phase 14
 
 ## Branch & Commits
 
-- **Branch:** `codex/phase-02-workspace-core`
-- **Latest commit:** `chore: archive v1.0 milestone`
+- **Branch:** `codex/verl-case-01KVAM6VFTQQK60PCTWREW88K5-phase-02-workspace-core`
+- **Latest commit:** `docs: record shipped formal case provenance`
 - **Open PR:** `https://github.com/Kirrito-k423/AutoResearch/pull/1`
 
 ---
-*Last updated: 2026-06-15 after v1.0 archive*
+*Last updated: 2026-06-17 after Phase 14 verification/UAT structuring*
