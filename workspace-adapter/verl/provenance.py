@@ -52,7 +52,7 @@ def capture_repo_provenance(
     if allow_commit_push:
         commit_push_attempted = True
         if branch_prefix and branch and not branch.startswith(branch_prefix):
-            branch = f"{branch_prefix}{branch}"
+            branch = f"{branch_prefix}{_branch_seed(branch)}"
             runner(["git", "switch", "-C", branch], root)
         if dirty:
             runner(["git", "add", "-A"], root)
@@ -100,6 +100,18 @@ def _select_push_target(
     if not fork_url and origin_url:
         return "origin", origin_url
     return None, target_url
+
+
+def _branch_seed(branch: str) -> str:
+    seed = branch
+    marker = "codex/verl-case-"
+    if seed.startswith(marker):
+        remainder = seed.removeprefix(marker)
+        if "-" in remainder:
+            seed = remainder.split("-", 1)[1]
+        else:
+            seed = remainder
+    return seed.rsplit("/", 1)[-1]
 
 
 def _find_remote_for_url(runner: CommandRunner, cwd: Path, target_url: str) -> str | None:

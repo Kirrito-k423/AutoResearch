@@ -64,17 +64,21 @@ def run_verl_case(
     output_path = Path(remote_output_path or f"/home/t00906153/autoresearch/runs/{run_config.run_id}")
     commands: list[str] = []
     rows: list[VerlCaseResultRow] = []
-    pull = build_docker_pull_command(run_config.config.docker_image)
-    commands.append(pull)
-    pull_code, pull_stdout, pull_stderr = runner(spec, pull, timeout)
-    if pull_code != 0:
-        return VerlCaseRunResult(
-            ok=False,
-            run_id=run_config.run_id,
-            commands=commands,
-            rows=[],
-            error=pull_stderr or pull_stdout or "docker pull failed",
-        )
+    inspect = f"docker image inspect {shlex.quote(run_config.config.docker_image)} >/dev/null 2>&1"
+    commands.append(inspect)
+    inspect_code, _inspect_stdout, _inspect_stderr = runner(spec, inspect, min(timeout, 60.0))
+    if inspect_code != 0:
+        pull = build_docker_pull_command(run_config.config.docker_image)
+        commands.append(pull)
+        pull_code, pull_stdout, pull_stderr = runner(spec, pull, timeout)
+        if pull_code != 0:
+            return VerlCaseRunResult(
+                ok=False,
+                run_id=run_config.run_id,
+                commands=commands,
+                rows=[],
+                error=pull_stderr or pull_stdout or "docker pull failed",
+            )
 
     remote_log_path = str(output_path / "verl-case.log")
     remote_matrix_path = str(output_path / "matrix-results.jsonl")

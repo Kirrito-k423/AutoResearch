@@ -229,12 +229,48 @@ def test_capture_repo_provenance_names_detached_head_from_short_sha(tmp_path):
     assert result.branch_url == "https://github.com/Kirrito-k423/vllm/tree/detached-b8b302c"
 
 
+def test_capture_repo_provenance_strips_old_verl_case_prefix_from_branch_seed(tmp_path):
+    calls = []
+
+    def runner(args, cwd):
+        calls.append(args)
+        if args[1:] == ["rev-parse", "--show-toplevel"]:
+            return 0, str(tmp_path), ""
+        if args[1:] == ["remote", "get-url", "origin"]:
+            return 0, "https://github.com/Kirrito-k423/AutoResearch.git", ""
+        if args[1:] == ["remote", "-v"]:
+            return 0, "origin https://github.com/Kirrito-k423/AutoResearch.git (fetch)\norigin https://github.com/Kirrito-k423/AutoResearch.git (push)", ""
+        if args[1:] == ["rev-parse", "--abbrev-ref", "HEAD"]:
+            return 0, "codex/verl-case-OLDRUNID-codex/phase-02-workspace-core", ""
+        if args[1:] == ["status", "--porcelain"]:
+            return 0, "", ""
+        if args[1:] == ["switch", "-C", "codex/verl-case-NEWRUNID-phase-02-workspace-core"]:
+            return 0, "", ""
+        if args[1:] == ["push", "-u", "origin", "codex/verl-case-NEWRUNID-phase-02-workspace-core"]:
+            return 0, "", ""
+        if args[1:] == ["rev-parse", "HEAD"]:
+            return 0, "abc123", ""
+        return 1, "", "unexpected"
+
+    result = provenance.capture_repo_provenance(
+        tmp_path,
+        allow_commit_push=True,
+        branch_prefix="codex/verl-case-NEWRUNID-",
+        runner=runner,
+    )
+
+    assert result.branch == "codex/verl-case-NEWRUNID-phase-02-workspace-core"
+    assert ["git", "switch", "-C", "codex/verl-case-NEWRUNID-phase-02-workspace-core"] in calls
+
+
 def test_run_verl_case_fails_if_one_matrix_row_fails():
     run_config = _run_config()
     calls = []
 
     def runner(spec, command, timeout):
         calls.append(command)
+        if command.startswith("docker image inspect"):
+            return 1, "", "missing"
         if command.startswith("docker pull"):
             return 0, "pulled", ""
         if "async-1024-16384" in command:
@@ -257,7 +293,8 @@ def test_run_verl_case_fails_if_one_matrix_row_fails():
         runner=runner,
     )
 
-    assert calls[0].startswith("docker pull")
+    assert calls[0].startswith("docker image inspect")
+    assert calls[1].startswith("docker pull")
     assert result.ok is False
     assert any(row.status == "failed" and row.output_tokens == 16384 for row in result.rows)
 
@@ -266,6 +303,8 @@ def test_run_verl_case_passes_all_rows_and_script_contains_ignore_eos_false():
     run_config = _run_config()
 
     def runner(spec, command, timeout):
+        if command.startswith("docker image inspect"):
+            return 1, "", "missing"
         if command.startswith("docker pull"):
             return 0, "pulled", ""
         payload = {
@@ -289,6 +328,39 @@ def test_run_verl_case_passes_all_rows_and_script_contains_ignore_eos_false():
     assert result.ok is True
     assert len(result.rows) == 8
     assert '"ignore_eos": false' in case_runner.build_remote_case_script(run_config)
+
+
+def test_run_verl_case_skips_pull_when_image_already_exists():
+    run_config = _run_config()
+    calls = []
+
+    def runner(spec, command, timeout):
+        calls.append(command)
+        if command.startswith("docker image inspect"):
+            return 0, "", ""
+        if command.startswith("docker pull"):
+            raise AssertionError("docker pull should be skipped when image already exists")
+        payload = {
+            "status": "passed",
+            "elapsed_seconds": 1.0,
+            "tokens_per_second": 2.0,
+            "latency_ms": 500.0,
+            "sample_count": 1,
+            "accuracy": 1.0,
+            "consistency": 1.0,
+        }
+        return 0, "VERL_CASE_RESULT=" + json.dumps(payload), ""
+
+    result = case_runner.run_verl_case(
+        ServerSpec(name="A3-AX-180", host="h", user="root"),
+        run_config,
+        timeout=1.0,
+        runner=runner,
+    )
+
+    assert calls[0].startswith("docker image inspect")
+    assert all(not command.startswith("docker pull") for command in calls)
+    assert result.ok is True
 
 
 def test_row_command_builds_formal_verl_script():
