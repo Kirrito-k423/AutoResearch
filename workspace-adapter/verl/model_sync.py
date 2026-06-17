@@ -517,9 +517,6 @@ def _resume_via_parallel_curl(
         return
 
     part_dir = incomplete_path.parent / f"{incomplete_path.name}.parts"
-    if part_dir.exists():
-        for candidate in part_dir.iterdir():
-            candidate.unlink(missing_ok=True)
     part_dir.mkdir(parents=True, exist_ok=True)
 
     chunk_size = math.ceil(remaining / workers)
@@ -535,6 +532,17 @@ def _resume_via_parallel_curl(
 
     def _run_range(item: tuple[int, int, Path]) -> None:
         range_start, range_end, part_path = item
+        range_size = range_end - range_start + 1
+        existing_size = part_path.stat().st_size if part_path.exists() else 0
+        if existing_size > range_size:
+            raise ModelCacheError(
+                f"并行 curl 分片大小异常: path={part_path.name}: got={existing_size}, want<={range_size}"
+            )
+        if existing_size == range_size:
+            return
+        request_start = range_start + existing_size
+        temp_path = part_path.with_suffix(part_path.suffix + ".partial")
+        temp_path.unlink(missing_ok=True)
         command = [
             "curl",
             "--proxy",
@@ -547,9 +555,9 @@ def _resume_via_parallel_curl(
             "--connect-timeout",
             "30",
             "--range",
-            f"{range_start}-{range_end}",
+            f"{request_start}-{range_end}",
             "--output",
-            str(part_path),
+            str(temp_path),
             resolve_url,
         ]
         proc = subprocess.run(
@@ -561,7 +569,19 @@ def _resume_via_parallel_curl(
         if proc.returncode != 0:
             detail = (proc.stderr or proc.stdout or "").strip()
             raise ModelCacheError(
-                f"并行 curl 分片续传失败: range={range_start}-{range_end}: {detail or f'exit={proc.returncode}'}"
+                f"并行 curl 分片续传失败: range={request_start}-{range_end}: {detail or f'exit={proc.returncode}'}"
+            )
+        payload = temp_path.read_bytes()
+        if existing_size:
+            with part_path.open("ab") as handle:
+                handle.write(payload)
+            temp_path.unlink(missing_ok=True)
+        else:
+            temp_path.replace(part_path)
+        final_part_size = part_path.stat().st_size
+        if final_part_size != range_size:
+            raise ModelCacheError(
+                f"并行 curl 分片续传后大小不匹配: path={part_path.name}: got={final_part_size}, want={range_size}"
             )
 
     with ThreadPoolExecutor(max_workers=workers) as executor:
