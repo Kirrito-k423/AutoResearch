@@ -32,7 +32,7 @@
 | Milestone | Phases | Plans Complete | Status | Completed |
 |---|---:|---:|---|---|
 | v1.0 MinViable Loop | 13/13 | 37/37 | Shipped | 2026-06-15 |
-| v1.1 Stable | 0/1 | 4/4 | Blocked on real UAT | - |
+| v1.1 Stable | 0/1 | 4/5 | In progress on real UAT | - |
 | v2.0 Distribute | TBD | 0/0 | Not started | - |
 
 ## Next
@@ -44,7 +44,7 @@ Phase 14 execution artifacts are in place. The next operational step is to clear
 **Goal:** Add `autoresearch run verl-case` and a local-first Verl formal-case loop for Qwen3.5-2B + geometry3k on Ascend, including strict sync/async length matrix execution, immutable config snapshots, multi-repo provenance, observability artifacts, and reportable performance/accuracy results.
 **Requirements**: TBD
 **Depends on:** Phase 13
-**Plans:** 4 plans
+**Plans:** 5 plans
 
 Plans:
 
@@ -63,3 +63,7 @@ Plans:
 **Wave 4 *(blocked on Wave 3 completion)***
 
 - [ ] 14-04: Formal Case Report, Verification, And UAT Closure *(implemented; blocked on successful real formal-case UAT)*
+
+**Wave 5 *(blocked on Wave 4 real-UAT evidence)***
+
+- [ ] 14-05: Real Formal Runtime Completion And Artifact Closure *(active; detached supervisor is finishing local Qwen3.5 cache before auto-launching the A3-AX-180 real run)*

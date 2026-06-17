@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Stable
-status: Phase 14 verification blocked on external formal-case runtime
-stopped_at: Phase 14 UAT is partial; next route is rerun the real formal case after clearing A2/runtime blockers
-last_updated: "2026-06-17T13:59:37Z"
+status: Phase 14 real formal-case runtime is active on A3-AX-180; local Qwen3.5 cache completion is the current gate
+stopped_at: Phase 14 reopened under 14-05; next route is resume real formal runtime closure and artifact verification
+last_updated: "2026-06-17T16:05:00Z"
 last_activity: 2026-06-17
 progress:
   total_phases: 14
   completed_phases: 13
-  total_plans: 41
+  total_plans: 42
   completed_plans: 41
-  percent: 99
+  percent: 98
 ---
 
 # State: AutoResearch v1.1
@@ -22,13 +22,13 @@ See: .planning/PROJECT.md (updated 2026-06-15 after v1.0 milestone)
 
 **Core value:** "常实践，详记录，知得失，会设计，有整理"——每个 skill 跑一次都留下可被复盘、可被二次开发的产物。
 
-**Current focus:** Phase 14 code/report work is complete; the remaining gap is a successful real formal-case run with full 8-row matrix evidence.
+**Current focus:** Phase 14 is reopened under Plan 14-05 so GSD routes back into the real formal-case closure path instead of treating the phase as already complete.
 
 ## Position
 
 - **Milestone:** v1.1 Stable planning
 - **Phase:** Phase 14 — 跑通 Verl 正式案例并沉淀 workspace-adapter/verl 实验闭环
-- **Plan:** 14-04 executed; verification remains blocked on real UAT
+- **Plan:** 14-05 active; detached supervisor is finishing the local Qwen3.5 shard before auto-launching the real A3-AX-180 run
 - **Last activity:** 2026-06-17
 
 ## Session Continuity
@@ -198,9 +198,9 @@ Items acknowledged and deferred at milestone close on 2026-06-15:
 
 ## Next Steps
 
-1. Finish the local `Qwen/Qwen3.5-2B` cache or provide a faster authenticated HF path
-2. Capture fresh `torch_npu` minimum-repro and guard/watchdog evidence on `A2-AK-225`
-3. Re-run the real formal case and close the remaining 8-row matrix / artifact-bundle UAT gaps
+1. Let the detached local supervisor finish the resumable `Qwen/Qwen3.5-2B` shard cache
+2. Auto-launch and monitor the real `autoresearch run verl-case` execution on `A3-AX-180`
+3. Verify the final 8-row matrix plus artifact bundle, then update Phase 14 UAT / verification / summary with the concrete run id and GitHub links
 
 ## Continuation Prompts
 
@@ -212,7 +212,7 @@ $gsd-verify-work 14
 
 - **Phases planned:** 14
 - **Phases complete:** 13 complete
-- **Plans complete:** 41/41 summaries; Phase 14 is blocked in verification, not execution
+- **Plans complete:** 41/42 summaries; Phase 14 remains active under Plan 14-05
 - **Requirements:** 88 archived, 82 checked, 6 known gaps
 - **Tests:** 408 / 408 passing
 - **Phase 11 UAT:** pass; smoke run `01KV60QS8PMSEG02MQEB0Z27FT`
@@ -228,4 +228,4 @@ $gsd-verify-work 14
 - **Open PR:** `https://github.com/Kirrito-k423/AutoResearch/pull/1`
 
 ---
-*Last updated: 2026-06-17 after Phase 14 verification/UAT structuring*
+*Last updated: 2026-06-17 after reopening Phase 14 under Plan 14-05 for real runtime closure*
