@@ -234,7 +234,6 @@ def test_prepare_model_cache_recovers_completed_snapshot_via_resume(tmp_path, mo
     for name in (
         "chat_template.json",
         "config.json",
-        "generation_config.json",
         "merges.txt",
         "preprocessor_config.json",
         "tokenizer.json",

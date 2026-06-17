@@ -50,6 +50,10 @@ _SIDECAR_FILES = {
     "video_preprocessor_config.json",
     "vocab.json",
 }
+_RESUME_METADATA_FILES = {
+    "config.json",
+    MODEL_INDEX_FILE,
+}
 
 
 class ModelCacheError(RuntimeError):
@@ -88,7 +92,7 @@ def prepare_model_cache(
             ready=True,
             downloaded=False,
         )
-    if _sidecars_ready(model_cache) and _largest_incomplete(model_cache) is not None:
+    if _resume_metadata_ready(model_cache) and _largest_incomplete(model_cache) is not None:
         try:
             _resume_model_download(config.model_id, model_cache, proxy_url=proxy_url)
         except Exception:
@@ -219,6 +223,10 @@ def _sidecars_ready(model_cache: Path) -> bool:
     return all((model_cache / name).exists() for name in _SIDECAR_FILES)
 
 
+def _resume_metadata_ready(model_cache: Path) -> bool:
+    return all((model_cache / name).exists() for name in _RESUME_METADATA_FILES)
+
+
 def _resume_or_raise(
     model_id: str,
     model_cache: Path,
@@ -227,10 +235,10 @@ def _resume_or_raise(
     context: str,
     initial_error: Exception | None = None,
 ) -> None:
-    if not _sidecars_ready(model_cache):
+    if not _resume_metadata_ready(model_cache):
         detail = f"{context}: {model_id}" if initial_error else context
         if initial_error is None:
-            raise ModelCacheError(f"{detail}，缺少续传所需的 sidecar 文件。")
+            raise ModelCacheError(f"{detail}，缺少续传所需的关键 metadata 文件。")
         raise ModelCacheError(f"{detail}: {initial_error}") from initial_error
 
     try:
