@@ -303,6 +303,82 @@ def test_resume_model_download_continues_largest_incomplete(tmp_path, monkeypatc
     assert not largest.exists()
 
 
+def test_resume_model_download_retries_after_stream_break(tmp_path, monkeypatch):
+    model_cache = tmp_path / "cache" / "models" / "Qwen__Qwen3-VL-2B-Instruct"
+    model_cache.mkdir(parents=True)
+    for name in (
+        "chat_template.json",
+        "config.json",
+        "generation_config.json",
+        "merges.txt",
+        "preprocessor_config.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "video_preprocessor_config.json",
+        "vocab.json",
+    ):
+        (model_cache / name).write_text("{}", encoding="utf-8")
+    download_dir = model_cache / ".cache" / "huggingface" / "download"
+    download_dir.mkdir(parents=True)
+    largest = download_dir / "largest.incomplete"
+    largest.write_bytes(b"abc")
+
+    class _Response:
+        def __init__(self, *, status_code=206, chunks=None, error=None):
+            self.status_code = status_code
+            self.headers = {}
+            self._chunks = chunks or []
+            self._error = error
+
+        def raise_for_status(self):
+            return None
+
+        def iter_content(self, chunk_size=0):
+            for chunk in self._chunks:
+                yield chunk
+            if self._error is not None:
+                raise self._error
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    class _Session:
+        def __init__(self):
+            self.calls = 0
+
+        def get(self, url, **kwargs):
+            self.calls += 1
+            if kwargs.get("allow_redirects") is False:
+                return _Response(status_code=302)
+            range_header = kwargs["headers"]["Range"]
+            if range_header == "bytes=3-":
+                return _Response(
+                    chunks=[b"de"],
+                    error=model_sync.requests.exceptions.ChunkedEncodingError("broken"),
+                )
+            assert range_header == "bytes=5-"
+            return _Response(chunks=[b"f"])
+
+    monkeypatch.setattr(model_sync.requests, "Session", lambda: _Session())
+    monkeypatch.setattr(
+        model_sync,
+        "_resolve_download_url",
+        lambda session, resolve_url, proxies: ("https://example.com/model.safetensors", 6),
+    )
+
+    model_sync._resume_model_download(
+        "Qwen/Qwen3-VL-2B-Instruct",
+        model_cache,
+        proxy_url="http://127.0.0.1:7890",
+    )
+
+    assert (model_cache / "model.safetensors").read_bytes() == b"abcdef"
+    assert not largest.exists()
+
+
 def test_capture_repo_provenance_without_push(tmp_path):
     calls = []
 

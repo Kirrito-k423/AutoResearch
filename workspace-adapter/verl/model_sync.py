@@ -248,26 +248,45 @@ def _resume_model_download(
     proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
     session = requests.Session()
     resolve_url = f"https://huggingface.co/{model_id}/resolve/main/{MODEL_FILE}"
-    download_url, total_size = _resolve_download_url(session, resolve_url, proxies)
-    current_size = incomplete_path.stat().st_size
-    if total_size and current_size >= total_size:
-        incomplete_path.replace(model_cache / MODEL_FILE)
-        return
+    retries = 0
+    total_size = 0
+    while True:
+        current_size = incomplete_path.stat().st_size
+        download_url, total_size = _resolve_download_url(session, resolve_url, proxies)
+        if total_size and current_size >= total_size:
+            break
 
-    headers = {"Range": f"bytes={current_size}-"} if current_size else {}
-    response = session.get(
-        download_url,
-        headers=headers,
-        stream=True,
-        proxies=proxies,
-        timeout=(30, 300),
-    )
-    response.raise_for_status()
-    with response:
-        with incomplete_path.open("ab" if current_size else "wb") as handle:
-            for chunk in response.iter_content(chunk_size=1024 * 1024):
-                if chunk:
-                    handle.write(chunk)
+        headers = {"Range": f"bytes={current_size}-"} if current_size else {}
+        try:
+            response = session.get(
+                download_url,
+                headers=headers,
+                stream=True,
+                proxies=proxies,
+                timeout=(30, 300),
+            )
+            response.raise_for_status()
+            if current_size and response.status_code == 200:
+                raise ModelCacheError("直链未接受 Range 续传请求。")
+            with response:
+                with incomplete_path.open("ab" if current_size else "wb") as handle:
+                    for chunk in response.iter_content(chunk_size=1024 * 1024):
+                        if chunk:
+                            handle.write(chunk)
+        except requests.RequestException as exc:
+            retries += 1
+            latest_size = incomplete_path.stat().st_size
+            if total_size and latest_size >= total_size:
+                break
+            if retries >= 8:
+                raise ModelCacheError(
+                    f"单文件续传多次中断仍未完成: got={latest_size}, want={total_size}, last_error={exc}"
+                ) from exc
+            continue
+
+        latest_size = incomplete_path.stat().st_size
+        if not total_size or latest_size >= total_size:
+            break
 
     final_size = incomplete_path.stat().st_size
     if total_size and final_size != total_size:
