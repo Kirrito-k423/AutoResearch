@@ -53,15 +53,36 @@ def redact_proxy_url(url: str) -> str:
     )
 
 
-def state_path_for(server_name: str) -> Path:
-    """Return the sanitized local tunnel state path for one server."""
+def state_path_for(server_name: str, remote_port: int | None = None) -> Path:
+    """Return the sanitized local tunnel state path for one server/port."""
     safe_name = SAFE_NAME_RE.sub("_", server_name).strip("._") or "unknown"
-    return TUNNELS_DIR / f"{safe_name}.json"
+    suffix = f"-{remote_port}" if remote_port is not None else ""
+    return TUNNELS_DIR / f"{safe_name}{suffix}.json"
 
 
-def load_tunnel_state(server_name: str) -> TunnelState | None:
+def load_tunnel_state(
+    server_name: str,
+    remote_port: int | None = None,
+) -> TunnelState | None:
     """Load tunnel state; missing or corrupt JSON is recoverable."""
-    path = state_path_for(server_name)
+    for path in _state_candidates(server_name, remote_port):
+        state = _load_tunnel_state_from_path(path)
+        if state is None:
+            continue
+        if remote_port is not None and state["remote_port"] != remote_port:
+            continue
+        if (
+            remote_port is not None
+            and path == state_path_for(server_name)
+            and state["remote_port"] == remote_port
+        ):
+            write_tunnel_state(state)
+        return state
+    return None
+
+
+def _load_tunnel_state_from_path(path: Path) -> TunnelState | None:
+    """Load one concrete state file path."""
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
@@ -101,7 +122,7 @@ def load_tunnel_state(server_name: str) -> TunnelState | None:
 
 def write_tunnel_state(state: TunnelState) -> Path:
     """Persist sanitized tunnel state under ~/.autoresearch/tunnels."""
-    path = state_path_for(state["server"])
+    path = state_path_for(state["server"], state["remote_port"])
     path.parent.mkdir(parents=True, exist_ok=True)
     safe_state = dict(state)
     safe_state["local_proxy_url"] = redact_proxy_url(
@@ -114,12 +135,53 @@ def write_tunnel_state(state: TunnelState) -> Path:
     return path
 
 
-def delete_tunnel_state(server_name: str) -> None:
-    """Remove one tunnel state file if it exists."""
+def delete_tunnel_state(
+    server_name: str,
+    remote_port: int | None = None,
+) -> None:
+    """Remove tunnel state file(s) for a server, optionally scoped by port."""
+    if remote_port is None:
+        paths = _state_candidates(server_name, remote_port)
+    else:
+        legacy_path = state_path_for(server_name)
+        legacy_state = _load_tunnel_state_from_path(legacy_path)
+        if (
+            legacy_state is not None
+            and legacy_state["remote_port"] != remote_port
+        ):
+            write_tunnel_state(legacy_state)
+        paths = [state_path_for(server_name, remote_port), legacy_path]
+    for path in paths:
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            continue
+
+
+def _state_candidates(
+    server_name: str,
+    remote_port: int | None,
+) -> list[Path]:
+    """Return the relevant state file paths in priority order."""
+    safe_name = SAFE_NAME_RE.sub("_", server_name).strip("._") or "unknown"
+    candidates: list[Path] = []
+    if remote_port is not None:
+        candidates.append(state_path_for(server_name, remote_port))
+    candidates.append(state_path_for(server_name))
     try:
-        state_path_for(server_name).unlink()
-    except FileNotFoundError:
-        return
+        for path in sorted(TUNNELS_DIR.glob(f"{safe_name}-*.json")):
+            if path not in candidates:
+                candidates.append(path)
+    except OSError:
+        pass
+    deduped: list[Path] = []
+    seen: set[Path] = set()
+    for path in candidates:
+        if path in seen:
+            continue
+        seen.add(path)
+        deduped.append(path)
+    return deduped
 
 
 def resolve_server_host(
@@ -219,7 +281,7 @@ def ensure_tunnel(
     local_port = _local_proxy_port(local_proxy_url)
     remote_proxy_url = f"http://127.0.0.1:{remote_proxy_port}"
     cleaner = remote_forward_cleaner or _release_stale_remote_forward
-    state = load_tunnel_state(server_name)
+    state = load_tunnel_state(server_name, remote_port=remote_proxy_port)
     if (
         state is not None
         and state["remote_port"] == remote_proxy_port
@@ -235,7 +297,7 @@ def ensure_tunnel(
 
     if state is not None and state["pid"] > 0 and is_process_alive(state["pid"]):
         _stop_process(state["pid"])
-    delete_tunnel_state(server_name)
+    delete_tunnel_state(server_name, remote_port=remote_proxy_port)
 
     server, host = resolve_server_host(server_name, config_path)
     attempts = max(1, max_retries + 1)

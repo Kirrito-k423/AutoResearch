@@ -127,6 +127,7 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path):
     config = _config_file(tmp_path)
     runs_root = tmp_path / "runs"
     wandb_dir = runs_root / "run123" / "wandb"
+    ensured = []
 
     def sync_all(_run_id, _spec, **_kwargs):
         (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
@@ -140,6 +141,7 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path):
         return _remote_result(run_config)
 
     with patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
+         patch("autoresearch.orchestrator.verl_case.ensure_proxy_tunnel", side_effect=lambda *args, **kwargs: ensured.append((args, kwargs)) or {"remote_proxy_url": "http://127.0.0.1:17892"}), \
          patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance), \
          patch("autoresearch.orchestrator.verl_case.run_verl_case", side_effect=remote), \
          patch("autoresearch.orchestrator.verl_case.sync_all_runs", side_effect=sync_all), \
@@ -171,6 +173,9 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path):
     assert manifest["provenance"][0]["commit_sha"] == "abc123"
     assert manifest["prom_pushed"] is True
     assert manifest["wandb_path"] == str(wandb_dir)
+    assert ensured
+    assert ensured[0][0][0] == "A2-AK-225"
+    assert ensured[0][1]["remote_proxy_port"] == 17892
 
 
 def test_verl_case_matrix_failure_sets_failed_step_matrix(tmp_path):

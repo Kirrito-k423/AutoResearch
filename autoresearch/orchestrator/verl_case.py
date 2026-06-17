@@ -15,6 +15,7 @@ from workspace_core.config import ConfigError, ServerSpec, from_path
 from workspace_core.progress import emit_progress
 
 from autoresearch.collect.cli import generate_run_id
+from autoresearch.net.tunnel import ensure_tunnel as ensure_proxy_tunnel
 from autoresearch.report.cli import run_render
 
 from .checks import DEFAULT_CONFIG_PATH, DEFAULT_REMOTE_PROXY_PORT, run_check_all
@@ -203,6 +204,19 @@ def run_verl_case_orchestration(
 
     emit_progress("orch.verl_case.run", run_id=rid, matrix_rows=len(run_config.matrix))
     try:
+        if local_proxy_url:
+            emit_progress(
+                "orch.verl_case.proxy.ensure",
+                run_id=rid,
+                server=server_name,
+                remote_proxy_port=remote_proxy_port,
+            )
+            ensure_proxy_tunnel(
+                server_name,
+                config_path=cfg_path,
+                local_proxy_url=local_proxy_url,
+                remote_proxy_port=remote_proxy_port,
+            )
         remote_result = run_verl_case(
             spec,
             run_config,

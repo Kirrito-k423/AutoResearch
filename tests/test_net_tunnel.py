@@ -1,6 +1,7 @@
 """Tests for network reverse tunnel state and ensure logic."""
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -132,6 +133,68 @@ def test_delete_tunnel_state_is_idempotent():
     delete_tunnel_state("server-0")
 
     assert load_tunnel_state("server-0") is None
+
+
+def test_ensure_tunnel_different_ports_do_not_clobber_each_other(monkeypatch, tmp_path):
+    opened: list[int] = []
+    stopped: list[int] = []
+
+    def opener(host, *, remote_port, local_port, identity_file, log_dir):
+        opened.append(remote_port)
+        return ReverseTunnel(
+            proc=MagicMock(),
+            pid=remote_port,
+            host_alias=host.alias or host.host,
+            remote_port=remote_port,
+            local_port=local_port,
+            log_path=log_dir / f"tunnel-{remote_port}.log",
+        )
+
+    monkeypatch.setattr(tunnel_module, "is_process_alive", lambda pid: True)
+    monkeypatch.setattr(tunnel_module, "_stop_process", lambda pid, timeout_s=3.0: stopped.append(pid))
+
+    state_proxy = ensure_tunnel(
+        "server-0",
+        config_path=_config(tmp_path),
+        remote_proxy_port=17892,
+        tunnel_opener=opener,
+        heartbeat_fn=lambda *args, **kwargs: True,
+    )
+    state_wandb = ensure_tunnel(
+        "server-0",
+        config_path=_config(tmp_path),
+        local_proxy_url="http://127.0.0.1:8080",
+        remote_proxy_port=17890,
+        tunnel_opener=opener,
+        heartbeat_fn=lambda *args, **kwargs: True,
+    )
+
+    assert opened == [17892, 17890]
+    assert stopped == []
+    assert state_proxy["pid"] == 17892
+    assert state_wandb["pid"] == 17890
+    assert load_tunnel_state("server-0", remote_port=17892)["pid"] == 17892
+    assert load_tunnel_state("server-0", remote_port=17890)["pid"] == 17890
+
+
+def test_delete_tunnel_state_preserves_legacy_other_port_state():
+    legacy_path = state_path_for("server-0")
+    legacy_path.parent.mkdir(parents=True, exist_ok=True)
+    legacy_path.write_text(
+        json.dumps(
+            {
+                **_state(pid=456),
+                "remote_port": 17890,
+                "remote_proxy_url": "http://127.0.0.1:17890",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    delete_tunnel_state("server-0", remote_port=17892)
+
+    assert legacy_path.exists() is False
+    assert load_tunnel_state("server-0", remote_port=17890)["pid"] == 456
 
 
 def test_stop_process_returns_after_sigterm_when_process_exits(monkeypatch):
