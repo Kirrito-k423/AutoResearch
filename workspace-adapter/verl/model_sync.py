@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import shlex
@@ -9,6 +10,7 @@ import subprocess
 import tarfile
 import tempfile
 from pathlib import Path, PurePosixPath
+from concurrent.futures import ThreadPoolExecutor
 
 from pydantic import BaseModel
 import requests
@@ -55,6 +57,8 @@ _RESUME_METADATA_FILES = {
     "config.json",
     MODEL_INDEX_FILE,
 }
+PARALLEL_CURL_THRESHOLD_BYTES = 256 * 1024 * 1024
+PARALLEL_CURL_WORKERS = 4
 
 
 class ModelCacheError(RuntimeError):
@@ -272,12 +276,21 @@ def _resume_model_download(
         total_size = _resolve_expected_size_via_curl(resolve_url=resolve_url, proxy_url=proxy_url)
         current_size = incomplete_path.stat().st_size
         if total_size and current_size < total_size:
-            _resume_via_curl(
-                resolve_url=resolve_url,
-                incomplete_path=incomplete_path,
-                proxy_url=proxy_url,
-                expected_size=total_size,
-            )
+            remaining = total_size - current_size
+            if remaining >= PARALLEL_CURL_THRESHOLD_BYTES:
+                _resume_via_parallel_curl(
+                    resolve_url=resolve_url,
+                    incomplete_path=incomplete_path,
+                    proxy_url=proxy_url,
+                    expected_size=total_size,
+                )
+            else:
+                _resume_via_curl(
+                    resolve_url=resolve_url,
+                    incomplete_path=incomplete_path,
+                    proxy_url=proxy_url,
+                    expected_size=total_size,
+                )
         final_size = incomplete_path.stat().st_size
         if total_size and final_size != total_size:
             raise ModelCacheError(
@@ -455,6 +468,88 @@ def _resume_via_curl(
         raise ModelCacheError(
             f"curl 续传结束后模型大小仍不完整: got={final_size}, want={expected_size}"
         )
+
+
+def _resume_via_parallel_curl(
+    *,
+    resolve_url: str,
+    incomplete_path: Path,
+    proxy_url: str,
+    expected_size: int,
+) -> None:
+    current_size = incomplete_path.stat().st_size
+    remaining = expected_size - current_size
+    if remaining <= 0:
+        return
+
+    workers = max(1, min(PARALLEL_CURL_WORKERS, math.ceil(remaining / max(1, PARALLEL_CURL_THRESHOLD_BYTES))))
+    if workers == 1:
+        _resume_via_curl(
+            resolve_url=resolve_url,
+            incomplete_path=incomplete_path,
+            proxy_url=proxy_url,
+            expected_size=expected_size,
+        )
+        return
+
+    part_dir = incomplete_path.parent / f"{incomplete_path.name}.parts"
+    if part_dir.exists():
+        for candidate in part_dir.iterdir():
+            candidate.unlink(missing_ok=True)
+    part_dir.mkdir(parents=True, exist_ok=True)
+
+    chunk_size = math.ceil(remaining / workers)
+    ranges: list[tuple[int, int, Path]] = []
+    start = current_size
+    for index in range(workers):
+        end = min(expected_size - 1, start + chunk_size - 1)
+        if start > end:
+            break
+        part_path = part_dir / f"part-{index:02d}.bin"
+        ranges.append((start, end, part_path))
+        start = end + 1
+
+    def _run_range(item: tuple[int, int, Path]) -> None:
+        range_start, range_end, part_path = item
+        command = [
+            "curl",
+            "--proxy",
+            proxy_url,
+            "-L",
+            "--fail",
+            "--retry",
+            "8",
+            "--retry-all-errors",
+            "--connect-timeout",
+            "30",
+            "--range",
+            f"{range_start}-{range_end}",
+            "--output",
+            str(part_path),
+            resolve_url,
+        ]
+        proc = subprocess.run(
+            command,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if proc.returncode != 0:
+            detail = (proc.stderr or proc.stdout or "").strip()
+            raise ModelCacheError(
+                f"并行 curl 分片续传失败: range={range_start}-{range_end}: {detail or f'exit={proc.returncode}'}"
+            )
+
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        list(executor.map(_run_range, ranges))
+
+    with incomplete_path.open("ab") as handle:
+        for _range_start, _range_end, part_path in ranges:
+            handle.write(part_path.read_bytes())
+
+    for _range_start, _range_end, part_path in ranges:
+        part_path.unlink(missing_ok=True)
+    part_dir.rmdir()
 
 
 def _largest_incomplete(model_cache: Path) -> Path | None:

@@ -6,6 +6,7 @@ import json
 import sys
 import types
 from datetime import datetime, timezone
+from pathlib import Path
 
 from workspace_core.config import ServerSpec
 
@@ -511,6 +512,51 @@ def test_resume_model_download_prefers_curl_with_proxy(tmp_path, monkeypatch):
     assert not largest.exists()
 
 
+def test_resume_model_download_prefers_parallel_curl_for_large_proxy_resume(tmp_path, monkeypatch):
+    model_cache = tmp_path / "cache" / "models" / "Qwen__Qwen3.5-2B"
+    model_cache.mkdir(parents=True)
+    for name in (
+        "chat_template.json",
+        "config.json",
+        "generation_config.json",
+        "merges.txt",
+        "preprocessor_config.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "video_preprocessor_config.json",
+        "vocab.json",
+    ):
+        (model_cache / name).write_text("{}", encoding="utf-8")
+    (model_cache / "model.safetensors.index.json").write_text(
+        json.dumps({"weight_map": {"model.embed_tokens.weight": "model.safetensors-00001-of-00001.safetensors"}}),
+        encoding="utf-8",
+    )
+    download_dir = model_cache / ".cache" / "huggingface" / "download"
+    download_dir.mkdir(parents=True)
+    largest = download_dir / "largest.incomplete"
+    largest.write_bytes(b"abc")
+
+    def fake_parallel_resume(*, resolve_url, incomplete_path, proxy_url, expected_size):
+        assert resolve_url.endswith("model.safetensors-00001-of-00001.safetensors")
+        assert incomplete_path.read_bytes() == b"abc"
+        assert proxy_url == "http://127.0.0.1:7890"
+        assert expected_size == 10
+        incomplete_path.write_bytes(b"abcdefghij")
+
+    monkeypatch.setattr(model_sync, "_resolve_expected_size_via_curl", lambda **kwargs: 10)
+    monkeypatch.setattr(model_sync, "PARALLEL_CURL_THRESHOLD_BYTES", 4)
+    monkeypatch.setattr(model_sync, "_resume_via_parallel_curl", fake_parallel_resume)
+
+    model_sync._resume_model_download(
+        "Qwen/Qwen3.5-2B",
+        model_cache,
+        proxy_url="http://127.0.0.1:7890",
+    )
+
+    assert (model_cache / "model.safetensors-00001-of-00001.safetensors").read_bytes() == b"abcdefghij"
+    assert not largest.exists()
+
+
 def test_resolve_expected_size_via_curl_reads_last_content_length(monkeypatch):
     class _Proc:
         returncode = 0
@@ -532,6 +578,40 @@ def test_resolve_expected_size_via_curl_reads_last_content_length(monkeypatch):
     )
 
     assert size == 4548221488
+
+
+def test_resume_via_parallel_curl_appends_parts_in_order(tmp_path, monkeypatch):
+    incomplete = tmp_path / "largest.incomplete"
+    incomplete.write_bytes(b"abc")
+    calls = []
+
+    class _Proc:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    def fake_run(command, text, capture_output, check):
+        calls.append(command)
+        range_value = command[command.index("--range") + 1]
+        output_path = Path(command[command.index("--output") + 1])
+        start, end = [int(part) for part in range_value.split("-", 1)]
+        part_index = len(calls) - 1
+        output_path.write_bytes(bytes([65 + part_index]) * (end - start + 1))
+        return _Proc()
+
+    monkeypatch.setattr(model_sync.subprocess, "run", fake_run)
+    monkeypatch.setattr(model_sync, "PARALLEL_CURL_WORKERS", 2)
+    monkeypatch.setattr(model_sync, "PARALLEL_CURL_THRESHOLD_BYTES", 2)
+
+    model_sync._resume_via_parallel_curl(
+        resolve_url="https://example.com/model",
+        incomplete_path=incomplete,
+        proxy_url="http://127.0.0.1:7890",
+        expected_size=7,
+    )
+
+    assert incomplete.read_bytes() == b"abcAABB"
+    assert any("--range" in command for command in calls)
 
 
 def test_capture_repo_provenance_without_push(tmp_path):
