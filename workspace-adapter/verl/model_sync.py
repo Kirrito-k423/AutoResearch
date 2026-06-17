@@ -276,6 +276,15 @@ def _resume_model_download(
         if total_size and current_size >= total_size:
             break
 
+        if proxy_url:
+            _resume_via_curl(
+                resolve_url=resolve_url,
+                incomplete_path=incomplete_path,
+                proxy_url=proxy_url,
+                expected_size=total_size,
+            )
+            break
+
         headers = {"Range": f"bytes={current_size}-"} if current_size else {}
         try:
             response = session.get(
