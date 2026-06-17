@@ -56,7 +56,7 @@ completed: 2026-06-17
 
 # Phase 14 Plan 04: Formal Case Report, Verification, And UAT Closure Summary
 
-**报告层、完整性校验和文档已经落地并通过全量测试。真实 formal case 现已切到 `A3-AX-180` 这台通过 exact 910b 镜像 fresh-container smoke test 的机器，当前主阻塞不再是代码或机器选择，而是本地 `Qwen3.5-2B` `4.55GB` 权重 shard 仍在续传完成中。**
+**报告层、完整性校验和文档已经落地并通过全量测试。真实 formal case 现已切到 `A3-AX-180` 这台通过 exact 910b 镜像 fresh-container smoke test 的机器，当前主阻塞不再是代码或机器选择，而是本地 `Qwen3.5-2B` `4.55GB` 权重 shard 仍在续传完成中；本轮新增了 detached supervisor，cache 完成后会自动接着起 formal run。**
 
 ## Performance
 
@@ -103,6 +103,7 @@ High-signal observations from the real attempts:
   - `stack`: pass
 - The formal-case orchestrator continued past the non-fatal readiness issues and entered local asset preparation as designed.
 - The new Qwen3.5 cache root `/Users/Zhuanz/autoResearchData/models/Qwen__Qwen3.5-2B` was populated with config/tokenizer sidecars plus `model.safetensors.index.json`; after the resume fixes, the active shard checkpoint reached `114294784` bytes and continued to grow past the old failure mark.
+- The latest detached supervisor run continues the same shard automatically and advanced the live checkpoint to `225607680` bytes; logs now live under `~/.autoresearch/runs/formal-20260617-222232-a3ax180/supervisor.log`, and the same supervisor will launch the real `autoresearch run verl-case` command when `model.safetensors-00001-of-00001.safetensors` becomes complete.
 - Prior A2 diagnostic runs had already reached remote `torch_npu` device setup and still failed with `aclInit` / `torch_npu.set_device()` error code `507899`, `Resource_Busy`, including a single-card run.
 - Host-vs-container follow-up on `A2-AK-225` narrowed the blocker further:
   - host `conda run -n verl-qwen3.5 python -c '... torch.tensor([1.0]).npu()'` succeeds;
@@ -138,7 +139,7 @@ High-signal observations from the real attempts:
 ## User Setup Required
 
 - If we want the local Qwen3.5 cache to finish materially faster, provide a usable `HF_TOKEN` in the environment before the next resume.
-- No additional user decision is required to keep pushing on the `A3-AX-180` path; the remaining work is mostly time/bandwidth plus the final real matrix execution.
+- No additional user decision is required to keep pushing on the `A3-AX-180` path; the remaining work is mostly time/bandwidth plus the final real matrix execution, and that handoff is now scripted locally.
 
 ## Next Phase Readiness
 

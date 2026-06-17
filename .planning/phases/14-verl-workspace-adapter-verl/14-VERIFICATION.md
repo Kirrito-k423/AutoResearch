@@ -1,7 +1,7 @@
 ---
 status: partial
 phase: 14-verl-workspace-adapter-verl
-updated: 2026-06-17T15:02:00Z
+updated: 2026-06-17T15:30:00Z
 source: 14-UAT.md, 14-04-SUMMARY.md, pytest
 ---
 
@@ -26,6 +26,7 @@ Phase 14's code and report layers are verified, but the phase goal is not yet ac
 - Host `/proc/*/fd` inspection shows long-lived `asc_dumper` processes inside container `/verl-8.5.2-a2` holding `/dev/davinci_manager` and `/dev/hisi_hdc`
 - On `A3-AX-180`, a fresh container on the exact requested image `quay.io/ascend/verl:verl-8.5.2-910b-ubuntu22.04-py3.11-qwen3-5` passes the NPU smoke test (`torch.npu.is_available() -> True`, `x.cpu().tolist() -> [1.0]`)
 - The latest A3 formal-case retries pass readiness into `prepare`, and the repaired resume path grows the largest local model shard to `114294784` bytes, exceeding the previous `107668954`-byte disconnect point that killed the old prepare flow
+- A detached local supervisor now owns the remaining cache warm-up path and will auto-start the real formal run when the final shard lands; during this verification pass the live shard checkpoint advanced again to `225607680` bytes under `~/.autoresearch/runs/formal-20260617-222232-a3ax180/supervisor.log`
 
 ## Manual Checks
 
@@ -37,7 +38,7 @@ Phase 14's code and report layers are verified, but the phase goal is not yet ac
 
 ## Blocking Conditions
 
-1. The local `Qwen3.5-2B` `4.55GB` weight shard is still downloading on the Mac cache path; the latest run proved resumable progress past the previous disconnect point, but the shard is not complete yet.
+1. The local `Qwen3.5-2B` `4.55GB` weight shard is still downloading on the Mac cache path; the latest run proved resumable progress past the previous disconnect point, and the detached supervisor continues advancing the live checkpoint, but the shard is not complete yet.
 2. No successful real 8-row matrix has been started on `A3-AX-180` because the staged local model cache is not ready.
 3. `A2-AK-225` remains a known non-default fallback with fresh-container namespace/device contention, but it is no longer the active formal-case route.
 
