@@ -110,7 +110,7 @@ class VerlCaseConfig(BaseModel):
         default="quay.io/ascend/verl:verl-8.5.2-910b-ubuntu22.04-py3.11-qwen3-5",
         min_length=1,
     )
-    model_id: str = Field(default="Qwen/Qwen3.5-2B", min_length=1)
+    model_id: str = Field(default="Qwen/Qwen3-VL-2B-Instruct", min_length=1)
     dataset_id: str = Field(default="hiyouga/geometry3k", min_length=1)
     local_asset_limit_gb: int = Field(default=5, ge=1)
     input_tokens: int = Field(default=1024, ge=1)

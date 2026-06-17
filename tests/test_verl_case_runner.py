@@ -375,12 +375,17 @@ def test_run_verl_case_skips_pull_when_image_already_exists():
 
 def test_row_command_builds_formal_verl_script():
     command = case_runner._row_command(_run_config(), "sync-1024-2048")
+    async_command = case_runner._row_command(_run_config(), "async-1024-2048")
 
     assert "verl.trainer.main_ppo" in command
     assert "examples/data_preprocess/geo3k.py" in command
     assert "algorithm.adv_estimator=grpo" in command
-    assert "actor_rollout_ref.rollout.mode=" in command
+    assert "actor_rollout_ref.rollout.mode=sync" not in command
+    assert "actor_rollout_ref.rollout.mode=async" in async_command
     assert "actor_rollout_ref.rollout.ignore_eos=False" in command
+    assert "actor_rollout_ref.actor.strategy=fsdp2" in command
+    assert "trainer.balance_batch=True" in command
+    assert "data.return_raw_chat=True" in command
     assert "WANDB_DIR" in command
     assert "trainer.logger=[console,wandb]" in command
     assert "row_timeout_seconds" in command

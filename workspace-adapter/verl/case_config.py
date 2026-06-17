@@ -17,7 +17,7 @@ class VerlCaseConfig(BaseModel):
 
     cache_root: str = "/Users/Zhuanz/autoResearchData"
     docker_image: str = "quay.io/ascend/verl:verl-8.5.2-910b-ubuntu22.04-py3.11-qwen3-5"
-    model_id: str = "Qwen/Qwen3.5-2B"
+    model_id: str = "Qwen/Qwen3-VL-2B-Instruct"
     dataset_id: str = "hiyouga/geometry3k"
     local_asset_limit_gb: int = 5
     input_tokens: int = 1024

@@ -1,6 +1,6 @@
 # Verl Formal Case
 
-`autoresearch run verl-case` runs the formal Ascend Verl case for Qwen/Qwen3.5-2B on hiyouga/geometry3k and persists a local-first evidence bundle.
+`autoresearch run verl-case` runs the formal Ascend Verl Geo3K case for `Qwen/Qwen3-VL-2B-Instruct` on `hiyouga/geometry3k` and persists a local-first evidence bundle.
 
 ## Command
 
@@ -23,7 +23,7 @@ Useful options:
 ## Fixed Case
 
 - Docker image: `quay.io/ascend/verl:verl-8.5.2-910b-ubuntu22.04-py3.11-qwen3-5`
-- Model: `Qwen/Qwen3.5-2B`
+- Model: `Qwen/Qwen3-VL-2B-Instruct`
 - Dataset: `hiyouga/geometry3k`
 - Input length: `1024`
 - Output lengths: `2048`, `4096`, `8192`, `16384`
@@ -36,6 +36,8 @@ The formal run is incomplete unless every sync/async row through 16k is present 
 ## Runtime Knobs
 
 The generated Docker row script streams `verl.trainer.main_ppo` output to `rows/<row>/verl.log` while the row is running, and records `__AR_TIMEOUT__=<seconds>s` if `row_timeout_seconds` is exceeded. The default smoke-safe execution uses `trainer_val_only=true`, `train_batch_size=8`, `train_max_samples=8`, `val_batch_size=1`, and `val_max_samples=2`.
+
+Sync rows follow the current upstream rollout contract by omitting the deprecated `actor_rollout_ref.rollout.mode=sync` override entirely. Async rows keep `actor_rollout_ref.rollout.mode=async` so the matrix still measures async inference behavior explicitly.
 
 On 8x910B, AutoResearch floors `train_batch_size` and `train_max_samples` to at least `n_gpus_per_node` before launching Verl, because Verl requires `real_train_batch_size` to be divisible by the minimal device batch size.
 
