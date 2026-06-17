@@ -273,7 +273,10 @@ def _resume_model_download(
     resolve_url = f"https://huggingface.co/{model_id}/resolve/main/{target_name}"
 
     if proxy_url:
-        total_size = _resolve_expected_size_via_curl(resolve_url=resolve_url, proxy_url=proxy_url)
+        total_size = _load_cached_expected_size(incomplete_path)
+        if total_size <= 0:
+            total_size = _resolve_expected_size_via_curl(resolve_url=resolve_url, proxy_url=proxy_url)
+            _write_cached_expected_size(incomplete_path, total_size)
         current_size = incomplete_path.stat().st_size
         if total_size and current_size < total_size:
             remaining = total_size - current_size
@@ -396,12 +399,13 @@ def _resolve_expected_size_via_curl(*, resolve_url: str, proxy_url: str) -> int:
         "curl",
         "--proxy",
         proxy_url,
-        "-L",
         "-I",
+        "--max-redirs",
+        "0",
         "--connect-timeout",
         "30",
         "--max-time",
-        "120",
+        "60",
         resolve_url,
     ]
     try:
@@ -419,10 +423,30 @@ def _resolve_expected_size_via_curl(*, resolve_url: str, proxy_url: str) -> int:
         raise ModelCacheError(f"通过 curl 获取模型大小失败: {detail or f'exit={proc.returncode}'}")
 
     header_text = proc.stdout or ""
-    matches = re.findall(r"(?im)^content-length:\s*(\d+)\s*$", header_text)
+    size_matches = re.findall(r"(?im)^x-linked-size:\s*(\d+)\s*$", header_text)
+    if not size_matches:
+        size_matches = re.findall(r"(?im)^content-length:\s*(\d+)\s*$", header_text)
+    matches = size_matches
     if not matches:
         raise ModelCacheError("通过 curl 获取模型大小失败: 响应头缺少 Content-Length")
     return int(matches[-1])
+
+
+def _expected_size_cache_path(incomplete_path: Path) -> Path:
+    return incomplete_path.with_suffix(incomplete_path.suffix + ".size")
+
+
+def _load_cached_expected_size(incomplete_path: Path) -> int:
+    path = _expected_size_cache_path(incomplete_path)
+    try:
+        return int(path.read_text(encoding="utf-8").strip())
+    except (OSError, ValueError, TypeError):
+        return 0
+
+
+def _write_cached_expected_size(incomplete_path: Path, expected_size: int) -> None:
+    path = _expected_size_cache_path(incomplete_path)
+    path.write_text(f"{expected_size}\n", encoding="utf-8")
 
 
 def _resume_via_curl(

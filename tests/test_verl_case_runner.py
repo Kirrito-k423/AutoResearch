@@ -561,12 +561,9 @@ def test_resolve_expected_size_via_curl_reads_last_content_length(monkeypatch):
     class _Proc:
         returncode = 0
         stdout = (
-            "HTTP/1.1 200 Connection established\n\n"
             "HTTP/2 302\n"
-            "content-length: 1066\n\n"
-            "HTTP/1.1 200 Connection established\n\n"
-            "HTTP/1.1 200 OK\n"
-            "Content-Length: 4548221488\n"
+            "content-length: 1066\n"
+            "x-linked-size: 4548221488\n"
         )
         stderr = ""
 
@@ -578,6 +575,51 @@ def test_resolve_expected_size_via_curl_reads_last_content_length(monkeypatch):
     )
 
     assert size == 4548221488
+
+
+def test_resume_model_download_uses_cached_expected_size_for_proxy(tmp_path, monkeypatch):
+    model_cache = tmp_path / "cache" / "models" / "Qwen__Qwen3.5-2B"
+    model_cache.mkdir(parents=True)
+    for name in (
+        "chat_template.json",
+        "config.json",
+        "generation_config.json",
+        "merges.txt",
+        "preprocessor_config.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "video_preprocessor_config.json",
+        "vocab.json",
+    ):
+        (model_cache / name).write_text("{}", encoding="utf-8")
+    (model_cache / "model.safetensors.index.json").write_text(
+        json.dumps({"weight_map": {"model.embed_tokens.weight": "model.safetensors-00001-of-00001.safetensors"}}),
+        encoding="utf-8",
+    )
+    download_dir = model_cache / ".cache" / "huggingface" / "download"
+    download_dir.mkdir(parents=True)
+    largest = download_dir / "largest.incomplete"
+    largest.write_bytes(b"abc")
+    model_sync._write_cached_expected_size(largest, 6)
+
+    def fail_resolve(**kwargs):
+        raise AssertionError("size resolver should not run when cache exists")
+
+    def fake_curl_resume(*, resolve_url, incomplete_path, proxy_url, expected_size):
+        assert expected_size == 6
+        incomplete_path.write_bytes(b"abcdef")
+
+    monkeypatch.setattr(model_sync, "_resolve_expected_size_via_curl", fail_resolve)
+    monkeypatch.setattr(model_sync, "_resume_via_curl", fake_curl_resume)
+
+    model_sync._resume_model_download(
+        "Qwen/Qwen3.5-2B",
+        model_cache,
+        proxy_url="http://127.0.0.1:7890",
+    )
+
+    assert (model_cache / "model.safetensors-00001-of-00001.safetensors").read_bytes() == b"abcdef"
+    assert not largest.exists()
 
 
 def test_resume_via_parallel_curl_appends_parts_in_order(tmp_path, monkeypatch):
