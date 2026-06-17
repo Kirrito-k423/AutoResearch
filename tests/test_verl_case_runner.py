@@ -498,11 +498,7 @@ def test_resume_model_download_prefers_curl_with_proxy(tmp_path, monkeypatch):
         assert expected_size == 6
         incomplete_path.write_bytes(b"abcdef")
 
-    monkeypatch.setattr(
-        model_sync,
-        "_resolve_download_url",
-        lambda session, resolve_url, proxies: ("https://example.com/model.safetensors-00001-of-00001.safetensors", 6),
-    )
+    monkeypatch.setattr(model_sync, "_resolve_expected_size_via_curl", lambda **kwargs: 6)
     monkeypatch.setattr(model_sync, "_resume_via_curl", fake_curl_resume)
 
     model_sync._resume_model_download(
@@ -513,6 +509,29 @@ def test_resume_model_download_prefers_curl_with_proxy(tmp_path, monkeypatch):
 
     assert (model_cache / "model.safetensors-00001-of-00001.safetensors").read_bytes() == b"abcdef"
     assert not largest.exists()
+
+
+def test_resolve_expected_size_via_curl_reads_last_content_length(monkeypatch):
+    class _Proc:
+        returncode = 0
+        stdout = (
+            "HTTP/1.1 200 Connection established\n\n"
+            "HTTP/2 302\n"
+            "content-length: 1066\n\n"
+            "HTTP/1.1 200 Connection established\n\n"
+            "HTTP/1.1 200 OK\n"
+            "Content-Length: 4548221488\n"
+        )
+        stderr = ""
+
+    monkeypatch.setattr(model_sync.subprocess, "run", lambda *args, **kwargs: _Proc())
+
+    size = model_sync._resolve_expected_size_via_curl(
+        resolve_url="https://huggingface.co/Qwen/Qwen3.5-2B/resolve/main/model.safetensors-00001-of-00001.safetensors",
+        proxy_url="http://127.0.0.1:7890",
+    )
+
+    assert size == 4548221488
 
 
 def test_capture_repo_provenance_without_push(tmp_path):

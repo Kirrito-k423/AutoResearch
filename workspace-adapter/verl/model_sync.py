@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shlex
 import subprocess
 import tarfile
@@ -265,24 +266,37 @@ def _resume_model_download(
         raise ModelCacheError(f"未找到可续传的中间文件: {model_cache}")
     target_name = _resume_target_name(model_cache, incomplete_path)
 
-    proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
-    session = requests.Session()
     resolve_url = f"https://huggingface.co/{model_id}/resolve/main/{target_name}"
-    retries = 0
-    total_size = 0
-    while True:
-        current_size = incomplete_path.stat().st_size
-        download_url, total_size = _resolve_download_url(session, resolve_url, proxies)
-        if total_size and current_size >= total_size:
-            break
 
-        if proxy_url:
+    if proxy_url:
+        total_size = _resolve_expected_size_via_curl(resolve_url=resolve_url, proxy_url=proxy_url)
+        current_size = incomplete_path.stat().st_size
+        if total_size and current_size < total_size:
             _resume_via_curl(
                 resolve_url=resolve_url,
                 incomplete_path=incomplete_path,
                 proxy_url=proxy_url,
                 expected_size=total_size,
             )
+        final_size = incomplete_path.stat().st_size
+        if total_size and final_size != total_size:
+            raise ModelCacheError(
+                f"单文件续传后模型大小不匹配: got={final_size}, want={total_size}"
+            )
+        final_path = model_cache / target_name
+        incomplete_path.replace(final_path)
+        for candidate in model_cache.rglob("*.incomplete"):
+            candidate.unlink(missing_ok=True)
+        return
+
+    proxies = None
+    session = requests.Session()
+    retries = 0
+    total_size = 0
+    while True:
+        current_size = incomplete_path.stat().st_size
+        download_url, total_size = _resolve_download_url(session, resolve_url, proxies)
+        if total_size and current_size >= total_size:
             break
 
         headers = {"Range": f"bytes={current_size}-"} if current_size else {}
@@ -362,6 +376,40 @@ def _resolve_download_url(
         except requests.RequestException as exc:
             last_error = exc
     raise ModelCacheError(f"获取模型直链失败: {last_error}")
+
+
+def _resolve_expected_size_via_curl(*, resolve_url: str, proxy_url: str) -> int:
+    command = [
+        "curl",
+        "--proxy",
+        proxy_url,
+        "-L",
+        "-I",
+        "--connect-timeout",
+        "30",
+        "--max-time",
+        "120",
+        resolve_url,
+    ]
+    try:
+        proc = subprocess.run(
+            command,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        raise ModelCacheError("通过 curl 获取模型大小失败: 本机未找到 curl") from exc
+
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout or "").strip()
+        raise ModelCacheError(f"通过 curl 获取模型大小失败: {detail or f'exit={proc.returncode}'}")
+
+    header_text = proc.stdout or ""
+    matches = re.findall(r"(?im)^content-length:\s*(\d+)\s*$", header_text)
+    if not matches:
+        raise ModelCacheError("通过 curl 获取模型大小失败: 响应头缺少 Content-Length")
+    return int(matches[-1])
 
 
 def _resume_via_curl(
