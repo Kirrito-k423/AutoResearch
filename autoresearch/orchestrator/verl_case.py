@@ -124,13 +124,12 @@ def run_verl_case_orchestration(
             stack_libs=("verl",),
             remote_proxy_port=remote_proxy_port,
         )
-        readiness_exit, readiness_payload, docker_override_warning = _maybe_relax_stack_failure_for_docker(
+        readiness_exit, readiness_payload, readiness_override_warnings = _maybe_relax_readiness_for_formal_case(
             readiness_exit=readiness_exit,
             readiness_payload=readiness_payload,
             spec=spec,
         )
-        if docker_override_warning:
-            warnings.append(docker_override_warning)
+        warnings.extend(readiness_override_warnings)
         readiness_step = step_result(
             step_id="readiness",
             label="skills-1-6-readiness",
@@ -471,44 +470,59 @@ def _container_proxy_url(
     return f"http://127.0.0.1:{remote_proxy_port}"
 
 
-def _maybe_relax_stack_failure_for_docker(
+def _maybe_relax_readiness_for_formal_case(
     *,
     readiness_exit: int,
     readiness_payload: dict[str, Any],
     spec: ServerSpec,
-) -> tuple[int, dict[str, Any], str | None]:
+) -> tuple[int, dict[str, Any], list[str]]:
     if readiness_exit == 0:
-        return readiness_exit, readiness_payload, None
-    if readiness_payload.get("failed_step") != "stack":
-        return readiness_exit, readiness_payload, None
+        return readiness_exit, readiness_payload, []
 
     steps = list(readiness_payload.get("steps") or [])
+    warnings: list[str] = []
+
+    services_step = next((step for step in steps if step.get("id") == "services"), None)
+    if services_step and services_step.get("status") == "fail":
+        service_rows = list((services_step.get("payload") or {}).get("services") or [])
+        unhealthy = [row.get("name") for row in service_rows if not row.get("healthy")]
+        if unhealthy == ["archon"]:
+            services_step["ok"] = True
+            services_step["status"] = "warn"
+            services_step["exit_code"] = 0
+            services_step["diagnosis"] = "Archon 未启动，但 formal case 不依赖 archon。"
+            payload = dict(services_step.get("payload") or {})
+            payload["ok"] = True
+            payload["severity"] = "warn"
+            payload["formal_case_optional"] = ["archon"]
+            payload["message"] = "本地服务检查通过 (formal case 忽略 archon)"
+            services_step["payload"] = payload
+            warnings.append(f"readiness services override: ignore local archon for formal case on {spec.name}")
+
     stack_step = next((step for step in steps if step.get("id") == "stack"), None)
-    if not stack_step:
-        return readiness_exit, readiness_payload, None
+    if stack_step and stack_step.get("status") == "fail":
+        detail = str(
+            stack_step.get("diagnosis")
+            or (stack_step.get("payload") or {}).get("error")
+            or ""
+        )
+        if "python: command not found" in detail:
+            docker_ok, docker_detail = _docker_formal_stack_ready(spec)
+            if docker_ok:
+                stack_step["ok"] = True
+                stack_step["status"] = "warn"
+                stack_step["exit_code"] = 0
+                stack_step["diagnosis"] = f"宿主机 Python 栈缺失，但 Docker formal stack 可用: {docker_detail}"
+                payload = dict(stack_step.get("payload") or {})
+                payload["ok"] = True
+                payload["severity"] = "warn"
+                payload["docker_override"] = docker_detail
+                payload["message"] = "训练栈检查通过 (formal case docker override)"
+                stack_step["payload"] = payload
+                warnings.append(f"readiness stack override: {spec.name} host python 缺失，但 Docker/NPU 可用于 formal case")
 
-    detail = str(
-        stack_step.get("diagnosis")
-        or (stack_step.get("payload") or {}).get("error")
-        or ""
-    )
-    if "python: command not found" not in detail:
-        return readiness_exit, readiness_payload, None
-
-    docker_ok, docker_detail = _docker_formal_stack_ready(spec)
-    if not docker_ok:
-        return readiness_exit, readiness_payload, None
-
-    stack_step["ok"] = True
-    stack_step["status"] = "warn"
-    stack_step["exit_code"] = 0
-    stack_step["diagnosis"] = f"宿主机 Python 栈缺失，但 Docker formal stack 可用: {docker_detail}"
-    payload = dict(stack_step.get("payload") or {})
-    payload["ok"] = True
-    payload["severity"] = "warn"
-    payload["docker_override"] = docker_detail
-    payload["message"] = "训练栈检查通过 (formal case docker override)"
-    stack_step["payload"] = payload
+    if not warnings:
+        return readiness_exit, readiness_payload, []
 
     summary = summarize_steps(steps)
     updated_payload = {
@@ -518,8 +532,7 @@ def _maybe_relax_stack_failure_for_docker(
         "summary": summary,
         "steps": steps,
     }
-    warning = f"readiness stack override: {spec.name} host python 缺失，但 Docker/NPU 可用于 formal case"
-    return (0 if summary["failed"] == 0 else readiness_exit), updated_payload, warning
+    return (0 if summary["failed"] == 0 else readiness_exit), updated_payload, warnings
 
 
 def _docker_formal_stack_ready(spec: ServerSpec) -> tuple[bool, str]:
