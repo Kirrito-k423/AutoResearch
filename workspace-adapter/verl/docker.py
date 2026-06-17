@@ -22,9 +22,25 @@ def _q(value: str | Path) -> str:
     return shlex.quote(str(value))
 
 
-def build_docker_pull_command(image: str) -> str:
+def build_docker_pull_command(image: str, proxy_url: str | None = None) -> str:
     """Build a docker pull command for the selected Verl image."""
-    return f"docker pull {_q(image)}"
+    parts: list[str] = []
+    if proxy_url:
+        parts.extend(
+            [
+                "env",
+                f"http_proxy={_q(proxy_url)}",
+                f"https_proxy={_q(proxy_url)}",
+                f"HTTP_PROXY={_q(proxy_url)}",
+                f"HTTPS_PROXY={_q(proxy_url)}",
+                f"all_proxy={_q(proxy_url)}",
+                f"ALL_PROXY={_q(proxy_url)}",
+                "no_proxy=localhost,127.0.0.1,.huawei.com",
+                "NO_PROXY=localhost,127.0.0.1,.huawei.com",
+            ]
+        )
+    parts.extend(["docker", "pull", _q(image)])
+    return " ".join(parts)
 
 
 def build_docker_run_command(

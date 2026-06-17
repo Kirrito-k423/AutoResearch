@@ -90,7 +90,10 @@ def run_verl_case(
     commands.append(inspect)
     inspect_code, _inspect_stdout, _inspect_stderr = runner(spec, inspect, min(timeout, 60.0))
     if inspect_code != 0:
-        pull = build_docker_pull_command(run_config.config.docker_image)
+        pull = build_docker_pull_command(
+            run_config.config.docker_image,
+            proxy_url=proxy_url,
+        )
         commands.append(pull)
         pull_code, pull_stdout, pull_stderr = runner(spec, pull, timeout)
         if pull_code != 0:

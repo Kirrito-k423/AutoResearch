@@ -77,6 +77,19 @@ def test_docker_run_command_omits_proxy_when_none():
     assert "ALL_PROXY" not in command
 
 
+def test_docker_pull_command_includes_proxy_env_when_configured():
+    command = docker.build_docker_pull_command(
+        "quay.io/ascend/verl:test",
+        proxy_url="http://127.0.0.1:17895",
+    )
+
+    assert command.startswith("env ")
+    assert "http_proxy=http://127.0.0.1:17895" in command
+    assert "https_proxy=http://127.0.0.1:17895" in command
+    assert "ALL_PROXY=http://127.0.0.1:17895" in command
+    assert command.endswith("docker pull quay.io/ascend/verl:test")
+
+
 def test_docker_run_command_allows_smaller_device_count():
     command = docker.build_docker_run_command(
         image="img",
@@ -878,7 +891,7 @@ def test_run_verl_case_fails_if_one_matrix_row_fails():
         calls.append(command)
         if command.startswith("docker image inspect"):
             return 1, "", "missing"
-        if command.startswith("docker pull"):
+        if "docker pull" in command:
             return 0, "pulled", ""
         if "async-1024-16384" in command:
             return 1, "", "oom"
@@ -901,7 +914,7 @@ def test_run_verl_case_fails_if_one_matrix_row_fails():
     )
 
     assert calls[0].startswith("docker image inspect")
-    assert calls[1].startswith("docker pull")
+    assert "docker pull" in calls[1]
     assert result.ok is False
     assert any(row.status == "failed" and row.output_tokens == 16384 for row in result.rows)
 
@@ -912,7 +925,7 @@ def test_run_verl_case_passes_all_rows_and_script_contains_ignore_eos_false():
     def runner(spec, command, timeout):
         if command.startswith("docker image inspect"):
             return 1, "", "missing"
-        if command.startswith("docker pull"):
+        if "docker pull" in command:
             return 0, "pulled", ""
         payload = {
             "status": "passed",
@@ -1001,7 +1014,7 @@ def test_run_verl_case_skips_pull_when_image_already_exists():
         calls.append(command)
         if command.startswith("docker image inspect"):
             return 0, "", ""
-        if command.startswith("docker pull"):
+        if "docker pull" in command:
             raise AssertionError("docker pull should be skipped when image already exists")
         payload = {
             "status": "passed",
@@ -1022,7 +1035,7 @@ def test_run_verl_case_skips_pull_when_image_already_exists():
     )
 
     assert calls[0].startswith("docker image inspect")
-    assert all(not command.startswith("docker pull") for command in calls)
+    assert all("docker pull" not in command for command in calls)
     assert result.ok is True
 
 
