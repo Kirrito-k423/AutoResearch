@@ -37,7 +37,7 @@
 
 ## Next
 
-Phase 14 execution artifacts are in place. The next operational step is to clear the remaining real-UAT blockers, then rerun `$gsd-verify-work 14` against a successful formal-case run before any milestone-complete action.
+Phase 14 execution artifacts are in place. The next operational step is to close the remaining real-UAT blocker by monitoring the live A2-AK-225 formal run, then rerun `$gsd-verify-work 14` against a successful formal-case run before any milestone-complete action.
 
 ### Phase 14: 跑通 Verl 正式案例并沉淀 workspace-adapter/verl 实验闭环
 
@@ -66,4 +66,4 @@ Plans:
 
 **Wave 5 *(blocked on Wave 4 real-UAT evidence)***
 
-- [ ] 14-05: Real Formal Runtime Completion And Artifact Closure *(active; detached supervisor is finishing local Qwen3.5 cache before auto-launching the A3-AX-180 real run)*
+- [ ] 14-05: Real Formal Runtime Completion And Artifact Closure *(active; A3-AX-180 exposed a likely host/runtime mismatch, and the live closure attempt is now running on A2-AK-225)*

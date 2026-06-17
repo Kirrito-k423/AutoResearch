@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Stable
-status: Phase 14 real formal-case runtime is active on A3-AX-180; local Qwen3.5 cache completion is the current gate
-stopped_at: Phase 14 reopened under 14-05; next route is resume real formal runtime closure and artifact verification
-last_updated: "2026-06-17T16:05:00Z"
+status: Phase 14 pivoted from A3-AX-180 to A2-AK-225 after suspected host/toolkit mismatch on A3; the new A2 formal run is active in prepare/staging
+stopped_at: Phase 14 14-05 is still in execute mode; next route is continue monitoring the A2 formal run and close real-UAT evidence
+last_updated: "2026-06-17T17:06:00Z"
 last_activity: 2026-06-17
 progress:
   total_phases: 14
@@ -22,13 +22,13 @@ See: .planning/PROJECT.md (updated 2026-06-15 after v1.0 milestone)
 
 **Core value:** "常实践，详记录，知得失，会设计，有整理"——每个 skill 跑一次都留下可被复盘、可被二次开发的产物。
 
-**Current focus:** Phase 14 is reopened under Plan 14-05 so GSD routes back into the real formal-case closure path instead of treating the phase as already complete.
+**Current focus:** Phase 14 remains reopened under Plan 14-05. The original A3-AX-180 real run exposed a likely host/runtime mismatch, so the live closure path now targets A2-AK-225 with the same formal-case matrix.
 
 ## Position
 
 - **Milestone:** v1.1 Stable planning
 - **Phase:** Phase 14 — 跑通 Verl 正式案例并沉淀 workspace-adapter/verl 实验闭环
-- **Plan:** 14-05 active; detached supervisor is finishing the local Qwen3.5 shard before auto-launching the real A3-AX-180 run
+- **Plan:** 14-05 active; the first A3-AX-180 real run produced repeatable NPU/FSDP failures, and a new A2-AK-225 real run is currently staging formal-case assets
 - **Last activity:** 2026-06-17
 
 ## Session Continuity
@@ -198,9 +198,9 @@ Items acknowledged and deferred at milestone close on 2026-06-15:
 
 ## Next Steps
 
-1. Let the detached local supervisor finish the resumable `Qwen/Qwen3.5-2B` shard cache
-2. Auto-launch and monitor the real `autoresearch run verl-case` execution on `A3-AX-180`
-3. Verify the final 8-row matrix plus artifact bundle, then update Phase 14 UAT / verification / summary with the concrete run id and GitHub links
+1. Let the active `formal-20260618-005703-a2ak225` run finish remote staging and enter matrix execution on `A2-AK-225`
+2. Compare the A2 outcome against the earlier A3 `aclnnInplaceZero` failure to confirm whether machine selection clears the real blocker
+3. Verify the final 8-row matrix plus artifact bundle, then update Phase 14 UAT / verification / summary with the concrete run ids and GitHub links
 
 ## Continuation Prompts
 
