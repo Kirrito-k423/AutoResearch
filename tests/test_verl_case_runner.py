@@ -33,6 +33,7 @@ def test_docker_run_command_contains_ascend_mounts_and_proxy():
         model_mount="/tmp/model path",
         dataset_mount="/tmp/dataset",
         output_mount="/tmp/output",
+        source_mounts={"/verl": "/tmp/verl-src"},
         proxy_url="http://127.0.0.1:7890",
     )
 
@@ -53,6 +54,7 @@ def test_docker_run_command_contains_ascend_mounts_and_proxy():
     assert "no_proxy=localhost,127.0.0.1,.huawei.com" in command
     assert "NO_PROXY=localhost,127.0.0.1,.huawei.com" in command
     assert "'/tmp/model path':/app/ckpt:ro" in command
+    assert "/tmp/verl-src:/verl" in command
 
 
 def test_docker_run_command_omits_proxy_when_none():
@@ -338,6 +340,62 @@ def test_run_verl_case_passes_all_rows_and_script_contains_ignore_eos_false():
     assert result.ok is True
     assert len(result.rows) == 8
     assert '"ignore_eos": false' in case_runner.build_remote_case_script(run_config)
+
+
+def test_run_verl_case_mounts_staged_dependency_sources():
+    run_config = _run_config()
+    run_config.config.dependency_repo_paths = {"verl": "/Users/Zhuanz/work/github/verl"}
+    calls = []
+
+    def source_syncer(spec, config):
+        assert config.run_id == "run123"
+        return {"/verl": "/remote/deps/verl"}
+
+    def runner(spec, command, timeout):
+        calls.append(command)
+        if command.startswith("docker image inspect"):
+            return 0, "", ""
+        payload = {
+            "status": "passed",
+            "elapsed_seconds": 1.0,
+            "tokens_per_second": 2.0,
+            "latency_ms": 500.0,
+            "sample_count": 1,
+            "accuracy": 1.0,
+            "consistency": 1.0,
+        }
+        return 0, "VERL_CASE_RESULT=" + json.dumps(payload), ""
+
+    result = case_runner.run_verl_case(
+        ServerSpec(name="A3-AX-180", host="h", user="root"),
+        run_config,
+        timeout=1.0,
+        runner=runner,
+        source_syncer=source_syncer,
+    )
+
+    assert result.ok is True
+    docker_runs = [command for command in calls if command.startswith("docker run")]
+    assert docker_runs
+    assert any("/remote/deps/verl:/verl" in command for command in docker_runs)
+
+
+def test_run_verl_case_surfaces_dependency_sync_errors():
+    run_config = _run_config()
+
+    def source_syncer(spec, config):
+        raise case_runner.DependencySourceSyncError("sync failed")
+
+    result = case_runner.run_verl_case(
+        ServerSpec(name="A3-AX-180", host="h", user="root"),
+        run_config,
+        timeout=1.0,
+        source_syncer=source_syncer,
+    )
+
+    assert result.ok is False
+    assert result.rows == []
+    assert result.error == "sync failed"
 
 
 def test_run_verl_case_skips_pull_when_image_already_exists():

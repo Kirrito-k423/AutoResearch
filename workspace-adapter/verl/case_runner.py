@@ -16,9 +16,11 @@ from .case_config import (
     VerlCaseRunConfig,
 )
 from .docker import build_docker_pull_command, build_docker_run_command
+from .source_sync import DependencySourceSyncError, stage_dependency_sources
 
 
 RemoteRunner = Callable[[ServerSpec, str, float], tuple[int, str, str]]
+SourceSyncer = Callable[[ServerSpec, VerlCaseRunConfig], dict[str, str]]
 
 
 class VerlCaseRunResult(BaseModel):
@@ -35,6 +37,15 @@ class VerlCaseRunResult(BaseModel):
 
 def _default_runner(spec: ServerSpec, command: str, timeout: float) -> tuple[int, str, str]:
     return run_in_env(spec, command, conda_env=getattr(spec, "conda_env", "") or "", workdir=getattr(spec, "workdir", "") or "", timeout=timeout)
+
+
+def _default_source_syncer(spec: ServerSpec, run_config: VerlCaseRunConfig) -> dict[str, str]:
+    return stage_dependency_sources(
+        spec,
+        run_id=run_config.run_id,
+        remote_workdir=run_config.config.remote_workdir,
+        dependency_repo_paths=dict(run_config.config.dependency_repo_paths or {}),
+    )
 
 
 def build_remote_case_script(run_config: VerlCaseRunConfig) -> str:
@@ -59,11 +70,22 @@ def run_verl_case(
     remote_dataset_path: str | Path = "/home/t00906153/autoresearch/dataset",
     remote_output_path: str | Path | None = None,
     runner: RemoteRunner = _default_runner,
+    source_syncer: SourceSyncer = _default_source_syncer,
 ) -> VerlCaseRunResult:
     """Run every strict matrix row on the remote host via Docker."""
     output_path = Path(remote_output_path or f"/home/t00906153/autoresearch/runs/{run_config.run_id}")
     commands: list[str] = []
     rows: list[VerlCaseResultRow] = []
+    try:
+        source_mounts = source_syncer(spec, run_config)
+    except DependencySourceSyncError as exc:
+        return VerlCaseRunResult(
+            ok=False,
+            run_id=run_config.run_id,
+            commands=commands,
+            rows=[],
+            error=str(exc),
+        )
     inspect = f"docker image inspect {shlex.quote(run_config.config.docker_image)} >/dev/null 2>&1"
     commands.append(inspect)
     inspect_code, _inspect_stdout, _inspect_stderr = runner(spec, inspect, min(timeout, 60.0))
@@ -89,6 +111,7 @@ def run_verl_case(
             model_mount=remote_model_path,
             dataset_mount=remote_dataset_path,
             output_mount=output_path,
+            source_mounts=source_mounts,
             proxy_url=proxy_url,
             command=_row_command(run_config, matrix_row.key),
         )

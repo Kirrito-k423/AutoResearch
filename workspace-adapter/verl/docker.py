@@ -34,6 +34,7 @@ def build_docker_run_command(
     model_mount: str | Path,
     dataset_mount: str | Path,
     output_mount: str | Path,
+    source_mounts: dict[str, str | Path] | None = None,
     command: str = "/bin/bash",
     proxy_url: str | None = None,
     shm_size: str = "64G",
@@ -75,6 +76,8 @@ def build_docker_run_command(
             f"{_q(output_mount)}:/app/output",
         ]
     )
+    for container_path, host_path in (source_mounts or {}).items():
+        parts.extend(["-v", f"{_q(host_path)}:{_q(container_path)}"])
     if proxy_url:
         for key in ("http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY", "all_proxy", "ALL_PROXY"):
             parts.extend(["-e", f"{key}={_q(proxy_url)}"])
