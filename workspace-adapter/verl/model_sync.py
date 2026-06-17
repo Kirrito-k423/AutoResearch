@@ -75,13 +75,15 @@ def prepare_model_cache(
 
     previous_env = {
         key: os.environ.get(key)
-        for key in (*PROXY_ENV_KEYS, *HF_ENV_DEFAULTS.keys())
+        for key in (*PROXY_ENV_KEYS, *HF_ENV_DEFAULTS.keys(), "HF_HUB_DISABLE_XET")
     }
     if proxy_url:
         for key in PROXY_ENV_KEYS:
             os.environ[key] = proxy_url
-    for key, value in HF_ENV_DEFAULTS.items():
-        os.environ.setdefault(key, value)
+        os.environ["HF_HUB_DISABLE_XET"] = "1"
+    else:
+        for key, value in HF_ENV_DEFAULTS.items():
+            os.environ.setdefault(key, value)
     try:
         from huggingface_hub import snapshot_download
     except ImportError as exc:
