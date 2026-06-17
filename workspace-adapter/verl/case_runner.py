@@ -391,7 +391,6 @@ def _formal_row_script(*, config_json: str, row_key: str) -> str:
         "    'trainer.total_epochs=1', 'trainer.total_training_steps=1',\n"
         "    f'trainer.val_only={str(bool(case.get(\"trainer_val_only\", True)))}',\n"
         "    'trainer.val_before_train=True', 'trainer.resume_mode=disable',\n"
-        "    'trainer.use_legacy_worker_impl=disable',\n"
         "    f'trainer.validation_data_dir={str(validation_dir)}',\n"
         "    f'trainer.default_local_dir={str(row_dir / \"ckpt\")}',\n"
         "]\n"

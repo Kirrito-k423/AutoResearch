@@ -446,5 +446,6 @@ def test_row_command_builds_formal_verl_script():
     assert "data.return_raw_chat=True" in command
     assert "WANDB_DIR" in command
     assert "trainer.logger=[console,wandb]" in command
+    assert "trainer.use_legacy_worker_impl" not in command
     assert "row_timeout_seconds" in command
     assert "VERL_CASE_RESULT=" in command
