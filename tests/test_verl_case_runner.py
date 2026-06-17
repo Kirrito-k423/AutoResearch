@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import importlib
 import json
+import sys
+import types
 from datetime import datetime, timezone
 
 from workspace_core.config import ServerSpec
@@ -141,7 +143,7 @@ def test_prepare_model_cache_short_circuits_existing_snapshot(tmp_path):
     model_cache = tmp_path / "cache" / "models" / "Qwen__Qwen3-VL-2B-Instruct"
     model_cache.mkdir(parents=True)
     (model_cache / "config.json").write_text("{}", encoding="utf-8")
-    (model_cache / "model-00001-of-00001.safetensors").write_bytes(b"stub")
+    (model_cache / "model.safetensors").write_bytes(b"stub")
 
     prepared = model_sync.prepare_model_cache(
         case_config.VerlCaseConfig(),
@@ -151,6 +153,154 @@ def test_prepare_model_cache_short_circuits_existing_snapshot(tmp_path):
     assert prepared.ready is True
     assert prepared.downloaded is False
     assert prepared.model_cache == model_cache
+
+
+def test_prepare_model_cache_recovers_completed_snapshot_via_resume(tmp_path, monkeypatch):
+    model_cache = tmp_path / "cache" / "models" / "Qwen__Qwen3-VL-2B-Instruct"
+    model_cache.mkdir(parents=True)
+    for name in (
+        "chat_template.json",
+        "config.json",
+        "generation_config.json",
+        "merges.txt",
+        "preprocessor_config.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "video_preprocessor_config.json",
+        "vocab.json",
+    ):
+        (model_cache / name).write_text("{}", encoding="utf-8")
+
+    fake_hf = types.ModuleType("huggingface_hub")
+    fake_hf.snapshot_download = lambda **kwargs: None
+    monkeypatch.setitem(sys.modules, "huggingface_hub", fake_hf)
+
+    def fake_resume(model_id, cache, *, proxy_url):
+        assert model_id == "Qwen/Qwen3-VL-2B-Instruct"
+        assert cache == model_cache
+        assert proxy_url is None
+        (cache / "model.safetensors").write_bytes(b"stub")
+
+    monkeypatch.setattr(model_sync, "_resume_model_download", fake_resume)
+
+    prepared = model_sync.prepare_model_cache(
+        case_config.VerlCaseConfig(),
+        tmp_path / "cache",
+    )
+
+    assert prepared.ready is True
+    assert prepared.downloaded is True
+    assert prepared.model_cache == model_cache
+
+
+def test_prepare_model_cache_prefers_existing_incomplete_resume(tmp_path, monkeypatch):
+    model_cache = tmp_path / "cache" / "models" / "Qwen__Qwen3-VL-2B-Instruct"
+    model_cache.mkdir(parents=True)
+    for name in (
+        "chat_template.json",
+        "config.json",
+        "generation_config.json",
+        "merges.txt",
+        "preprocessor_config.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "video_preprocessor_config.json",
+        "vocab.json",
+    ):
+        (model_cache / name).write_text("{}", encoding="utf-8")
+    download_dir = model_cache / ".cache" / "huggingface" / "download"
+    download_dir.mkdir(parents=True)
+    (download_dir / "largest.incomplete").write_bytes(b"abc")
+
+    fake_hf = types.ModuleType("huggingface_hub")
+
+    def fake_snapshot_download(**kwargs):
+        raise AssertionError("snapshot_download should not run when resumable cache exists")
+
+    fake_hf.snapshot_download = fake_snapshot_download
+    monkeypatch.setitem(sys.modules, "huggingface_hub", fake_hf)
+
+    def fake_resume(model_id, cache, *, proxy_url):
+        assert model_id == "Qwen/Qwen3-VL-2B-Instruct"
+        assert cache == model_cache
+        assert proxy_url == "http://127.0.0.1:7890"
+        (cache / "model.safetensors").write_bytes(b"stub")
+
+    monkeypatch.setattr(model_sync, "_resume_model_download", fake_resume)
+
+    prepared = model_sync.prepare_model_cache(
+        case_config.VerlCaseConfig(),
+        tmp_path / "cache",
+        proxy_url="http://127.0.0.1:7890",
+    )
+
+    assert prepared.ready is True
+    assert prepared.downloaded is True
+    assert prepared.model_cache == model_cache
+
+
+def test_resume_model_download_continues_largest_incomplete(tmp_path, monkeypatch):
+    model_cache = tmp_path / "cache" / "models" / "Qwen__Qwen3-VL-2B-Instruct"
+    model_cache.mkdir(parents=True)
+    for name in (
+        "chat_template.json",
+        "config.json",
+        "generation_config.json",
+        "merges.txt",
+        "preprocessor_config.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "video_preprocessor_config.json",
+        "vocab.json",
+    ):
+        (model_cache / name).write_text("{}", encoding="utf-8")
+    download_dir = model_cache / ".cache" / "huggingface" / "download"
+    download_dir.mkdir(parents=True)
+    largest = download_dir / "largest.incomplete"
+    largest.write_bytes(b"abc")
+    (download_dir / "smaller.incomplete").write_bytes(b"a")
+
+    class _Response:
+        def __init__(self, *, status_code=200, headers=None, chunks=None):
+            self.status_code = status_code
+            self.headers = headers or {}
+            self._chunks = chunks or []
+
+        def raise_for_status(self):
+            return None
+
+        def iter_content(self, chunk_size=0):
+            yield from self._chunks
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    class _Session:
+        def get(self, url, **kwargs):
+            if kwargs.get("allow_redirects") is False:
+                return _Response(
+                    status_code=302,
+                    headers={
+                        "location": "https://example.com/model.safetensors",
+                        "x-linked-size": "6",
+                    },
+                )
+            assert kwargs["headers"]["Range"] == "bytes=3-"
+            return _Response(status_code=206, chunks=[b"def"])
+
+    monkeypatch.setattr(model_sync.requests, "Session", lambda: _Session())
+
+    model_sync._resume_model_download(
+        "Qwen/Qwen3-VL-2B-Instruct",
+        model_cache,
+        proxy_url="http://127.0.0.1:7890",
+    )
+
+    assert (model_cache / "model.safetensors").read_bytes() == b"abcdef"
+    assert not largest.exists()
 
 
 def test_capture_repo_provenance_without_push(tmp_path):

@@ -8,6 +8,7 @@ import tempfile
 from pathlib import Path, PurePosixPath
 
 from pydantic import BaseModel
+import requests
 
 from workspace_core.config import ServerSpec
 from workspace_core.secrets import resolve_secret
@@ -34,6 +35,18 @@ MODEL_ALLOW_PATTERNS = (
     "*.tiktoken",
     "*.jinja",
 )
+MODEL_FILE = "model.safetensors"
+_SIDECAR_FILES = {
+    "chat_template.json",
+    "config.json",
+    "generation_config.json",
+    "merges.txt",
+    "preprocessor_config.json",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "video_preprocessor_config.json",
+    "vocab.json",
+}
 
 
 class ModelCacheError(RuntimeError):
@@ -72,6 +85,19 @@ def prepare_model_cache(
             ready=True,
             downloaded=False,
         )
+    if _sidecars_ready(model_cache) and _largest_incomplete(model_cache) is not None:
+        try:
+            _resume_model_download(config.model_id, model_cache, proxy_url=proxy_url)
+        except Exception:
+            pass
+        else:
+            return PreparedModelCache(
+                model_id=config.model_id,
+                cache_root=root,
+                model_cache=model_cache,
+                ready=True,
+                downloaded=True,
+            )
 
     previous_env = {
         key: os.environ.get(key)
@@ -98,7 +124,13 @@ def prepare_model_cache(
         }
         snapshot_download(**kwargs)
     except Exception as exc:
-        raise ModelCacheError(f"下载模型缓存失败: {config.model_id}: {exc}") from exc
+        _resume_or_raise(
+            config.model_id,
+            model_cache,
+            proxy_url=proxy_url,
+            initial_error=exc,
+            context="下载模型缓存失败",
+        )
     finally:
         for key, value in previous_env.items():
             if value is None:
@@ -107,8 +139,11 @@ def prepare_model_cache(
                 os.environ[key] = value
 
     if not _model_ready(model_cache):
-        raise ModelCacheError(
-            f"模型缓存不完整: {model_cache}，缺少 config.json 或 safetensors 权重。"
+        _resume_or_raise(
+            config.model_id,
+            model_cache,
+            proxy_url=proxy_url,
+            context=f"模型缓存不完整: {model_cache}",
         )
     return PreparedModelCache(
         model_id=config.model_id,
@@ -166,7 +201,120 @@ def stage_model_cache(
 
 
 def _model_ready(model_cache: Path) -> bool:
-    return (model_cache / "config.json").exists() and any(model_cache.glob("*.safetensors"))
+    return (model_cache / "config.json").exists() and (model_cache / MODEL_FILE).exists()
+
+
+def _sidecars_ready(model_cache: Path) -> bool:
+    return all((model_cache / name).exists() for name in _SIDECAR_FILES)
+
+
+def _resume_or_raise(
+    model_id: str,
+    model_cache: Path,
+    *,
+    proxy_url: str | None,
+    context: str,
+    initial_error: Exception | None = None,
+) -> None:
+    if not _sidecars_ready(model_cache):
+        detail = f"{context}: {model_id}" if initial_error else context
+        if initial_error is None:
+            raise ModelCacheError(f"{detail}，缺少续传所需的 sidecar 文件。")
+        raise ModelCacheError(f"{detail}: {initial_error}") from initial_error
+
+    try:
+        _resume_model_download(model_id, model_cache, proxy_url=proxy_url)
+    except Exception as resume_exc:
+        if initial_error is None:
+            raise ModelCacheError(f"{context}；单文件续传也失败: {resume_exc}") from resume_exc
+        raise ModelCacheError(
+            f"{context}: {model_id}: {initial_error}; 单文件续传也失败: {resume_exc}"
+        ) from resume_exc
+
+    if not _model_ready(model_cache):
+        raise ModelCacheError(f"{context}，单文件续传结束后仍缺少 config.json 或 safetensors 权重。")
+
+
+def _resume_model_download(
+    model_id: str,
+    model_cache: Path,
+    *,
+    proxy_url: str | None,
+) -> None:
+    incomplete_path = _largest_incomplete(model_cache)
+    if incomplete_path is None:
+        raise ModelCacheError(f"未找到可续传的中间文件: {model_cache}")
+
+    proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
+    session = requests.Session()
+    resolve_url = f"https://huggingface.co/{model_id}/resolve/main/{MODEL_FILE}"
+    download_url, total_size = _resolve_download_url(session, resolve_url, proxies)
+    current_size = incomplete_path.stat().st_size
+    if total_size and current_size >= total_size:
+        incomplete_path.replace(model_cache / MODEL_FILE)
+        return
+
+    headers = {"Range": f"bytes={current_size}-"} if current_size else {}
+    response = session.get(
+        download_url,
+        headers=headers,
+        stream=True,
+        proxies=proxies,
+        timeout=(30, 300),
+    )
+    response.raise_for_status()
+    with response:
+        with incomplete_path.open("ab" if current_size else "wb") as handle:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    handle.write(chunk)
+
+    final_size = incomplete_path.stat().st_size
+    if total_size and final_size != total_size:
+        raise ModelCacheError(
+            f"单文件续传后模型大小不匹配: got={final_size}, want={total_size}"
+        )
+
+    final_path = model_cache / MODEL_FILE
+    incomplete_path.replace(final_path)
+    for candidate in model_cache.rglob("*.incomplete"):
+        candidate.unlink(missing_ok=True)
+
+
+def _resolve_download_url(
+    session: requests.Session,
+    resolve_url: str,
+    proxies: dict[str, str] | None,
+) -> tuple[str, int]:
+    last_error: Exception | None = None
+    for _ in range(3):
+        try:
+            response = session.get(
+                resolve_url,
+                allow_redirects=False,
+                proxies=proxies,
+                timeout=(30, 120),
+            )
+            response.raise_for_status()
+            location = response.headers.get("location") or resolve_url
+            total_size = int(
+                response.headers.get("x-linked-size")
+                or response.headers.get("Content-Length")
+                or 0
+            )
+            return location, total_size
+        except requests.RequestException as exc:
+            last_error = exc
+    raise ModelCacheError(f"获取模型直链失败: {last_error}")
+
+
+def _largest_incomplete(model_cache: Path) -> Path | None:
+    candidates = sorted(
+        model_cache.rglob("*.incomplete"),
+        key=lambda item: item.stat().st_size,
+        reverse=True,
+    )
+    return candidates[0] if candidates else None
 
 
 def _ensure_remote_dir(client: SSHClient, remote_dir: PurePosixPath) -> None:
