@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 import shlex
+import subprocess
 import tarfile
 import tempfile
 from pathlib import Path, PurePosixPath
@@ -289,6 +290,14 @@ def _resume_model_download(
             latest_size = incomplete_path.stat().st_size
             if total_size and latest_size >= total_size:
                 break
+            if proxy_url and latest_size > current_size:
+                _resume_via_curl(
+                    resolve_url=resolve_url,
+                    incomplete_path=incomplete_path,
+                    proxy_url=proxy_url,
+                    expected_size=total_size,
+                )
+                break
             if retries >= 8:
                 raise ModelCacheError(
                     f"单文件续传多次中断仍未完成: got={latest_size}, want={total_size}, last_error={exc}"
@@ -336,6 +345,51 @@ def _resolve_download_url(
         except requests.RequestException as exc:
             last_error = exc
     raise ModelCacheError(f"获取模型直链失败: {last_error}")
+
+
+def _resume_via_curl(
+    *,
+    resolve_url: str,
+    incomplete_path: Path,
+    proxy_url: str | None,
+    expected_size: int,
+) -> None:
+    command = [
+        "curl",
+        "-L",
+        "--fail",
+        "--retry",
+        "8",
+        "--retry-all-errors",
+        "--connect-timeout",
+        "30",
+        "--continue-at",
+        "-",
+        "--output",
+        str(incomplete_path),
+        resolve_url,
+    ]
+    if proxy_url:
+        command[1:1] = ["--proxy", proxy_url]
+    try:
+        proc = subprocess.run(
+            command,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        raise ModelCacheError("requests 续传中断后尝试 curl 兜底失败: 本机未找到 curl") from exc
+
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout or "").strip()
+        raise ModelCacheError(f"curl 续传失败: {detail or f'exit={proc.returncode}'}")
+
+    final_size = incomplete_path.stat().st_size
+    if expected_size and final_size < expected_size:
+        raise ModelCacheError(
+            f"curl 续传结束后模型大小仍不完整: got={final_size}, want={expected_size}"
+        )
 
 
 def _largest_incomplete(model_cache: Path) -> Path | None:
