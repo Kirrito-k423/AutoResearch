@@ -58,6 +58,15 @@ The strongest blocker is still the machine-side A2 runtime state, not the report
 - [ ] immutable config snapshot, provenance, W&B, Prometheus, manifest all exist for the successful run
 - [ ] AutoResearch + dependency repo shipped commit SHAs and GitHub links recorded for the successful run
 
+## Shipped code references
+
+- AutoResearch commit: `6cac5de`
+  - branch: `https://github.com/Kirrito-k423/AutoResearch/tree/codex/verl-case-01KVAM6VFTQQK60PCTWREW88K5-phase-02-workspace-core`
+  - commit: `https://github.com/Kirrito-k423/AutoResearch/commit/6cac5de`
+- `verl` fork commit: `a604fc0e`
+  - branch: `https://github.com/Kirrito-k423/verl/tree/codex/verl-case-01KVAM6VFTQQK60PCTWREW88K5-main`
+  - commit: `https://github.com/Kirrito-k423/verl/commit/a604fc0e`
+
 ## Next manual assists
 
 1. On `A2-AK-225`, inspect watchdog/guard/background jobs that may reset or occupy NPUs.

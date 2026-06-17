@@ -103,13 +103,15 @@ High-signal observations from the real attempts:
 - AutoResearch repo:
   - branch: `codex/verl-case-01KVAM6VFTQQK60PCTWREW88K5-phase-02-workspace-core`
   - remote: `https://github.com/Kirrito-k423/AutoResearch.git`
-  - current HEAD before ship: `672918a`
+  - shipped commit: `6cac5de`
+  - commit URL: `https://github.com/Kirrito-k423/AutoResearch/commit/6cac5de`
   - branch URL: `https://github.com/Kirrito-k423/AutoResearch/tree/codex/verl-case-01KVAM6VFTQQK60PCTWREW88K5-phase-02-workspace-core`
 - Local `verl` dependency repo:
   - branch: `codex/verl-case-01KVAM6VFTQQK60PCTWREW88K5-main`
   - fork remote: `https://github.com/Kirrito-k423/verl.git`
   - upstream remote: `https://github.com/verl-project/verl.git`
-  - current HEAD before ship: `09062977`
+  - shipped commit: `a604fc0e`
+  - commit URL: `https://github.com/Kirrito-k423/verl/commit/a604fc0e`
   - branch URL: `https://github.com/Kirrito-k423/verl/tree/codex/verl-case-01KVAM6VFTQQK60PCTWREW88K5-main`
 
 ## Issues Encountered
