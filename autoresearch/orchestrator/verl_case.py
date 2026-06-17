@@ -534,6 +534,35 @@ def _maybe_relax_readiness_for_formal_case(
                 stack_step["payload"] = payload
                 warnings.append(f"readiness stack override: {spec.name} host python 缺失，但 Docker/NPU 可用于 formal case")
 
+    net_step = next((step for step in steps if step.get("id") == "net"), None)
+    if net_step and net_step.get("status") == "fail":
+        rows = list((((net_step.get("payload") or {}).get("data") or {}).get("rows") or []))
+        failed_rows = [row for row in rows if not row.get("ok")]
+        only_remote_hf_failed = bool(failed_rows) and all(
+            row.get("location") == "remote" and row.get("target_label") == "huggingface"
+            for row in failed_rows
+        )
+        local_hf_ok = any(
+            row.get("location") == "local"
+            and row.get("target_label") == "huggingface"
+            and row.get("ok")
+            for row in rows
+        )
+        if only_remote_hf_failed and local_hf_ok:
+            net_step["ok"] = True
+            net_step["status"] = "warn"
+            net_step["exit_code"] = 0
+            net_step["diagnosis"] = "远端 huggingface 不可达，但 formal case 依赖本地模型缓存和 SSH stage，可继续。"
+            payload = dict(net_step.get("payload") or {})
+            payload["ok"] = True
+            payload["severity"] = "warn"
+            payload["formal_case_optional"] = ["remote-huggingface"]
+            payload["message"] = "网络检查通过 (formal case 忽略远端 huggingface 访问)"
+            net_step["payload"] = payload
+            warnings.append(
+                f"readiness net override: ignore remote huggingface reachability for formal case on {spec.name}"
+            )
+
     if not warnings:
         return readiness_exit, readiness_payload, []
 
