@@ -105,6 +105,21 @@ def _fake_report(*, run_id, open_report=False, runs_root=None):
     return 0, {"ok": True, "run_id": run_id, "report": str(report), "opened": False, "warnings": []}
 
 
+def _fake_model_cache(tmp_path: Path):
+    model_dir = tmp_path / "cache" / "models" / "Qwen__Qwen3-VL-2B-Instruct"
+    model_dir.mkdir(parents=True, exist_ok=True)
+    (model_dir / "config.json").write_text("{}", encoding="utf-8")
+    (model_dir / "model-00001-of-00001.safetensors").write_bytes(b"stub")
+    model_sync = importlib.import_module("workspace-adapter.verl.model_sync")
+    return model_sync.PreparedModelCache(
+        model_id="Qwen/Qwen3-VL-2B-Instruct",
+        cache_root=tmp_path / "cache",
+        model_cache=model_dir,
+        ready=True,
+        downloaded=False,
+    )
+
+
 def test_verl_case_readiness_failure_skips_remote_runner(tmp_path):
     config = _config_file(tmp_path)
 
@@ -143,6 +158,8 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path):
     with patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
          patch("autoresearch.orchestrator.verl_case.ensure_proxy_tunnel", side_effect=lambda *args, **kwargs: ensured.append((args, kwargs)) or {"remote_proxy_url": "http://127.0.0.1:17892"}), \
          patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance), \
+         patch("autoresearch.orchestrator.verl_case.prepare_model_cache", return_value=_fake_model_cache(tmp_path)), \
+         patch("autoresearch.orchestrator.verl_case.stage_model_cache", return_value="/home/t00906153/autoresearch/runs/run123/model"), \
          patch("autoresearch.orchestrator.verl_case.run_verl_case", side_effect=remote), \
          patch("autoresearch.orchestrator.verl_case.sync_all_runs", side_effect=sync_all), \
          patch("autoresearch.orchestrator.verl_case.push_metrics", return_value=True), \
@@ -191,6 +208,8 @@ def test_verl_case_matrix_failure_sets_failed_step_matrix(tmp_path):
 
     with patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
          patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance), \
+         patch("autoresearch.orchestrator.verl_case.prepare_model_cache", return_value=_fake_model_cache(tmp_path)), \
+         patch("autoresearch.orchestrator.verl_case.stage_model_cache", return_value="/home/t00906153/autoresearch/runs/run123/model"), \
          patch("autoresearch.orchestrator.verl_case.run_verl_case", side_effect=remote), \
          patch("autoresearch.orchestrator.verl_case.sync_all_runs", side_effect=sync_all), \
          patch("autoresearch.orchestrator.verl_case.push_metrics", return_value=True), \
@@ -218,6 +237,8 @@ def test_verl_case_missing_dependency_repo_is_warning_not_failure(tmp_path):
 
     with patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
          patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance) as capture, \
+         patch("autoresearch.orchestrator.verl_case.prepare_model_cache", return_value=_fake_model_cache(tmp_path)), \
+         patch("autoresearch.orchestrator.verl_case.stage_model_cache", return_value="/home/t00906153/autoresearch/runs/run123/model"), \
          patch("autoresearch.orchestrator.verl_case.run_verl_case", side_effect=lambda _spec, run_config, **_kwargs: _remote_result(run_config)), \
          patch("autoresearch.orchestrator.verl_case.sync_all_runs", side_effect=sync_all), \
          patch("autoresearch.orchestrator.verl_case.push_metrics", return_value=True), \
@@ -306,6 +327,8 @@ def test_verl_case_docker_stack_override_allows_readiness_to_continue(tmp_path):
     with patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(1, readiness_payload)), \
          patch("autoresearch.orchestrator.verl_case._docker_formal_stack_ready", return_value=(True, "docker ok")), \
          patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance), \
+         patch("autoresearch.orchestrator.verl_case.prepare_model_cache", return_value=_fake_model_cache(tmp_path)), \
+         patch("autoresearch.orchestrator.verl_case.stage_model_cache", return_value="/home/t00906153/autoresearch/runs/run123/model"), \
          patch("autoresearch.orchestrator.verl_case.run_verl_case", side_effect=remote), \
          patch("autoresearch.orchestrator.verl_case.sync_all_runs", side_effect=sync_all), \
          patch("autoresearch.orchestrator.verl_case.push_metrics", return_value=True), \

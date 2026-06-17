@@ -25,6 +25,7 @@ from .models import StepResult, skipped_step, step_result, summarize_steps
 case_config_mod = importlib.import_module("workspace-adapter.verl.case_config")
 case_runner_mod = importlib.import_module("workspace-adapter.verl.case_runner")
 data_prep_mod = importlib.import_module("workspace-adapter.verl.data_prep")
+model_sync_mod = importlib.import_module("workspace-adapter.verl.model_sync")
 provenance_mod = importlib.import_module("workspace-adapter.verl.provenance")
 conda_utils_mod = importlib.import_module("workspace-adapter.common.conda_utils")
 
@@ -35,6 +36,8 @@ now_utc = case_config_mod.now_utc
 write_immutable_config = case_config_mod.write_immutable_config
 run_verl_case = case_runner_mod.run_verl_case
 prepare_geometry3k = data_prep_mod.prepare_geometry3k
+prepare_model_cache = model_sync_mod.prepare_model_cache
+stage_model_cache = model_sync_mod.stage_model_cache
 capture_repo_provenance = provenance_mod.capture_repo_provenance
 run_in_env = conda_utils_mod.run_in_env
 
@@ -155,39 +158,79 @@ def run_verl_case_orchestration(
             )
 
     emit_progress("orch.verl_case.prepare", run_id=rid)
-    provenance_rows, provenance_warnings = _capture_provenance(
-        repo_root=repo_root or Path.cwd(),
-        case_config=adapter_config,
-        allow_git_push=allow_git_push,
-        run_id=rid,
-    )
-    warnings.extend(provenance_warnings)
-    prepared = prepare_geometry3k(adapter_config, adapter_config.cache_root)
-    container_proxy_url = _container_proxy_url(
-        local_proxy_url=local_proxy_url,
-        remote_proxy_port=remote_proxy_port,
-    )
-    run_config = VerlCaseRunConfig(
-        run_id=rid,
-        created_at=now_utc(),
-        server=server_name,
-        config=adapter_config,
-        matrix=build_length_matrix(adapter_config),
-        provenance=provenance_rows,
-        extra={
-            "cache": prepared.model_dump(mode="json"),
-            "pushgateway_url": pushgateway_url,
-            "prometheus_url": prometheus_url,
-            "local_proxy_url": local_proxy_url,
-            "remote_proxy_port": remote_proxy_port,
-            "container_proxy_url": container_proxy_url,
-        },
-    )
-    config_snapshot = write_immutable_config(run_config, run_dir)
-    provenance_path = _write_json(
-        run_dir / "provenance.json",
-        [item.model_dump(mode="json") for item in provenance_rows],
-    )
+    try:
+        provenance_rows, provenance_warnings = _capture_provenance(
+            repo_root=repo_root or Path.cwd(),
+            case_config=adapter_config,
+            allow_git_push=allow_git_push,
+            run_id=rid,
+        )
+        warnings.extend(provenance_warnings)
+        prepared = prepare_geometry3k(adapter_config, adapter_config.cache_root)
+        prepared_model = prepare_model_cache(
+            adapter_config,
+            adapter_config.cache_root,
+            proxy_url=local_proxy_url,
+        )
+        remote_model_path = stage_model_cache(
+            spec,
+            local_model_dir=prepared_model.model_cache,
+            remote_model_dir=f"{resolved_workdir}/autoresearch/runs/{rid}/model",
+        )
+        container_proxy_url = _container_proxy_url(
+            local_proxy_url=local_proxy_url,
+            remote_proxy_port=remote_proxy_port,
+        )
+        run_config = VerlCaseRunConfig(
+            run_id=rid,
+            created_at=now_utc(),
+            server=server_name,
+            config=adapter_config,
+            matrix=build_length_matrix(adapter_config),
+            provenance=provenance_rows,
+            extra={
+                "cache": {
+                    **prepared.model_dump(mode="json"),
+                    "local_model_cache": prepared_model.model_dump(mode="json"),
+                },
+                "pushgateway_url": pushgateway_url,
+                "prometheus_url": prometheus_url,
+                "local_proxy_url": local_proxy_url,
+                "remote_proxy_port": remote_proxy_port,
+                "container_proxy_url": container_proxy_url,
+                "remote_model_path": remote_model_path,
+            },
+        )
+        config_snapshot = write_immutable_config(run_config, run_dir)
+        provenance_path = _write_json(
+            run_dir / "provenance.json",
+            [item.model_dump(mode="json") for item in provenance_rows],
+        )
+    except Exception as exc:
+        steps.append(
+            step_result(
+                step_id="prepare",
+                label="formal-case-prepare",
+                exit_code=2,
+                payload={"ok": False, "error": str(exc), "warnings": warnings},
+            )
+        )
+        steps.extend(
+            [
+                skipped_step("run", "verl-formal-run", "prepare failed"),
+                skipped_step("matrix", "matrix-results", "prepare failed"),
+                skipped_step("collect", "local-artifacts", "prepare failed"),
+                skipped_step("report", "experiment-report", "prepare failed"),
+            ]
+        )
+        return _finish_payload(
+            rid=rid,
+            server=server_name,
+            config=cfg_path,
+            steps=steps,
+            warnings=warnings,
+            failed_step_override="prepare",
+        )
     steps.append(
         step_result(
             step_id="prepare",
@@ -197,6 +240,7 @@ def run_verl_case_orchestration(
                 "ok": True,
                 "config_snapshot": str(config_snapshot),
                 "provenance": str(provenance_path),
+                "remote_model_path": remote_model_path,
                 "warnings": warnings,
             },
         )
@@ -222,7 +266,7 @@ def run_verl_case_orchestration(
             run_config,
             timeout=timeout,
             proxy_url=container_proxy_url,
-            remote_model_path=f"{resolved_workdir}/autoresearch/model",
+            remote_model_path=remote_model_path,
             remote_dataset_path=f"{resolved_workdir}/autoresearch/dataset",
             remote_output_path=f"{resolved_workdir}/autoresearch/runs/{rid}",
         )

@@ -11,6 +11,7 @@ from workspace_core.config import ServerSpec
 case_config = importlib.import_module("workspace-adapter.verl.case_config")
 docker = importlib.import_module("workspace-adapter.verl.docker")
 data_prep = importlib.import_module("workspace-adapter.verl.data_prep")
+model_sync = importlib.import_module("workspace-adapter.verl.model_sync")
 provenance = importlib.import_module("workspace-adapter.verl.provenance")
 case_runner = importlib.import_module("workspace-adapter.verl.case_runner")
 
@@ -134,6 +135,22 @@ def test_prepare_geometry3k_rejects_missing_image(tmp_path):
         assert "missing image" in str(exc)
     else:
         raise AssertionError("expected DataPrepError")
+
+
+def test_prepare_model_cache_short_circuits_existing_snapshot(tmp_path):
+    model_cache = tmp_path / "cache" / "models" / "Qwen__Qwen3-VL-2B-Instruct"
+    model_cache.mkdir(parents=True)
+    (model_cache / "config.json").write_text("{}", encoding="utf-8")
+    (model_cache / "model-00001-of-00001.safetensors").write_bytes(b"stub")
+
+    prepared = model_sync.prepare_model_cache(
+        case_config.VerlCaseConfig(),
+        tmp_path / "cache",
+    )
+
+    assert prepared.ready is True
+    assert prepared.downloaded is False
+    assert prepared.model_cache == model_cache
 
 
 def test_capture_repo_provenance_without_push(tmp_path):
