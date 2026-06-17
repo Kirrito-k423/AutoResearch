@@ -45,6 +45,13 @@ def test_docker_run_command_contains_ascend_mounts_and_proxy():
     assert "--network=host" in command
     assert "--shm-size=64G" in command
     assert "http_proxy=http://127.0.0.1:7890" in command
+    assert "https_proxy=http://127.0.0.1:7890" in command
+    assert "HTTP_PROXY=http://127.0.0.1:7890" in command
+    assert "HTTPS_PROXY=http://127.0.0.1:7890" in command
+    assert "all_proxy=http://127.0.0.1:7890" in command
+    assert "ALL_PROXY=http://127.0.0.1:7890" in command
+    assert "no_proxy=localhost,127.0.0.1,.huawei.com" in command
+    assert "NO_PROXY=localhost,127.0.0.1,.huawei.com" in command
     assert "'/tmp/model path':/app/ckpt:ro" in command
 
 
@@ -59,6 +66,9 @@ def test_docker_run_command_omits_proxy_when_none():
 
     assert "http_proxy" not in command
     assert "https_proxy" not in command
+    assert "HTTP_PROXY" not in command
+    assert "HTTPS_PROXY" not in command
+    assert "ALL_PROXY" not in command
 
 
 def test_docker_run_command_allows_smaller_device_count():

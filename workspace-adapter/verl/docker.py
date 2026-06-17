@@ -76,9 +76,10 @@ def build_docker_run_command(
         ]
     )
     if proxy_url:
-        for key in ("http_proxy", "https_proxy"):
+        for key in ("http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY", "all_proxy", "ALL_PROXY"):
             parts.extend(["-e", f"{key}={_q(proxy_url)}"])
-        parts.extend(["-e", "no_proxy=localhost,127.0.0.1,.huawei.com"])
+        for key in ("no_proxy", "NO_PROXY"):
+            parts.extend(["-e", f"{key}=localhost,127.0.0.1,.huawei.com"])
     parts.extend(["--name", _q(name), _q(image), command])
     return " ".join(parts)
 
