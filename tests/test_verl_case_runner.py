@@ -37,10 +37,13 @@ def test_docker_run_command_contains_ascend_mounts_and_proxy():
         proxy_url="http://127.0.0.1:7890",
     )
 
-    assert "--device=/dev/davinci*" in command
+    assert "--device=/dev/davinci0" in command
+    assert "--device=/dev/davinci7" in command
+    assert "--device=/dev/davinci*" not in command
     assert "--device=/dev/davinci_manager" in command
     assert "--device=/dev/devmm_svm" in command
     assert "--device=/dev/hisi_hdc" in command
+    assert "--network=host" in command
     assert "--shm-size=64G" in command
     assert "http_proxy=http://127.0.0.1:7890" in command
     assert "'/tmp/model path':/app/ckpt:ro" in command
@@ -57,6 +60,21 @@ def test_docker_run_command_omits_proxy_when_none():
 
     assert "http_proxy" not in command
     assert "https_proxy" not in command
+
+
+def test_docker_run_command_allows_smaller_device_count():
+    command = docker.build_docker_run_command(
+        image="img",
+        run_id="run123",
+        model_mount="/m",
+        dataset_mount="/d",
+        output_mount="/o",
+        device_count=2,
+    )
+
+    assert "--device=/dev/davinci0" in command
+    assert "--device=/dev/davinci1" in command
+    assert "--device=/dev/davinci2" not in command
 
 
 def test_prepare_geometry3k_preserves_multimodal_rows(tmp_path):

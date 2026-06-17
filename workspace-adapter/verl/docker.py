@@ -5,8 +5,7 @@ import shlex
 from pathlib import Path
 
 
-ASCEND_DEVICES = (
-    "/dev/davinci*",
+ASCEND_CONTROL_DEVICES = (
     "/dev/davinci_manager",
     "/dev/devmm_svm",
     "/dev/hisi_hdc",
@@ -39,6 +38,8 @@ def build_docker_run_command(
     proxy_url: str | None = None,
     shm_size: str = "64G",
     container_name: str | None = None,
+    device_count: int = 8,
+    network_host: bool = True,
 ) -> str:
     """Build an Ascend A2 compatible docker run command.
 
@@ -57,8 +58,10 @@ def build_docker_run_command(
         "--ulimit",
         "nofile=65535",
     ]
-    for device in ASCEND_DEVICES:
+    for device in _davinci_devices(device_count) + ASCEND_CONTROL_DEVICES:
         parts.append(f"--device={device}")
+    if network_host:
+        parts.append("--network=host")
     parts.append(f"--shm-size={shm_size}")
     for host_path, container_path in ASCEND_DRIVER_MOUNTS:
         parts.extend(["-v", f"{_q(host_path)}:{_q(container_path)}:ro"])
@@ -78,3 +81,9 @@ def build_docker_run_command(
         parts.extend(["-e", "no_proxy=localhost,127.0.0.1,.huawei.com"])
     parts.extend(["--name", _q(name), _q(image), command])
     return " ".join(parts)
+
+
+def _davinci_devices(device_count: int) -> tuple[str, ...]:
+    if device_count < 1:
+        raise ValueError("device_count must be >= 1")
+    return tuple(f"/dev/davinci{index}" for index in range(device_count))

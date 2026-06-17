@@ -81,7 +81,7 @@ def run_verl_case_orchestration(
         cfg = from_path(cfg_path)
         spec = _resolve_spec(cfg, server)
         server_name = spec.name
-        resolved_workdir = workdir or getattr(spec, "workdir", "") or cfg.verl_case.remote_workdir
+        resolved_workdir = workdir or cfg.verl_case.remote_workdir or getattr(spec, "workdir", "")
         spec = spec.model_copy(update={"workdir": resolved_workdir})
         adapter_config = _adapter_config(cfg, cache_root=cache_root, workdir=resolved_workdir)
     except Exception as exc:
@@ -151,6 +151,10 @@ def run_verl_case_orchestration(
     )
     warnings.extend(provenance_warnings)
     prepared = prepare_geometry3k(adapter_config, adapter_config.cache_root)
+    container_proxy_url = _container_proxy_url(
+        local_proxy_url=local_proxy_url,
+        remote_proxy_port=remote_proxy_port,
+    )
     run_config = VerlCaseRunConfig(
         run_id=rid,
         created_at=now_utc(),
@@ -164,6 +168,7 @@ def run_verl_case_orchestration(
             "prometheus_url": prometheus_url,
             "local_proxy_url": local_proxy_url,
             "remote_proxy_port": remote_proxy_port,
+            "container_proxy_url": container_proxy_url,
         },
     )
     config_snapshot = write_immutable_config(run_config, run_dir)
@@ -191,7 +196,7 @@ def run_verl_case_orchestration(
             spec,
             run_config,
             timeout=timeout,
-            proxy_url=local_proxy_url,
+            proxy_url=container_proxy_url,
             remote_model_path=f"{resolved_workdir}/autoresearch/model",
             remote_dataset_path=f"{resolved_workdir}/autoresearch/dataset",
             remote_output_path=f"{resolved_workdir}/autoresearch/runs/{rid}",
@@ -343,6 +348,16 @@ def _resolve_spec(cfg: Any, server: str | None) -> ServerSpec:
         if item.name == server:
             return item
     raise ConfigError(f"未找到服务器: {server}")
+
+
+def _container_proxy_url(
+    *,
+    local_proxy_url: str | None,
+    remote_proxy_port: int,
+) -> str | None:
+    if not local_proxy_url:
+        return None
+    return f"http://127.0.0.1:{remote_proxy_port}"
 
 
 def _capture_provenance(

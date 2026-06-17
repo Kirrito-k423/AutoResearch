@@ -16,7 +16,12 @@ case_config = importlib.import_module("workspace-adapter.verl.case_config")
 case_runner = importlib.import_module("workspace-adapter.verl.case_runner")
 
 
-def _config_file(tmp_path: Path, *, dependency_path: Path | None = None) -> Path:
+def _config_file(
+    tmp_path: Path,
+    *,
+    dependency_path: Path | None = None,
+    server_workdir: str = "/root",
+) -> Path:
     dep_yaml = ""
     if dependency_path is not None:
         dep_yaml = f"""
@@ -32,7 +37,7 @@ servers:
     host: 192.168.9.225
     user: root
     conda_env: verl-env
-    workdir: /home/t00906153
+    workdir: {server_workdir}
 verl_case:
   cache_root: {tmp_path / "cache"}
   output_tokens: [2048, 4096]
@@ -124,7 +129,9 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path):
 
     def remote(spec, run_config, **kwargs):
         assert spec.name == "A2-AK-225"
-        assert kwargs["remote_output_path"].endswith("/autoresearch/runs/run123")
+        assert spec.workdir == "/home/t00906153"
+        assert kwargs["proxy_url"] == "http://127.0.0.1:17892"
+        assert kwargs["remote_output_path"] == "/home/t00906153/autoresearch/runs/run123"
         return _remote_result(run_config)
 
     with patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
