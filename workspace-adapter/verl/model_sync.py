@@ -23,6 +23,9 @@ PROXY_ENV_KEYS = (
     "HTTP_PROXY",
     "HTTPS_PROXY",
 )
+HF_ENV_DEFAULTS = {
+    "HF_XET_HIGH_PERFORMANCE": "1",
+}
 MODEL_ALLOW_PATTERNS = (
     "*.json",
     "*.safetensors",
@@ -70,27 +73,28 @@ def prepare_model_cache(
             downloaded=False,
         )
 
+    previous_env = {
+        key: os.environ.get(key)
+        for key in (*PROXY_ENV_KEYS, *HF_ENV_DEFAULTS.keys())
+    }
+    if proxy_url:
+        for key in PROXY_ENV_KEYS:
+            os.environ[key] = proxy_url
+    for key, value in HF_ENV_DEFAULTS.items():
+        os.environ.setdefault(key, value)
     try:
         from huggingface_hub import snapshot_download
     except ImportError as exc:
         raise ModelCacheError(
             "缺少 huggingface_hub，无法准备 formal case 本地模型缓存。请先执行 `uv sync`。"
         ) from exc
-
-    previous_env = {key: os.environ.get(key) for key in PROXY_ENV_KEYS}
-    if proxy_url:
-        for key in PROXY_ENV_KEYS:
-            os.environ[key] = proxy_url
     try:
         kwargs = {
             "repo_id": config.model_id,
             "local_dir": str(model_cache),
             "allow_patterns": list(MODEL_ALLOW_PATTERNS),
         }
-        try:
-            snapshot_download(local_dir_use_symlinks=False, **kwargs)
-        except TypeError:
-            snapshot_download(**kwargs)
+        snapshot_download(**kwargs)
     except Exception as exc:
         raise ModelCacheError(f"下载模型缓存失败: {config.model_id}: {exc}") from exc
     finally:
