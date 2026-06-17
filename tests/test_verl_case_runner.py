@@ -693,6 +693,44 @@ def test_resume_via_parallel_curl_reuses_existing_partial_parts(tmp_path, monkey
     assert not part_dir.exists()
 
 
+def test_resume_via_parallel_curl_recovers_temp_partial_before_resuming(tmp_path, monkeypatch):
+    incomplete = tmp_path / "largest.incomplete"
+    incomplete.write_bytes(b"abc")
+    part_dir = tmp_path / "largest.incomplete.parts"
+    part_dir.mkdir()
+    (part_dir / "part-00.bin").write_bytes(b"A")
+    (part_dir / "part-00.bin.partial").write_bytes(b"B")
+    calls = []
+
+    class _Proc:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    def fake_run(command, text, capture_output, check):
+        calls.append(command)
+        range_value = command[command.index("--range") + 1]
+        output_path = Path(command[command.index("--output") + 1])
+        start, end = [int(part) for part in range_value.split("-", 1)]
+        output_path.write_bytes(b"Z" * (end - start + 1))
+        return _Proc()
+
+    monkeypatch.setattr(model_sync.subprocess, "run", fake_run)
+    monkeypatch.setattr(model_sync, "PARALLEL_CURL_WORKERS", 2)
+    monkeypatch.setattr(model_sync, "PARALLEL_CURL_THRESHOLD_BYTES", 2)
+
+    model_sync._resume_via_parallel_curl(
+        resolve_url="https://example.com/model",
+        incomplete_path=incomplete,
+        proxy_url="http://127.0.0.1:7890",
+        expected_size=7,
+    )
+
+    assert incomplete.read_bytes() == b"abcABZZ"
+    assert sorted(command[command.index("--range") + 1] for command in calls) == ["5-6"]
+    assert not part_dir.exists()
+
+
 def test_capture_repo_provenance_without_push(tmp_path):
     calls = []
 

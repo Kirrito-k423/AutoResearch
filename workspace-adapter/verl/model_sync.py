@@ -533,6 +533,8 @@ def _resume_via_parallel_curl(
     def _run_range(item: tuple[int, int, Path]) -> None:
         range_start, range_end, part_path = item
         range_size = range_end - range_start + 1
+        temp_path = part_path.with_suffix(part_path.suffix + ".partial")
+        _recover_parallel_part(part_path, temp_path)
         existing_size = part_path.stat().st_size if part_path.exists() else 0
         if existing_size > range_size:
             raise ModelCacheError(
@@ -541,7 +543,6 @@ def _resume_via_parallel_curl(
         if existing_size == range_size:
             return
         request_start = range_start + existing_size
-        temp_path = part_path.with_suffix(part_path.suffix + ".partial")
         temp_path.unlink(missing_ok=True)
         command = [
             "curl",
@@ -594,6 +595,17 @@ def _resume_via_parallel_curl(
     for _range_start, _range_end, part_path in ranges:
         part_path.unlink(missing_ok=True)
     part_dir.rmdir()
+
+
+def _recover_parallel_part(part_path: Path, temp_path: Path) -> None:
+    if not temp_path.exists():
+        return
+    if part_path.exists():
+        with part_path.open("ab") as handle:
+            handle.write(temp_path.read_bytes())
+        temp_path.unlink(missing_ok=True)
+        return
+    temp_path.replace(part_path)
 
 
 def _largest_incomplete(model_cache: Path) -> Path | None:
