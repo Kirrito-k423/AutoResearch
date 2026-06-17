@@ -182,7 +182,7 @@ def test_verl_case_docs_cover_command_and_sources():
 
     assert "autoresearch run verl-case" in text
     assert "/Users/Zhuanz/autoResearchData" in text
-    assert "Qwen/Qwen3-VL-2B-Instruct" in text
+    assert "Qwen/Qwen3.5-2B" in text
     assert "hiyouga/geometry3k" in text
     assert "quay.io/ascend/verl:verl-8.5.2-910b-ubuntu22.04-py3.11-qwen3-5" in text
     assert "row_timeout_seconds" in text

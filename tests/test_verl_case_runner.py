@@ -139,11 +139,84 @@ def test_prepare_geometry3k_rejects_missing_image(tmp_path):
         raise AssertionError("expected DataPrepError")
 
 
+def test_prepare_geometry3k_detects_existing_parquet_cache(tmp_path):
+    dataset_cache = tmp_path / "cache" / "datasets" / "hiyouga__geometry3k"
+    dataset_cache.mkdir(parents=True)
+    (dataset_cache / "train.parquet").write_bytes(b"train")
+    (dataset_cache / "test.parquet").write_bytes(b"test")
+
+    prepared = data_prep.prepare_geometry3k(
+        case_config.VerlCaseConfig(),
+        tmp_path / "cache",
+    )
+
+    assert prepared.ready is True
+    assert prepared.train_parquet == dataset_cache / "train.parquet"
+    assert prepared.test_parquet == dataset_cache / "test.parquet"
+
+
+def test_stage_geometry3k_uploads_cached_parquet(tmp_path, monkeypatch):
+    dataset_cache = tmp_path / "cache" / "datasets" / "hiyouga__geometry3k"
+    dataset_cache.mkdir(parents=True)
+    (dataset_cache / "train.parquet").write_bytes(b"train")
+    (dataset_cache / "test.parquet").write_bytes(b"test")
+    prepared = data_prep.prepare_geometry3k(
+        case_config.VerlCaseConfig(),
+        tmp_path / "cache",
+    )
+    mkdir_calls = []
+    put_calls = []
+
+    class _SFTP:
+        def put(self, local_path, remote_path):
+            put_calls.append((local_path, remote_path))
+
+        def close(self):
+            return None
+
+    class _Client:
+        def __init__(self, host, bootstrap_password=None):
+            self.host = host
+            self.bootstrap_password = bootstrap_password
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def exec(self, command, timeout):
+            mkdir_calls.append((command, timeout))
+            return 0, "", ""
+
+        def sftp(self):
+            return _SFTP()
+
+    monkeypatch.setattr(data_prep, "SSHClient", _Client)
+
+    remote_root = data_prep.stage_geometry3k(
+        ServerSpec(name="A2-AK-225", host="192.168.9.225", user="root"),
+        prepared,
+        remote_dataset_dir="/home/t00906153/autoresearch/dataset",
+    )
+
+    assert remote_root == "/home/t00906153/autoresearch/dataset"
+    assert mkdir_calls == [("mkdir -p /home/t00906153/autoresearch/dataset/geo3k", 30.0)]
+    assert put_calls == [
+        (str(dataset_cache / "train.parquet"), "/home/t00906153/autoresearch/dataset/geo3k/train.parquet"),
+        (str(dataset_cache / "test.parquet"), "/home/t00906153/autoresearch/dataset/geo3k/test.parquet"),
+    ]
+
+
 def test_prepare_model_cache_short_circuits_existing_snapshot(tmp_path):
-    model_cache = tmp_path / "cache" / "models" / "Qwen__Qwen3-VL-2B-Instruct"
+    model_cache = tmp_path / "cache" / "models" / "Qwen__Qwen3.5-2B"
     model_cache.mkdir(parents=True)
     (model_cache / "config.json").write_text("{}", encoding="utf-8")
-    (model_cache / "model.safetensors").write_bytes(b"stub")
+    (model_cache / "model.safetensors.index.json").write_text(
+        json.dumps({"weight_map": {"model.embed_tokens.weight": "model.safetensors-00001-of-00001.safetensors"}}),
+        encoding="utf-8",
+    )
+    (model_cache / "model.safetensors-00001-of-00001.safetensors").write_bytes(b"stub")
 
     prepared = model_sync.prepare_model_cache(
         case_config.VerlCaseConfig(),
@@ -156,7 +229,7 @@ def test_prepare_model_cache_short_circuits_existing_snapshot(tmp_path):
 
 
 def test_prepare_model_cache_recovers_completed_snapshot_via_resume(tmp_path, monkeypatch):
-    model_cache = tmp_path / "cache" / "models" / "Qwen__Qwen3-VL-2B-Instruct"
+    model_cache = tmp_path / "cache" / "models" / "Qwen__Qwen3.5-2B"
     model_cache.mkdir(parents=True)
     for name in (
         "chat_template.json",
@@ -170,16 +243,20 @@ def test_prepare_model_cache_recovers_completed_snapshot_via_resume(tmp_path, mo
         "vocab.json",
     ):
         (model_cache / name).write_text("{}", encoding="utf-8")
+    (model_cache / "model.safetensors.index.json").write_text(
+        json.dumps({"weight_map": {"model.embed_tokens.weight": "model.safetensors-00001-of-00001.safetensors"}}),
+        encoding="utf-8",
+    )
 
     fake_hf = types.ModuleType("huggingface_hub")
     fake_hf.snapshot_download = lambda **kwargs: None
     monkeypatch.setitem(sys.modules, "huggingface_hub", fake_hf)
 
     def fake_resume(model_id, cache, *, proxy_url):
-        assert model_id == "Qwen/Qwen3-VL-2B-Instruct"
+        assert model_id == "Qwen/Qwen3.5-2B"
         assert cache == model_cache
         assert proxy_url is None
-        (cache / "model.safetensors").write_bytes(b"stub")
+        (cache / "model.safetensors-00001-of-00001.safetensors").write_bytes(b"stub")
 
     monkeypatch.setattr(model_sync, "_resume_model_download", fake_resume)
 
@@ -194,7 +271,7 @@ def test_prepare_model_cache_recovers_completed_snapshot_via_resume(tmp_path, mo
 
 
 def test_prepare_model_cache_prefers_existing_incomplete_resume(tmp_path, monkeypatch):
-    model_cache = tmp_path / "cache" / "models" / "Qwen__Qwen3-VL-2B-Instruct"
+    model_cache = tmp_path / "cache" / "models" / "Qwen__Qwen3.5-2B"
     model_cache.mkdir(parents=True)
     for name in (
         "chat_template.json",
@@ -208,6 +285,10 @@ def test_prepare_model_cache_prefers_existing_incomplete_resume(tmp_path, monkey
         "vocab.json",
     ):
         (model_cache / name).write_text("{}", encoding="utf-8")
+    (model_cache / "model.safetensors.index.json").write_text(
+        json.dumps({"weight_map": {"model.embed_tokens.weight": "model.safetensors-00001-of-00001.safetensors"}}),
+        encoding="utf-8",
+    )
     download_dir = model_cache / ".cache" / "huggingface" / "download"
     download_dir.mkdir(parents=True)
     (download_dir / "largest.incomplete").write_bytes(b"abc")
@@ -221,10 +302,10 @@ def test_prepare_model_cache_prefers_existing_incomplete_resume(tmp_path, monkey
     monkeypatch.setitem(sys.modules, "huggingface_hub", fake_hf)
 
     def fake_resume(model_id, cache, *, proxy_url):
-        assert model_id == "Qwen/Qwen3-VL-2B-Instruct"
+        assert model_id == "Qwen/Qwen3.5-2B"
         assert cache == model_cache
         assert proxy_url == "http://127.0.0.1:7890"
-        (cache / "model.safetensors").write_bytes(b"stub")
+        (cache / "model.safetensors-00001-of-00001.safetensors").write_bytes(b"stub")
 
     monkeypatch.setattr(model_sync, "_resume_model_download", fake_resume)
 
@@ -240,7 +321,7 @@ def test_prepare_model_cache_prefers_existing_incomplete_resume(tmp_path, monkey
 
 
 def test_resume_model_download_continues_largest_incomplete(tmp_path, monkeypatch):
-    model_cache = tmp_path / "cache" / "models" / "Qwen__Qwen3-VL-2B-Instruct"
+    model_cache = tmp_path / "cache" / "models" / "Qwen__Qwen3.5-2B"
     model_cache.mkdir(parents=True)
     for name in (
         "chat_template.json",
@@ -254,6 +335,10 @@ def test_resume_model_download_continues_largest_incomplete(tmp_path, monkeypatc
         "vocab.json",
     ):
         (model_cache / name).write_text("{}", encoding="utf-8")
+    (model_cache / "model.safetensors.index.json").write_text(
+        json.dumps({"weight_map": {"model.embed_tokens.weight": "model.safetensors-00001-of-00001.safetensors"}}),
+        encoding="utf-8",
+    )
     download_dir = model_cache / ".cache" / "huggingface" / "download"
     download_dir.mkdir(parents=True)
     largest = download_dir / "largest.incomplete"
@@ -284,7 +369,7 @@ def test_resume_model_download_continues_largest_incomplete(tmp_path, monkeypatc
                 return _Response(
                     status_code=302,
                     headers={
-                        "location": "https://example.com/model.safetensors",
+                        "location": "https://example.com/model.safetensors-00001-of-00001.safetensors",
                         "x-linked-size": "6",
                     },
                 )
@@ -294,17 +379,17 @@ def test_resume_model_download_continues_largest_incomplete(tmp_path, monkeypatc
     monkeypatch.setattr(model_sync.requests, "Session", lambda: _Session())
 
     model_sync._resume_model_download(
-        "Qwen/Qwen3-VL-2B-Instruct",
+        "Qwen/Qwen3.5-2B",
         model_cache,
         proxy_url="http://127.0.0.1:7890",
     )
 
-    assert (model_cache / "model.safetensors").read_bytes() == b"abcdef"
+    assert (model_cache / "model.safetensors-00001-of-00001.safetensors").read_bytes() == b"abcdef"
     assert not largest.exists()
 
 
 def test_resume_model_download_retries_after_stream_break(tmp_path, monkeypatch):
-    model_cache = tmp_path / "cache" / "models" / "Qwen__Qwen3-VL-2B-Instruct"
+    model_cache = tmp_path / "cache" / "models" / "Qwen__Qwen3.5-2B"
     model_cache.mkdir(parents=True)
     for name in (
         "chat_template.json",
@@ -318,6 +403,10 @@ def test_resume_model_download_retries_after_stream_break(tmp_path, monkeypatch)
         "vocab.json",
     ):
         (model_cache / name).write_text("{}", encoding="utf-8")
+    (model_cache / "model.safetensors.index.json").write_text(
+        json.dumps({"weight_map": {"model.embed_tokens.weight": "model.safetensors-00001-of-00001.safetensors"}}),
+        encoding="utf-8",
+    )
     download_dir = model_cache / ".cache" / "huggingface" / "download"
     download_dir.mkdir(parents=True)
     largest = download_dir / "largest.incomplete"
@@ -366,16 +455,16 @@ def test_resume_model_download_retries_after_stream_break(tmp_path, monkeypatch)
     monkeypatch.setattr(
         model_sync,
         "_resolve_download_url",
-        lambda session, resolve_url, proxies: ("https://example.com/model.safetensors", 6),
+        lambda session, resolve_url, proxies: ("https://example.com/model.safetensors-00001-of-00001.safetensors", 6),
     )
 
     model_sync._resume_model_download(
-        "Qwen/Qwen3-VL-2B-Instruct",
+        "Qwen/Qwen3.5-2B",
         model_cache,
         proxy_url="http://127.0.0.1:7890",
     )
 
-    assert (model_cache / "model.safetensors").read_bytes() == b"abcdef"
+    assert (model_cache / "model.safetensors-00001-of-00001.safetensors").read_bytes() == b"abcdef"
     assert not largest.exists()
 
 
@@ -686,7 +775,12 @@ def test_row_command_builds_formal_verl_script():
     assert "actor_rollout_ref.rollout.ignore_eos=False" in command
     assert "actor_rollout_ref.actor.strategy=fsdp2" in command
     assert "trainer.balance_batch=True" in command
+    assert "trainer.device=npu" in command
     assert "data.return_raw_chat=True" in command
+    assert "PYTHONUNBUFFERED" in command
+    assert "RAY_EXPERIMENTAL_NOSET_ASCEND_RT_VISIBLE_DEVICES" in command
+    assert "ASCEND_RT_VISIBLE_DEVICES" in command
+    assert "HCCL_CONNECT_TIMEOUT" in command
     assert "WANDB_DIR" in command
     assert "trainer.logger=[console,wandb]" in command
     assert "trainer.use_legacy_worker_impl" not in command

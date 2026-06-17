@@ -1,0 +1,146 @@
+---
+phase: 14-verl-workspace-adapter-verl
+plan: 04
+status: blocked
+subsystem: formal-report-and-uat
+tags: [verl-case, report, qwen3.5, geometry3k, uat]
+
+requires:
+  - phase: 14-01
+    provides: [formal-case config, immutable snapshot, evaluation helpers]
+  - phase: 14-02
+    provides: [docker runner, data/model staging, provenance hooks]
+  - phase: 14-03
+    provides: [autoresearch run verl-case orchestration, local artifact layout]
+provides:
+  - Formal-case report sections for matrix, length impact, async comparison, accuracy, consistency, and provenance
+  - Strict formal-case completeness checks for matrix rows and required artifacts
+  - User-facing `docs/verl-case.md` for command, cache root, Docker image, model, dataset, and provenance mapping
+  - Qwen3.5-2B cache handling for Hugging Face `index.json + shard` layout
+affects: [autoresearch, workspace-core, workspace-adapter, docs, tests]
+
+tech-stack:
+  added: []
+  patterns:
+    - "Formal report stays local-first and reads only manifest-linked artifacts"
+    - "Formal completeness fails closed when any sync/async matrix row is missing"
+    - "Model cache accepts Hugging Face sharded safetensors layout without manual rename"
+
+key-files:
+  created:
+    - .planning/phases/14-verl-workspace-adapter-verl/14-04-SUMMARY.md
+    - .planning/phases/14-verl-workspace-adapter-verl/14-UAT.md
+  modified:
+    - autoresearch/cli.py
+    - config/config.example.yaml
+    - config/config.yaml
+    - docs/verl-case.md
+    - tests/test_orchestrator_verl_case.py
+    - tests/test_report_verl_case.py
+    - tests/test_verl_case_runner.py
+    - tests/workspace-core/test_config.py
+    - workspace-adapter/verl/case_config.py
+    - workspace-adapter/verl/model_sync.py
+    - workspace-core/config/schema.py
+
+key-decisions:
+  - "Formal-case default model is aligned to `Qwen/Qwen3.5-2B` per phase discussion, not the earlier VL variant."
+  - "Qwen3.5 local cache warming is resumable and does not require renaming `model.safetensors-00001-of-00001.safetensors`."
+  - "Plan 14-04 stays blocked until a real 8-row sync/async matrix finishes on hardware and lands a complete report bundle."
+
+requirements-completed: []
+
+duration: 55min
+completed: 2026-06-17
+---
+
+# Phase 14 Plan 04: Formal Case Report, Verification, And UAT Closure Summary
+
+**报告层、完整性校验和文档已经落地并通过全量测试，但真实 formal case 仍被外部运行时条件卡住：本地 `Qwen3.5-2B` 需要继续缓存，A2-AK-225 先前确认的 `torch_npu aclInit 507899 / Resource_Busy` 也还没有被消掉。**
+
+## Performance
+
+- **Duration:** 55 min
+- **Started:** 2026-06-17T13:20:00Z
+- **Completed:** 2026-06-17T14:15:00Z
+- **Tasks:** 4 implementation/verification tasks complete; real UAT blocked
+- **Files modified:** 11 in AutoResearch, 3 in local `verl` checkout still pending ship
+
+## Accomplishments
+
+- Formal report pipeline is present and green: `load_verl_case_view(...)`, matrix rendering, completeness checks, and docs-based acceptance all pass.
+- `Qwen/Qwen3.5-2B` is now the default formal-case model across config schema, example config, local config, CLI description, docs, and tests.
+- `workspace-adapter/verl/model_sync.py` now accepts Hugging Face sharded safetensors layout through `model.safetensors.index.json` plus `model.safetensors-00001-of-00001.safetensors`.
+- Focused Phase 14 suite and full repository suite both passed after the Qwen3.5 alignment.
+- Real command `uv run autoresearch run verl-case --server A2-AK-225 ... --run-id uat-qwen35-20260617-1` proved that readiness can advance through `stack` and that Qwen3.5 local cache warming starts correctly under the configured proxy path.
+
+## Verification
+
+- `uv run pytest -q tests/test_verl_case_runner.py tests/test_orchestrator_verl_case.py tests/test_report_verl_case.py tests/workspace-core/test_config.py` -> `49 passed`
+- `uv run pytest -q tests/test_verl_case_config.py tests/test_verl_case_runner.py tests/test_orchestrator_verl_case.py tests/test_report_verl_case.py` -> `38 passed`
+- `uv run pytest -q` -> `408 passed, 6 warnings`
+- `uv run autoresearch run verl-case --server A2-AK-225 --config config/config.yaml --local-proxy-url http://127.0.0.1:7890 --remote-proxy-port 17892 --run-id uat-qwen35-20260617-1` -> readiness reached `stack=pass`; local Qwen3.5 cache bootstrap started; run intentionally aborted after proving resumable cache bootstrap because download bandwidth, not code, became the limiting step.
+
+## Real UAT
+
+See `14-UAT.md`.
+
+High-signal observations from the real attempts:
+
+- `A2-AK-225` readiness today:
+  - `config`: pass
+  - `services`: fail
+  - `hw`: warn
+  - `net`: warn
+  - `reach`: pass
+  - `stack`: pass
+- The formal-case orchestrator continued past the non-fatal readiness issues and entered local asset preparation as designed.
+- The new Qwen3.5 cache root `/Users/Zhuanz/autoResearchData/models/Qwen__Qwen3.5-2B` was populated with config/tokenizer sidecars plus `model.safetensors.index.json`; partial size after the aborted bootstrap is `32M`, confirming resumable local warming.
+- Prior A2 diagnostic runs had already reached remote `torch_npu` device setup and still failed with `aclInit` / `torch_npu.set_device()` error code `507899`, `Resource_Busy`, including a single-card run. That is still the strongest blocker for claiming the formal case can finish on A2 today.
+
+## Provenance Snapshot
+
+- AutoResearch repo:
+  - branch: `codex/verl-case-01KVAM6VFTQQK60PCTWREW88K5-phase-02-workspace-core`
+  - remote: `https://github.com/Kirrito-k423/AutoResearch.git`
+  - current HEAD before ship: `672918a`
+  - branch URL: `https://github.com/Kirrito-k423/AutoResearch/tree/codex/verl-case-01KVAM6VFTQQK60PCTWREW88K5-phase-02-workspace-core`
+- Local `verl` dependency repo:
+  - branch: `codex/verl-case-01KVAM6VFTQQK60PCTWREW88K5-main`
+  - fork remote: `https://github.com/Kirrito-k423/verl.git`
+  - upstream remote: `https://github.com/verl-project/verl.git`
+  - current HEAD before ship: `09062977`
+  - branch URL: `https://github.com/Kirrito-k423/verl/tree/codex/verl-case-01KVAM6VFTQQK60PCTWREW88K5-main`
+
+## Issues Encountered
+
+- `Qwen/Qwen3.5-2B` was not cached locally yet, so the first real command had to start a fresh local cache warm-up under the configured proxy.
+- The public Hugging Face download ran unauthenticated and slow on this Mac/proxy path, so letting the full 4.57GB weight finish would not have produced new signal about the known A2 runtime blocker during this turn.
+- The main hardware blocker remains external to the Python/report layer: on A2-AK-225, prior real runs reached the remote `torch_npu` worker setup and failed with `507899 / Resource_Busy`.
+
+## User Setup Required
+
+- If we want the local Qwen3.5 cache to finish materially faster, provide a usable `HF_TOKEN` in the environment before the next resume.
+- For A2 root-cause isolation, the most useful manual help is still machine-side evidence around guard/watchdog jobs, active NPU consumers, and the exact `torch_npu` minimum repro on `A2-AK-225`.
+
+## Next Phase Readiness
+
+- Code and report layers are ready.
+- Phase 14 cannot be marked complete until:
+  1. local Qwen3.5 cache finishes,
+  2. the selected host completes all 8 sync/async rows through 16k,
+  3. the formal report bundle contains full matrix, accuracy, consistency, W&B, Prometheus, manifest, config snapshot, and provenance evidence,
+  4. shipped commits/branch URLs are captured for every repo touched by the run.
+
+## Self-Check: FAILED
+
+- **PASS:** Report loader/render/completeness tests are green.
+- **PASS:** Full repository regression suite is green (`408 passed`).
+- **PASS:** Real formal-case command now aligns to `Qwen/Qwen3.5-2B` and starts resumable local cache warming successfully.
+- **FAIL:** No completed 8-row real matrix exists yet.
+- **FAIL:** No clean shipped commit+GitHub-link provenance bundle has been captured from a successful formal run.
+- **FAIL:** `A2-AK-225` remains externally blocked by prior observed `torch_npu aclInit 507899 / Resource_Busy` behavior until disproven by a fresh completed run.
+
+---
+*Phase: 14-verl-workspace-adapter-verl*
+*Blocked: 2026-06-17*

@@ -14,6 +14,7 @@ from autoresearch.orchestrator.verl_case import run_verl_case_orchestration
 
 case_config = importlib.import_module("workspace-adapter.verl.case_config")
 case_runner = importlib.import_module("workspace-adapter.verl.case_runner")
+data_prep = importlib.import_module("workspace-adapter.verl.data_prep")
 
 
 def _config_file(
@@ -106,17 +107,43 @@ def _fake_report(*, run_id, open_report=False, runs_root=None):
 
 
 def _fake_model_cache(tmp_path: Path):
-    model_dir = tmp_path / "cache" / "models" / "Qwen__Qwen3-VL-2B-Instruct"
+    model_dir = tmp_path / "cache" / "models" / "Qwen__Qwen3.5-2B"
     model_dir.mkdir(parents=True, exist_ok=True)
     (model_dir / "config.json").write_text("{}", encoding="utf-8")
-    (model_dir / "model-00001-of-00001.safetensors").write_bytes(b"stub")
+    (model_dir / "model.safetensors.index.json").write_text(
+        json.dumps({"weight_map": {"model.embed_tokens.weight": "model.safetensors-00001-of-00001.safetensors"}}),
+        encoding="utf-8",
+    )
+    (model_dir / "model.safetensors-00001-of-00001.safetensors").write_bytes(b"stub")
     model_sync = importlib.import_module("workspace-adapter.verl.model_sync")
     return model_sync.PreparedModelCache(
-        model_id="Qwen/Qwen3-VL-2B-Instruct",
+        model_id="Qwen/Qwen3.5-2B",
         cache_root=tmp_path / "cache",
         model_cache=model_dir,
         ready=True,
         downloaded=False,
+    )
+
+
+def _fake_prepared_dataset(tmp_path: Path, *, with_parquet: bool = False):
+    dataset_cache = tmp_path / "cache" / "datasets" / "hiyouga__geometry3k"
+    dataset_cache.mkdir(parents=True, exist_ok=True)
+    train_parquet = dataset_cache / "train.parquet"
+    test_parquet = dataset_cache / "test.parquet"
+    if with_parquet:
+        train_parquet.write_bytes(b"train")
+        test_parquet.write_bytes(b"test")
+    return data_prep.PreparedGeometry3K(
+        dataset_id="hiyouga/geometry3k",
+        cache_root=tmp_path / "cache",
+        model_cache=tmp_path / "cache" / "models" / "Qwen__Qwen3.5-2B",
+        dataset_cache=dataset_cache,
+        image_dir=dataset_cache / "images",
+        jsonl_path=dataset_cache / "geometry3k-verl.jsonl",
+        sample_count=0,
+        ready=with_parquet,
+        train_parquet=train_parquet if with_parquet else None,
+        test_parquet=test_parquet if with_parquet else None,
     )
 
 
@@ -193,6 +220,42 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path):
     assert ensured
     assert ensured[0][0][0] == "A2-AK-225"
     assert ensured[0][1]["remote_proxy_port"] == 17892
+
+
+def test_verl_case_orchestration_stages_cached_geometry3k_parquet(tmp_path):
+    config = _config_file(tmp_path)
+    runs_root = tmp_path / "runs"
+    wandb_dir = runs_root / "run123" / "wandb"
+
+    def sync_all(_run_id, _spec, **_kwargs):
+        (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
+        return wandb_dir
+
+    def remote(spec, run_config, **kwargs):
+        assert spec.name == "A2-AK-225"
+        assert kwargs["remote_dataset_path"] == "/home/t00906153/autoresearch/dataset"
+        return _remote_result(run_config)
+
+    with patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
+         patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance), \
+         patch("autoresearch.orchestrator.verl_case.prepare_geometry3k", return_value=_fake_prepared_dataset(tmp_path, with_parquet=True)), \
+         patch("autoresearch.orchestrator.verl_case.prepare_model_cache", return_value=_fake_model_cache(tmp_path)), \
+         patch("autoresearch.orchestrator.verl_case.stage_model_cache", return_value="/home/t00906153/autoresearch/runs/run123/model"), \
+         patch("autoresearch.orchestrator.verl_case.stage_geometry3k", return_value="/home/t00906153/autoresearch/dataset") as stage_dataset, \
+         patch("autoresearch.orchestrator.verl_case.run_verl_case", side_effect=remote), \
+         patch("autoresearch.orchestrator.verl_case.sync_all_runs", side_effect=sync_all), \
+         patch("autoresearch.orchestrator.verl_case.push_metrics", return_value=True), \
+         patch("autoresearch.orchestrator.verl_case.run_render", side_effect=_fake_report):
+        exit_code, payload = run_verl_case_orchestration(
+            server="A2-AK-225",
+            config=str(config),
+            run_id="run123",
+            runs_root=runs_root,
+        )
+
+    assert exit_code == 0
+    assert payload["ok"] is True
+    stage_dataset.assert_called_once()
 
 
 def test_verl_case_matrix_failure_sets_failed_step_matrix(tmp_path):

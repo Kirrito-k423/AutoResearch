@@ -36,6 +36,7 @@ now_utc = case_config_mod.now_utc
 write_immutable_config = case_config_mod.write_immutable_config
 run_verl_case = case_runner_mod.run_verl_case
 prepare_geometry3k = data_prep_mod.prepare_geometry3k
+stage_geometry3k = data_prep_mod.stage_geometry3k
 prepare_model_cache = model_sync_mod.prepare_model_cache
 stage_model_cache = model_sync_mod.stage_model_cache
 capture_repo_provenance = provenance_mod.capture_repo_provenance
@@ -157,6 +158,7 @@ def run_verl_case_orchestration(
             )
 
     emit_progress("orch.verl_case.prepare", run_id=rid)
+    remote_dataset_path = f"{resolved_workdir}/autoresearch/dataset"
     try:
         provenance_rows, provenance_warnings = _capture_provenance(
             repo_root=repo_root or Path.cwd(),
@@ -176,6 +178,16 @@ def run_verl_case_orchestration(
             local_model_dir=prepared_model.model_cache,
             remote_model_dir=f"{resolved_workdir}/autoresearch/runs/{rid}/model",
         )
+        if prepared.train_parquet and prepared.test_parquet:
+            remote_dataset_path = stage_geometry3k(
+                spec,
+                prepared,
+                remote_dataset_dir=remote_dataset_path,
+            )
+        else:
+            warnings.append(
+                "geometry3k 本地缓存缺少 parquet；formal case 将回退到容器内预处理。"
+            )
         container_proxy_url = _container_proxy_url(
             local_proxy_url=local_proxy_url,
             remote_proxy_port=remote_proxy_port,
@@ -198,6 +210,7 @@ def run_verl_case_orchestration(
                 "remote_proxy_port": remote_proxy_port,
                 "container_proxy_url": container_proxy_url,
                 "remote_model_path": remote_model_path,
+                "remote_dataset_path": remote_dataset_path,
             },
         )
         config_snapshot = write_immutable_config(run_config, run_dir)
@@ -266,7 +279,7 @@ def run_verl_case_orchestration(
             timeout=timeout,
             proxy_url=container_proxy_url,
             remote_model_path=remote_model_path,
-            remote_dataset_path=f"{resolved_workdir}/autoresearch/dataset",
+            remote_dataset_path=remote_dataset_path,
             remote_output_path=f"{resolved_workdir}/autoresearch/runs/{rid}",
         )
         run_exit = 0

@@ -1,6 +1,6 @@
 # Verl Formal Case
 
-`autoresearch run verl-case` runs the formal Ascend Verl Geo3K case for `Qwen/Qwen3-VL-2B-Instruct` on `hiyouga/geometry3k` and persists a local-first evidence bundle.
+`autoresearch run verl-case` runs the formal Ascend Verl Geo3K case for `Qwen/Qwen3.5-2B` on `hiyouga/geometry3k` and persists a local-first evidence bundle.
 
 ## Command
 
@@ -23,7 +23,7 @@ Useful options:
 ## Fixed Case
 
 - Docker image: `quay.io/ascend/verl:verl-8.5.2-910b-ubuntu22.04-py3.11-qwen3-5`
-- Model: `Qwen/Qwen3-VL-2B-Instruct`
+- Model: `Qwen/Qwen3.5-2B`
 - Dataset: `hiyouga/geometry3k`
 - Input length: `1024`
 - Output lengths: `2048`, `4096`, `8192`, `16384`
@@ -48,6 +48,8 @@ The local cache root defaults to `/Users/Zhuanz/autoResearchData`. Keep <=5GB mo
 1. Ensure local proxy is available at `127.0.0.1:7890`.
 2. Let readiness use `--remote-proxy-port 17892`.
 3. Keep model and dataset mounts under the configured remote workdir, normally `/home/t00906153`.
+
+`Qwen/Qwen3.5-2B` currently lands as `model.safetensors.index.json` plus `model.safetensors-00001-of-00001.safetensors` in the local cache. The adapter accepts that Hugging Face layout directly; no manual rename to `model.safetensors` is required.
 
 ## Artifact Layout
 

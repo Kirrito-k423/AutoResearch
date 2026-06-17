@@ -518,7 +518,7 @@ def run_verl_case_cmd(
     skip_readiness: bool,
     open_report: bool,
 ) -> None:
-    """跑 Geo3K + Qwen3-VL-2B-Instruct 的 Verl 正式案例。"""
+    """跑 Geo3K + Qwen3.5-2B 的 Verl 正式案例。"""
     from autoresearch.orchestrator.verl_case import run_verl_case_orchestration
 
     try:

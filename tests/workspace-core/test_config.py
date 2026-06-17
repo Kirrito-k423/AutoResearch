@@ -10,7 +10,7 @@ def test_from_yaml_minimal():
     assert cfg.version == 1
     assert cfg.servers == []
     assert cfg.verl_case.cache_root == "/Users/Zhuanz/autoResearchData"
-    assert cfg.verl_case.model_id == "Qwen/Qwen3-VL-2B-Instruct"
+    assert cfg.verl_case.model_id == "Qwen/Qwen3.5-2B"
     assert cfg.verl_case.dataset_id == "hiyouga/geometry3k"
     assert cfg.verl_case.ignore_eos is False
     assert cfg.verl_case.output_tokens == [2048, 4096, 8192, 16384]

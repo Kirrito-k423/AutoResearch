@@ -1,6 +1,7 @@
 """Local model cache preparation and remote staging for formal Verl runs."""
 from __future__ import annotations
 
+import json
 import os
 import shlex
 import tarfile
@@ -36,6 +37,7 @@ MODEL_ALLOW_PATTERNS = (
     "*.jinja",
 )
 MODEL_FILE = "model.safetensors"
+MODEL_INDEX_FILE = "model.safetensors.index.json"
 _SIDECAR_FILES = {
     "chat_template.json",
     "config.json",
@@ -201,7 +203,15 @@ def stage_model_cache(
 
 
 def _model_ready(model_cache: Path) -> bool:
-    return (model_cache / "config.json").exists() and (model_cache / MODEL_FILE).exists()
+    if not (model_cache / "config.json").exists():
+        return False
+    if (model_cache / MODEL_FILE).exists():
+        return True
+
+    shard_names = _indexed_weight_files(model_cache)
+    if not shard_names:
+        return False
+    return all((model_cache / name).exists() for name in shard_names)
 
 
 def _sidecars_ready(model_cache: Path) -> bool:
@@ -244,10 +254,11 @@ def _resume_model_download(
     incomplete_path = _largest_incomplete(model_cache)
     if incomplete_path is None:
         raise ModelCacheError(f"未找到可续传的中间文件: {model_cache}")
+    target_name = _resume_target_name(model_cache, incomplete_path)
 
     proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
     session = requests.Session()
-    resolve_url = f"https://huggingface.co/{model_id}/resolve/main/{MODEL_FILE}"
+    resolve_url = f"https://huggingface.co/{model_id}/resolve/main/{target_name}"
     retries = 0
     total_size = 0
     while True:
@@ -294,7 +305,7 @@ def _resume_model_download(
             f"单文件续传后模型大小不匹配: got={final_size}, want={total_size}"
         )
 
-    final_path = model_cache / MODEL_FILE
+    final_path = model_cache / target_name
     incomplete_path.replace(final_path)
     for candidate in model_cache.rglob("*.incomplete"):
         candidate.unlink(missing_ok=True)
@@ -334,6 +345,31 @@ def _largest_incomplete(model_cache: Path) -> Path | None:
         reverse=True,
     )
     return candidates[0] if candidates else None
+
+
+def _indexed_weight_files(model_cache: Path) -> list[str]:
+    index_path = model_cache / MODEL_INDEX_FILE
+    if not index_path.exists():
+        return []
+    try:
+        payload = json.loads(index_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return []
+    weight_map = payload.get("weight_map")
+    if not isinstance(weight_map, dict):
+        return []
+    # Preserve order but drop duplicates.
+    return list(dict.fromkeys(str(name) for name in weight_map.values() if name))
+
+
+def _resume_target_name(model_cache: Path, incomplete_path: Path) -> str:
+    shard_names = _indexed_weight_files(model_cache)
+    if len(shard_names) == 1:
+        return shard_names[0]
+    incomplete_name = incomplete_path.name.removesuffix(".incomplete")
+    if incomplete_name and incomplete_name != incomplete_path.name:
+        return incomplete_name
+    return MODEL_FILE
 
 
 def _ensure_remote_dir(client: SSHClient, remote_dir: PurePosixPath) -> None:
