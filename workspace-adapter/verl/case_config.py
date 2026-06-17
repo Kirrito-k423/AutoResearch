@@ -27,6 +27,15 @@ class VerlCaseConfig(BaseModel):
     github_owner: str = "Kirrito-k423"
     remote_workdir: str = "/home/t00906153"
     dependency_repo_paths: dict[str, str] = Field(default_factory=dict)
+    trainer_val_only: bool = True
+    train_batch_size: int = 8
+    val_batch_size: int = 1
+    train_max_samples: int = 8
+    val_max_samples: int = 2
+    rollout_n: int = 1
+    n_gpus_per_node: int = 8
+    tensor_model_parallel_size: int = 2
+    row_timeout_seconds: int = 1800
 
 
 class VerlCaseMatrixRow(BaseModel):

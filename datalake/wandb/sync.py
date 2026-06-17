@@ -233,3 +233,54 @@ def sync_run(
         )
 
     return local_run_dir
+
+
+def sync_all_runs(
+    local_run_id: str,
+    spec: ServerSpec,
+    workdir: str = "",
+    local_runs_root: Path | None = None,
+    run_id_prefix: str = "",
+) -> Path:
+    """Fetch and sync every offline wandb run under one remote workdir.
+
+    This is used by formal case runs where each matrix row may emit a separate
+    offline wandb directory under the same shared output root.
+    """
+    if not workdir:
+        workdir = "/root"
+    if local_runs_root is None:
+        local_runs_root = DEFAULT_LOCAL_RUNS_ROOT
+    local_runs_root = Path(local_runs_root).expanduser()
+
+    _check_wandb_cli()
+
+    remote_runs = _list_remote_wandb_runs(spec, workdir, run_id_prefix=run_id_prefix)
+    if not remote_runs:
+        raise NoRemoteRun(
+            f"远程 {workdir}/wandb/ 下找不到 wandb offline run; "
+            f"请确认 formal case 已启用 wandb logger"
+        )
+
+    local_root = local_runs_root / local_run_id / "wandb"
+    if local_root.exists():
+        shutil.rmtree(local_root)
+    local_root.mkdir(parents=True, exist_ok=True)
+
+    for remote_run in sorted(remote_runs):
+        remote_dir = f"{workdir}/wandb/wandb/{remote_run}"
+        local_dir = local_root / remote_run
+        _sftp_fetch_dir(spec, remote_dir, local_dir)
+        ec, so, se = _wandb_sync_subprocess(local_dir)
+        if ec != 0:
+            if "Unable to connect" in se or "Connection refused" in se:
+                raise SyncFailed(
+                    f"wandb sync 失败: 本地 wandb 服务没起? `autoresearch services start`; "
+                    f"stderr={se.strip()[:200]}"
+                )
+            raise SyncFailed(
+                f"wandb sync 失败 exit={ec}; "
+                f"stdout={so.strip()[:200]}; stderr={se.strip()[:200]}"
+            )
+
+    return local_root

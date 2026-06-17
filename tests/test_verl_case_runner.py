@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import importlib
 import json
-import subprocess
 from datetime import datetime, timezone
 
 from workspace_core.config import ServerSpec
@@ -134,6 +133,8 @@ def test_capture_repo_provenance_without_push(tmp_path):
             return 0, str(tmp_path), ""
         if args[1:] == ["remote", "get-url", "origin"]:
             return 0, "https://github.com/upstream/verl.git", ""
+        if args[1:] == ["remote", "-v"]:
+            return 0, "origin https://github.com/upstream/verl.git (fetch)\norigin https://github.com/upstream/verl.git (push)", ""
         if args[1:] == ["rev-parse", "--abbrev-ref", "HEAD"]:
             return 0, "main", ""
         if args[1:] == ["status", "--porcelain"]:
@@ -153,6 +154,79 @@ def test_capture_repo_provenance_without_push(tmp_path):
     assert result.commit_sha == "abc123"
     assert result.fork_url == "https://github.com/Kirrito-k423/verl"
     assert all(args[1] != "push" for args in calls)
+
+
+def test_capture_repo_provenance_pushes_to_fork_remote(tmp_path):
+    calls = []
+
+    def runner(args, cwd):
+        calls.append(args)
+        if args[1:] == ["rev-parse", "--show-toplevel"]:
+            return 0, str(tmp_path), ""
+        if args[1:] == ["remote", "get-url", "origin"]:
+            return 0, "https://github.com/verl-project/verl.git", ""
+        if args[1:] == ["remote", "-v"]:
+            return (
+                0,
+                "\n".join(
+                    [
+                        "origin https://github.com/verl-project/verl.git (fetch)",
+                        "origin https://github.com/verl-project/verl.git (push)",
+                        "fork https://github.com/Kirrito-k423/verl.git (fetch)",
+                        "fork https://github.com/Kirrito-k423/verl.git (push)",
+                    ]
+                ),
+                "",
+            )
+        if args[1:] == ["rev-parse", "--abbrev-ref", "HEAD"]:
+            return 0, "main", ""
+        if args[1:] == ["status", "--porcelain"]:
+            return 0, "", ""
+        if args[1:] == ["push", "-u", "fork", "main"]:
+            return 0, "", ""
+        if args[1:] == ["rev-parse", "HEAD"]:
+            return 0, "abc123", ""
+        return 1, "", "unexpected"
+
+    result = provenance.capture_repo_provenance(
+        tmp_path,
+        upstream_url="https://github.com/verl-project/verl.git",
+        allow_commit_push=True,
+        runner=runner,
+    )
+
+    assert ["git", "push", "-u", "fork", "main"] in calls
+    assert ["git", "push", "-u", "origin", "main"] not in calls
+    assert result.pushed_url == "https://github.com/Kirrito-k423/verl/tree/main"
+    assert result.branch_url == "https://github.com/Kirrito-k423/verl/tree/main"
+
+
+def test_capture_repo_provenance_names_detached_head_from_short_sha(tmp_path):
+    def runner(args, cwd):
+        if args[1:] == ["rev-parse", "--show-toplevel"]:
+            return 0, str(tmp_path), ""
+        if args[1:] == ["remote", "get-url", "origin"]:
+            return 0, "https://github.com/vllm-project/vllm.git", ""
+        if args[1:] == ["remote", "-v"]:
+            return 0, "origin https://github.com/vllm-project/vllm.git (fetch)\norigin https://github.com/vllm-project/vllm.git (push)", ""
+        if args[1:] == ["rev-parse", "--abbrev-ref", "HEAD"]:
+            return 0, "HEAD", ""
+        if args[1:] == ["rev-parse", "--short", "HEAD"]:
+            return 0, "b8b302c", ""
+        if args[1:] == ["status", "--porcelain"]:
+            return 0, "", ""
+        if args[1:] == ["rev-parse", "HEAD"]:
+            return 0, "b8b302cde434df8c9289a2b465406b47ebab1c2d", ""
+        return 1, "", "unexpected"
+
+    result = provenance.capture_repo_provenance(
+        tmp_path,
+        upstream_url="https://github.com/vllm-project/vllm.git",
+        runner=runner,
+    )
+
+    assert result.branch == "detached-b8b302c"
+    assert result.branch_url == "https://github.com/Kirrito-k423/vllm/tree/detached-b8b302c"
 
 
 def test_run_verl_case_fails_if_one_matrix_row_fails():
@@ -217,10 +291,15 @@ def test_run_verl_case_passes_all_rows_and_script_contains_ignore_eos_false():
     assert '"ignore_eos": false' in case_runner.build_remote_case_script(run_config)
 
 
-def test_row_command_executes_generated_config_script():
+def test_row_command_builds_formal_verl_script():
     command = case_runner._row_command(_run_config(), "sync-1024-2048")
 
-    proc = subprocess.run(command, shell=True, text=True, capture_output=True, check=False)
-
-    assert proc.returncode == 0
-    assert "VERL_CASE_ROW=sync-1024-2048" in proc.stdout
+    assert "verl.trainer.main_ppo" in command
+    assert "examples/data_preprocess/geo3k.py" in command
+    assert "algorithm.adv_estimator=grpo" in command
+    assert "actor_rollout_ref.rollout.mode=" in command
+    assert "actor_rollout_ref.rollout.ignore_eos=False" in command
+    assert "WANDB_DIR" in command
+    assert "trainer.logger=[console,wandb]" in command
+    assert "row_timeout_seconds" in command
+    assert "VERL_CASE_RESULT=" in command

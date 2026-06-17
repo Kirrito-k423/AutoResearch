@@ -130,6 +130,22 @@ class VerlCaseConfig(BaseModel):
             "for example verl/vllm/transformers/mindspeed."
         ),
     )
+    trainer_val_only: bool = Field(
+        default=True,
+        description="Run the formal case through Verl validation-only mode by default.",
+    )
+    train_batch_size: int = Field(default=8, ge=1)
+    val_batch_size: int = Field(default=1, ge=1)
+    train_max_samples: int = Field(default=8, ge=1)
+    val_max_samples: int = Field(default=2, ge=1)
+    rollout_n: int = Field(default=1, ge=1)
+    n_gpus_per_node: int = Field(default=8, ge=1)
+    tensor_model_parallel_size: int = Field(default=2, ge=1)
+    row_timeout_seconds: int = Field(
+        default=1800,
+        ge=1,
+        description="Per formal matrix row timeout inside the container.",
+    )
 
     @field_validator("output_tokens")
     @classmethod

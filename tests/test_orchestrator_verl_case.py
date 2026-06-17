@@ -126,6 +126,11 @@ def test_verl_case_readiness_failure_skips_remote_runner(tmp_path):
 def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path):
     config = _config_file(tmp_path)
     runs_root = tmp_path / "runs"
+    wandb_dir = runs_root / "run123" / "wandb"
+
+    def sync_all(_run_id, _spec, **_kwargs):
+        (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
+        return wandb_dir
 
     def remote(spec, run_config, **kwargs):
         assert spec.name == "A2-AK-225"
@@ -137,6 +142,8 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path):
     with patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
          patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance), \
          patch("autoresearch.orchestrator.verl_case.run_verl_case", side_effect=remote), \
+         patch("autoresearch.orchestrator.verl_case.sync_all_runs", side_effect=sync_all), \
+         patch("autoresearch.orchestrator.verl_case.push_metrics", return_value=True), \
          patch("autoresearch.orchestrator.verl_case.run_render", side_effect=_fake_report):
         exit_code, payload = run_verl_case_orchestration(
             server="A2-AK-225",
@@ -155,23 +162,33 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path):
     assert Path(payload["matrix_results"]).exists()
     assert Path(payload["log_path"]).exists()
     assert Path(payload["report"]).exists()
+    assert Path(runs_root / "run123" / "wandb" / "files" / "wandb-summary.json").exists()
     matrix_lines = Path(payload["matrix_results"]).read_text(encoding="utf-8").splitlines()
     assert len(matrix_lines) == 4
     manifest = json.loads(Path(payload["manifest"]).read_text(encoding="utf-8"))
     assert manifest["formal_case"]["matrix_results"] == payload["matrix_results"]
     assert manifest["config_snapshot"] == payload["config_snapshot"]
     assert manifest["provenance"][0]["commit_sha"] == "abc123"
+    assert manifest["prom_pushed"] is True
+    assert manifest["wandb_path"] == str(wandb_dir)
 
 
 def test_verl_case_matrix_failure_sets_failed_step_matrix(tmp_path):
     config = _config_file(tmp_path)
+    wandb_dir = tmp_path / "runs" / "run123" / "wandb"
 
     def remote(_spec, run_config, **_kwargs):
         return _remote_result(run_config, failed_key="async-1024-4096")
 
+    def sync_all(_run_id, _spec, **_kwargs):
+        (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
+        return wandb_dir
+
     with patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
          patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance), \
          patch("autoresearch.orchestrator.verl_case.run_verl_case", side_effect=remote), \
+         patch("autoresearch.orchestrator.verl_case.sync_all_runs", side_effect=sync_all), \
+         patch("autoresearch.orchestrator.verl_case.push_metrics", return_value=True), \
          patch("autoresearch.orchestrator.verl_case.run_render", side_effect=_fake_report):
         exit_code, payload = run_verl_case_orchestration(
             server="A2-AK-225",
@@ -188,10 +205,17 @@ def test_verl_case_matrix_failure_sets_failed_step_matrix(tmp_path):
 
 def test_verl_case_missing_dependency_repo_is_warning_not_failure(tmp_path):
     config = _config_file(tmp_path, dependency_path=tmp_path / "missing-verl")
+    wandb_dir = tmp_path / "runs" / "run123" / "wandb"
+
+    def sync_all(_run_id, _spec, **_kwargs):
+        (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
+        return wandb_dir
 
     with patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
          patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance) as capture, \
          patch("autoresearch.orchestrator.verl_case.run_verl_case", side_effect=lambda _spec, run_config, **_kwargs: _remote_result(run_config)), \
+         patch("autoresearch.orchestrator.verl_case.sync_all_runs", side_effect=sync_all), \
+         patch("autoresearch.orchestrator.verl_case.push_metrics", return_value=True), \
          patch("autoresearch.orchestrator.verl_case.run_render", side_effect=_fake_report):
         exit_code, payload = run_verl_case_orchestration(
             config=str(config),
@@ -230,3 +254,65 @@ def test_verl_case_cli_outputs_single_json_object():
     assert mock.call_args.kwargs["server"] == "A2-AK-225"
     assert mock.call_args.kwargs["timeout"] == 12.0
     assert mock.call_args.kwargs["skip_readiness"] is True
+
+
+def test_verl_case_docker_stack_override_allows_readiness_to_continue(tmp_path):
+    config = _config_file(tmp_path)
+    runs_root = tmp_path / "runs"
+    wandb_dir = runs_root / "run123" / "wandb"
+    remote_called = False
+
+    readiness_payload = {
+        "ok": False,
+        "command": "check",
+        "server": "A2-AK-225",
+        "config": str(config),
+        "failed_step": "stack",
+        "summary": {"total": 8, "passed": 4, "warned": 0, "failed": 1, "skipped": 2, "failed_step": "stack"},
+        "steps": [
+            {"id": "config", "label": "customer-config", "ok": True, "status": "pass", "exit_code": 0, "diagnosis": None, "payload": {"ok": True}},
+            {"id": "services", "label": "local-services-health", "ok": True, "status": "pass", "exit_code": 0, "diagnosis": None, "payload": {"ok": True}},
+            {"id": "hw", "label": "server-hardware-probe", "ok": True, "status": "pass", "exit_code": 0, "diagnosis": None, "payload": {"ok": True}},
+            {"id": "net", "label": "network-check", "ok": True, "status": "pass", "exit_code": 0, "diagnosis": None, "payload": {"ok": True}},
+            {"id": "reach", "label": "service-reachability", "ok": True, "status": "pass", "exit_code": 0, "diagnosis": None, "payload": {"ok": True}},
+            {
+                "id": "stack",
+                "label": "train-stack-health",
+                "ok": False,
+                "status": "fail",
+                "exit_code": 1,
+                "diagnosis": "bash: line 1: python: command not found",
+                "payload": {"ok": False, "severity": "fail", "error": "bash: line 1: python: command not found"},
+            },
+            {"id": "collect", "label": "data-collection", "ok": True, "status": "skipped", "exit_code": None, "diagnosis": "x", "payload": {"ok": None, "skipped": True}},
+            {"id": "report", "label": "experiment-report", "ok": True, "status": "skipped", "exit_code": None, "diagnosis": "x", "payload": {"ok": None, "skipped": True}},
+        ],
+    }
+
+    def remote(_spec, run_config, **_kwargs):
+        nonlocal remote_called
+        remote_called = True
+        return _remote_result(run_config)
+
+    def sync_all(_run_id, _spec, **_kwargs):
+        (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
+        return wandb_dir
+
+    with patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(1, readiness_payload)), \
+         patch("autoresearch.orchestrator.verl_case._docker_formal_stack_ready", return_value=(True, "docker ok")), \
+         patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance), \
+         patch("autoresearch.orchestrator.verl_case.run_verl_case", side_effect=remote), \
+         patch("autoresearch.orchestrator.verl_case.sync_all_runs", side_effect=sync_all), \
+         patch("autoresearch.orchestrator.verl_case.push_metrics", return_value=True), \
+         patch("autoresearch.orchestrator.verl_case.run_render", side_effect=_fake_report):
+        exit_code, payload = run_verl_case_orchestration(
+            server="A2-AK-225",
+            config=str(config),
+            run_id="run123",
+            runs_root=runs_root,
+        )
+
+    assert exit_code == 0
+    assert payload["ok"] is True
+    assert remote_called is True
+    assert any("stack override" in item for item in payload["warnings"])

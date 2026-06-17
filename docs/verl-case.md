@@ -29,8 +29,15 @@ Useful options:
 - Output lengths: `2048`, `4096`, `8192`, `16384`
 - Modes: `sync`, `async`
 - `ignore_eos`: `false`
+- Default row timeout: `verl_case.row_timeout_seconds=1800`
 
 The formal run is incomplete unless every sync/async row through 16k is present and passed.
+
+## Runtime Knobs
+
+The generated Docker row script streams `verl.trainer.main_ppo` output to `rows/<row>/verl.log` while the row is running, and records `__AR_TIMEOUT__=<seconds>s` if `row_timeout_seconds` is exceeded. The default smoke-safe execution uses `trainer_val_only=true`, `train_batch_size=8`, `train_max_samples=8`, `val_batch_size=1`, and `val_max_samples=2`.
+
+On 8x910B, AutoResearch floors `train_batch_size` and `train_max_samples` to at least `n_gpus_per_node` before launching Verl, because Verl requires `real_train_batch_size` to be divisible by the minimal device batch size.
 
 ## Local Cache And No-Network Path
 

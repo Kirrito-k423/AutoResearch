@@ -10,6 +10,7 @@ from workspace_core.config import ServerSpec
 
 from datalake.wandb.sync import (
     sync_run,
+    sync_all_runs,
     _list_remote_wandb_runs,
     _check_wandb_cli,
     _check_local_wandb_server,
@@ -221,3 +222,32 @@ def test_sync_run_sync_failed_generic(tmp_path):
                return_value=(1, "some stdout", "some random error")):
         with pytest.raises(SyncFailed, match="exit=1"):
             sync_run("abc", spec, workdir="/root", local_runs_root=local_root)
+
+
+def test_sync_all_runs_happy_path(tmp_path):
+    spec = _spec()
+    local_root = tmp_path / "runs"
+    remote_runs = [
+        "offline-run-20260615_050749-abc123",
+        "offline-run-20260615_050800-xyz789",
+    ]
+    with patch("datalake.wandb.sync._check_wandb_cli"), \
+         patch("datalake.wandb.sync._list_remote_wandb_runs", return_value=remote_runs), \
+         patch("datalake.wandb.sync._sftp_fetch_dir") as mock_fetch, \
+         patch("datalake.wandb.sync._wandb_sync_subprocess", return_value=(0, "ok", "")) as mock_sync:
+        result = sync_all_runs("run123", spec, workdir="/remote/formal", local_runs_root=local_root)
+
+    assert result == local_root / "run123" / "wandb"
+    assert mock_fetch.call_count == 2
+    assert mock_sync.call_count == 2
+    assert mock_fetch.call_args_list[0][0][1] == "/remote/formal/wandb/wandb/offline-run-20260615_050749-abc123"
+    assert mock_fetch.call_args_list[1][0][1] == "/remote/formal/wandb/wandb/offline-run-20260615_050800-xyz789"
+
+
+def test_sync_all_runs_no_remote_run_raises(tmp_path):
+    spec = _spec()
+    local_root = tmp_path / "runs"
+    with patch("datalake.wandb.sync._check_wandb_cli"), \
+         patch("datalake.wandb.sync._list_remote_wandb_runs", return_value=[]):
+        with pytest.raises(NoRemoteRun, match="找不到 wandb offline run"):
+            sync_all_runs("run123", spec, workdir="/remote/formal", local_runs_root=local_root)

@@ -115,6 +115,18 @@ verl_case:
   inference_modes: [sync, async]
   github_owner: Kirrito-k423
   remote_workdir: /home/t00906153
+  # Formal row runtime knobs. train_* are floored to n_gpus_per_node
+  # when launching Verl because PPO real_train_batch_size must be divisible
+  # by the minimal device batch size on 8x910B.
+  trainer_val_only: true
+  train_batch_size: 8
+  val_batch_size: 1
+  train_max_samples: 8
+  val_max_samples: 2
+  rollout_n: 1
+  n_gpus_per_node: 8
+  tensor_model_parallel_size: 2
+  row_timeout_seconds: 1800
   # Optional dependency checkouts for provenance / optional commit+push.
   # Missing paths become warnings, not hard failures.
   dependency_repo_paths:

@@ -9,6 +9,8 @@ from typing import Any
 
 from datalake.manifest import RunManifest
 from datalake.manifest import write as write_manifest
+from datalake.prometheus import PushError, push_metrics
+from datalake.wandb.sync import WandbSyncError, sync_all_runs
 from workspace_core.config import ConfigError, ServerSpec, from_path
 from workspace_core.progress import emit_progress
 
@@ -23,6 +25,7 @@ case_config_mod = importlib.import_module("workspace-adapter.verl.case_config")
 case_runner_mod = importlib.import_module("workspace-adapter.verl.case_runner")
 data_prep_mod = importlib.import_module("workspace-adapter.verl.data_prep")
 provenance_mod = importlib.import_module("workspace-adapter.verl.provenance")
+conda_utils_mod = importlib.import_module("workspace-adapter.common.conda_utils")
 
 VerlCaseConfig = case_config_mod.VerlCaseConfig
 VerlCaseRunConfig = case_config_mod.VerlCaseRunConfig
@@ -32,6 +35,7 @@ write_immutable_config = case_config_mod.write_immutable_config
 run_verl_case = case_runner_mod.run_verl_case
 prepare_geometry3k = data_prep_mod.prepare_geometry3k
 capture_repo_provenance = provenance_mod.capture_repo_provenance
+run_in_env = conda_utils_mod.run_in_env
 
 
 DEFAULT_PUSHGATEWAY_URL = "http://127.0.0.1:17891"
@@ -116,6 +120,13 @@ def run_verl_case_orchestration(
             stack_libs=("verl",),
             remote_proxy_port=remote_proxy_port,
         )
+        readiness_exit, readiness_payload, docker_override_warning = _maybe_relax_stack_failure_for_docker(
+            readiness_exit=readiness_exit,
+            readiness_payload=readiness_payload,
+            spec=spec,
+        )
+        if docker_override_warning:
+            warnings.append(docker_override_warning)
         readiness_step = step_result(
             step_id="readiness",
             label="skills-1-6-readiness",
@@ -242,13 +253,46 @@ def run_verl_case_orchestration(
     )
 
     emit_progress("orch.verl_case.collect", run_id=rid)
+    wandb_path: Path | None = None
+    if remote_result is not None and remote_result.rows:
+        try:
+            wandb_path = sync_all_runs(
+                rid,
+                spec,
+                workdir=f"{resolved_workdir}/autoresearch/runs/{rid}",
+                local_runs_root=root,
+            )
+            _write_formal_wandb_summary(
+                wandb_path,
+                remote_result,
+                npu_count=int(getattr(adapter_config, "n_gpus_per_node", 0) or 0),
+            )
+        except WandbSyncError as exc:
+            warnings.append(f"formal wandb sync failed: {exc}")
+
+    prom_pushed = False
+    npu_count = int(getattr(adapter_config, "n_gpus_per_node", 0) or 0)
+    if npu_count > 0:
+        try:
+            prom_pushed = push_metrics(
+                spec,
+                rid,
+                npu_count,
+                pushgateway_url=pushgateway_url,
+            )
+        except PushError as exc:
+            warnings.append(f"formal prom push failed: {exc}")
+
     prom_metrics = _write_json(
         run_dir / "prom" / "formal-case-prometheus.json",
         {
             "run_id": rid,
             "pushgateway_url": pushgateway_url,
             "prometheus_url": prometheus_url,
-            "note": "formal-case evidence placeholder; detailed metrics are in matrix-results.jsonl",
+            "prom_pushed": prom_pushed,
+            "npu_count": npu_count,
+            "row_count": len(remote_result.rows) if remote_result is not None else 0,
+            "note": "formal-case evidence; matrix details remain in matrix-results.jsonl",
         },
     )
     manifest_path = _write_manifest(
@@ -263,14 +307,23 @@ def run_verl_case_orchestration(
         matrix_path=matrix_path,
         log_path=log_path,
         prom_metrics=prom_metrics,
+        prom_pushed=prom_pushed,
         remote_result=remote_result,
+        wandb_path=wandb_path,
     )
     collect_payload = {
-        "ok": manifest_path.exists() and log_path.exists() and provenance_path.exists(),
+        "ok": (
+            manifest_path.exists()
+            and log_path.exists()
+            and provenance_path.exists()
+            and wandb_path is not None
+            and prom_pushed
+        ),
         "manifest": str(manifest_path),
         "log_path": str(log_path),
         "prom_metrics_file": str(prom_metrics),
-        "wandb_path": str(run_dir / "wandb"),
+        "wandb_path": str(wandb_path) if wandb_path else None,
+        "prom_pushed": prom_pushed,
     }
     if matrix_path is not None:
         collect_payload["matrix_results"] = str(matrix_path)
@@ -358,6 +411,75 @@ def _container_proxy_url(
     if not local_proxy_url:
         return None
     return f"http://127.0.0.1:{remote_proxy_port}"
+
+
+def _maybe_relax_stack_failure_for_docker(
+    *,
+    readiness_exit: int,
+    readiness_payload: dict[str, Any],
+    spec: ServerSpec,
+) -> tuple[int, dict[str, Any], str | None]:
+    if readiness_exit == 0:
+        return readiness_exit, readiness_payload, None
+    if readiness_payload.get("failed_step") != "stack":
+        return readiness_exit, readiness_payload, None
+
+    steps = list(readiness_payload.get("steps") or [])
+    stack_step = next((step for step in steps if step.get("id") == "stack"), None)
+    if not stack_step:
+        return readiness_exit, readiness_payload, None
+
+    detail = str(
+        stack_step.get("diagnosis")
+        or (stack_step.get("payload") or {}).get("error")
+        or ""
+    )
+    if "python: command not found" not in detail:
+        return readiness_exit, readiness_payload, None
+
+    docker_ok, docker_detail = _docker_formal_stack_ready(spec)
+    if not docker_ok:
+        return readiness_exit, readiness_payload, None
+
+    stack_step["ok"] = True
+    stack_step["status"] = "warn"
+    stack_step["exit_code"] = 0
+    stack_step["diagnosis"] = f"宿主机 Python 栈缺失，但 Docker formal stack 可用: {docker_detail}"
+    payload = dict(stack_step.get("payload") or {})
+    payload["ok"] = True
+    payload["severity"] = "warn"
+    payload["docker_override"] = docker_detail
+    payload["message"] = "训练栈检查通过 (formal case docker override)"
+    stack_step["payload"] = payload
+
+    summary = summarize_steps(steps)
+    updated_payload = {
+        **readiness_payload,
+        "ok": summary["failed"] == 0,
+        "failed_step": summary["failed_step"],
+        "summary": summary,
+        "steps": steps,
+    }
+    warning = f"readiness stack override: {spec.name} host python 缺失，但 Docker/NPU 可用于 formal case"
+    return (0 if summary["failed"] == 0 else readiness_exit), updated_payload, warning
+
+
+def _docker_formal_stack_ready(spec: ServerSpec) -> tuple[bool, str]:
+    command = (
+        "docker --version >/dev/null 2>&1"
+        " && ls /dev/davinci0 /dev/davinci7 /dev/davinci_manager /dev/devmm_svm /dev/hisi_hdc >/dev/null 2>&1"
+    )
+    code, stdout, stderr = run_in_env(
+        spec,
+        command,
+        conda_env="",
+        workdir=getattr(spec, "workdir", "") or "/root",
+        timeout=15.0,
+    )
+    if code == 0:
+        return True, "docker command and ascend devices detected"
+    detail = (stderr or stdout or "").strip()[:200] or f"exit={code}"
+    return False, detail
 
 
 def _capture_provenance(
@@ -457,7 +579,9 @@ def _write_manifest(
     matrix_path: Path | None,
     log_path: Path,
     prom_metrics: Path,
+    prom_pushed: bool,
     remote_result: Any,
+    wandb_path: Path | None,
 ) -> Path:
     formal_case = {
         "kind": "verl-case",
@@ -483,12 +607,49 @@ def _write_manifest(
         config_snapshot=config_snapshot,
         provenance=[row.model_dump(mode="json") for row in provenance_rows],
         wandb_run_id=run_id,
-        wandb_path=run_dir / "wandb",
+        wandb_path=wandb_path,
         log_files=[log_path],
-        prom_pushed=False,
+        prom_pushed=prom_pushed,
         prom_metrics_file=prom_metrics,
     )
     return write_manifest(manifest, root=root)
+
+
+def _write_formal_wandb_summary(
+    wandb_root: Path,
+    remote_result: Any,
+    *,
+    npu_count: int,
+) -> Path:
+    rows = list(getattr(remote_result, "rows", []) or [])
+    passed_rows = [row for row in rows if getattr(row, "status", None) == "passed"]
+
+    def _avg(name: str) -> float | None:
+        values = [
+            float(value)
+            for row in rows
+            if (value := getattr(row, name, None)) is not None
+        ]
+        if not values:
+            return None
+        return sum(values) / len(values)
+
+    summary = {
+        "matrix_rows": len(rows),
+        "passed_rows": len(passed_rows),
+        "failed_rows": len(rows) - len(passed_rows),
+        "sample_count": sum(int(getattr(row, "sample_count", 0) or 0) for row in rows),
+        "tokens_per_second": _avg("tokens_per_second"),
+        "latency_ms": _avg("latency_ms"),
+        "accuracy": _avg("accuracy"),
+        "consistency": _avg("consistency"),
+        "npu_count": npu_count,
+        "_step": len(rows),
+    }
+    summary_path = wandb_root / "files" / "wandb-summary.json"
+    summary_path.parent.mkdir(parents=True, exist_ok=True)
+    summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return summary_path
 
 
 def _finish_payload(
