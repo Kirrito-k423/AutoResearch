@@ -1238,6 +1238,8 @@ def test_row_command_builds_formal_verl_script():
     assert "data.return_raw_chat=True" in command
     assert "ray_tmp_root = Path(" in command
     assert "/tmp" in command
+    assert "rollout_max_model_len = max_tokens if is_async else max(max_tokens, 24576)" in async_command
+    assert "rollout_max_num_batched_tokens = rollout_max_model_len" in async_command
 
 
 def test_row_command_uses_custom_exec_paths():
