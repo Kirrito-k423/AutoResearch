@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Stable
-status: Phase 14 pivoted from A3-AX-180 to A2-AK-225 after suspected host/toolkit mismatch on A3; the new A2 formal run is active in prepare/staging
-stopped_at: Phase 14 14-05 is still in execute mode; next route is continue monitoring the A2 formal run and close real-UAT evidence
-last_updated: "2026-06-17T17:06:00Z"
-last_activity: 2026-06-17
+status: Phase 14 formal Verl case completed on A2-AK-225 with 8/8 sync/async matrix rows passed
+stopped_at: Phase 14 14-05 completed; next route is optional verify/ship workflow
+last_updated: "2026-06-18T11:16:20Z"
+last_activity: 2026-06-18
 progress:
   total_phases: 14
-  completed_phases: 13
+  completed_phases: 14
   total_plans: 42
-  completed_plans: 41
-  percent: 98
+  completed_plans: 42
+  percent: 100
 ---
 
 # State: AutoResearch v1.1
@@ -22,14 +22,14 @@ See: .planning/PROJECT.md (updated 2026-06-15 after v1.0 milestone)
 
 **Core value:** "常实践，详记录，知得失，会设计，有整理"——每个 skill 跑一次都留下可被复盘、可被二次开发的产物。
 
-**Current focus:** Phase 14 remains reopened under Plan 14-05. The original A3-AX-180 real run exposed a likely host/runtime mismatch, so the live closure path now targets A2-AK-225 with the same formal-case matrix.
+**Current focus:** Phase 14 is completed. The final formal Verl case artifact is `formal-20260618-a2ak225-combined-r1`.
 
 ## Position
 
 - **Milestone:** v1.1 Stable planning
 - **Phase:** Phase 14 — 跑通 Verl 正式案例并沉淀 workspace-adapter/verl 实验闭环
-- **Plan:** 14-05 active; the first A3-AX-180 real run produced repeatable NPU/FSDP failures, and a new A2-AK-225 real run is currently staging formal-case assets
-- **Last activity:** 2026-06-17
+- **Plan:** 14-05 completed; final run `formal-20260618-a2ak225-combined-r1` has 8/8 passed rows
+- **Last activity:** 2026-06-18
 
 ## Session Continuity
 
@@ -198,9 +198,9 @@ Items acknowledged and deferred at milestone close on 2026-06-15:
 
 ## Next Steps
 
-1. Let the active `formal-20260618-005703-a2ak225` run finish remote staging and enter matrix execution on `A2-AK-225`
-2. Compare the A2 outcome against the earlier A3 `aclnnInplaceZero` failure to confirm whether machine selection clears the real blocker
-3. Verify the final 8-row matrix plus artifact bundle, then update Phase 14 UAT / verification / summary with the concrete run ids and GitHub links
+1. Run `$gsd-verify-work 14` if a conversational workflow sign-off is desired
+2. Run `$gsd-ship` or update the existing GitHub PR with the Phase 14 closure commit
+3. Preserve `/Users/Zhuanz/.autoresearch/runs/formal-20260618-a2ak225-combined-r1` as the final formal-case evidence bundle
 
 ## Continuation Prompts
 
@@ -211,10 +211,10 @@ $gsd-verify-work 14
 ## Metrics
 
 - **Phases planned:** 14
-- **Phases complete:** 13 complete
-- **Plans complete:** 41/42 summaries; Phase 14 remains active under Plan 14-05
+- **Phases complete:** 14 complete
+- **Plans complete:** 42/42 summaries; Phase 14 completed under Plan 14-05
 - **Requirements:** 88 archived, 82 checked, 6 known gaps
-- **Tests:** 408 / 408 passing
+- **Tests:** focused Phase 14 runner suite `58 passed`; full suite `435 passed, 6 warnings`
 - **Phase 11 UAT:** pass; smoke run `01KV60QS8PMSEG02MQEB0Z27FT`
 - **Phase 12 UAT:** pass; E2E run `01KV62JVH0N3ZRVRMH4PYWF1VB`
 - **Phase 13 archive:** `.planning/milestones/v1.0/`
@@ -228,4 +228,4 @@ $gsd-verify-work 14
 - **Open PR:** `https://github.com/Kirrito-k423/AutoResearch/pull/1`
 
 ---
-*Last updated: 2026-06-17 after reopening Phase 14 under Plan 14-05 for real runtime closure*
+*Last updated: 2026-06-18 after completing Phase 14 formal Verl runtime closure*

@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 MinViable Loop** — Phases 1-13, shipped 2026-06-15. Archive: `.planning/milestones/v1.0/`
-- 📋 **v1.1 Stable** — Phase 14 formal Verl case loop plus resilience, multi-server hardening, CI, and remaining hardware/network gaps (planning)
+- ✅ **v1.1 Stable** — Phase 14 formal Verl case loop completed 2026-06-18; later hardening may start a new milestone
 - 📋 **v2.0 Distribute** — multi-node scheduling and broader infrastructure support (planned)
 
 ## Phases
@@ -32,12 +32,12 @@
 | Milestone | Phases | Plans Complete | Status | Completed |
 |---|---:|---:|---|---|
 | v1.0 MinViable Loop | 13/13 | 37/37 | Shipped | 2026-06-15 |
-| v1.1 Stable | 0/1 | 4/5 | In progress on real UAT | - |
+| v1.1 Stable | 1/1 | 5/5 | Completed | 2026-06-18 |
 | v2.0 Distribute | TBD | 0/0 | Not started | - |
 
 ## Next
 
-Phase 14 execution artifacts are in place. The next operational step is to close the remaining real-UAT blocker by monitoring the live A2-AK-225 formal run, then rerun `$gsd-verify-work 14` against a successful formal-case run before any milestone-complete action.
+Phase 14 is complete. The final formal-case artifact bundle is `/Users/Zhuanz/.autoresearch/runs/formal-20260618-a2ak225-combined-r1`.
 
 ### Phase 14: 跑通 Verl 正式案例并沉淀 workspace-adapter/verl 实验闭环
 
@@ -62,8 +62,8 @@ Plans:
 
 **Wave 4 *(blocked on Wave 3 completion)***
 
-- [ ] 14-04: Formal Case Report, Verification, And UAT Closure *(implemented; blocked on successful real formal-case UAT)*
+- [x] 14-04: Formal Case Report, Verification, And UAT Closure
 
 **Wave 5 *(blocked on Wave 4 real-UAT evidence)***
 
-- [ ] 14-05: Real Formal Runtime Completion And Artifact Closure *(active; A3-AX-180 exposed a likely host/runtime mismatch, and the live closure attempt is now running on A2-AK-225)*
+- [x] 14-05: Real Formal Runtime Completion And Artifact Closure

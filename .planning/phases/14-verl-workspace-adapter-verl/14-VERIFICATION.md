@@ -1,51 +1,52 @@
 ---
-status: partial
+status: passed
 phase: 14-verl-workspace-adapter-verl
-updated: 2026-06-17T15:30:00Z
-source: 14-UAT.md, 14-04-SUMMARY.md, pytest
+updated: 2026-06-18T11:16:20Z
+source: 14-UAT.md, formal run artifacts, pytest
+combined_run_id: formal-20260618-a2ak225-combined-r1
 ---
+
+# Phase 14 Verification
 
 ## Verdict
 
-Phase 14's code and report layers are verified, but the phase goal is not yet achieved end to end. The formal report path, completeness checks, Qwen3.5 cache-layout support, fresh-container machine selection, and focused/full regressions all pass; the real formal-case run is now narrowed to finishing the local `Qwen3.5-2B` shard cache on the new exact-image host path.
+Phase 14 is verified end to end. The formal Verl case now runs on real Ascend hardware using the requested official image stack, Qwen3.5-2B, and geometry3k; the final combined artifact contains the full `1024 -> 2048/4096/8192/16384` sync/async matrix with all 8 rows passed.
 
 ## Evidence
 
-- `uv run pytest -q tests/test_verl_case_runner.py tests/test_orchestrator_verl_case.py tests/test_report_verl_case.py tests/workspace-core/test_config.py` -> `49 passed`
-- `uv run pytest -q tests/test_verl_case_config.py tests/test_verl_case_runner.py tests/test_orchestrator_verl_case.py tests/test_report_verl_case.py` -> `38 passed`
-- `uv run pytest -q` -> `408 passed, 6 warnings`
-- `uv run pytest tests/test_verl_case_runner.py -k 'prepare_model_cache or resume_model_download'` -> `6 passed`
-- `uv run pytest tests/test_orchestrator_verl_case.py -k 'docker_stack_override or formal_readiness_ignores_archon_and_host_python or ignores_remote_huggingface'` -> `3 passed`
-- `uv run autoresearch run verl-case --server A2-AK-225 --config config/config.yaml --local-proxy-url http://127.0.0.1:7890 --remote-proxy-port 17892 --run-id uat-qwen35-20260617-1`
-  -> readiness reached `stack=pass`; local Qwen3.5 cache bootstrap started correctly
-- `/Users/Zhuanz/autoResearchData/models/Qwen__Qwen3.5-2B` now contains tokenizer/config sidecars plus `model.safetensors.index.json`, confirming the sharded-layout adaptation is live
-- On `A2-AK-225`, host `conda run -n verl-qwen3.5 python -c '... torch.tensor([1.0]).npu()'` succeeds
-- On `A2-AK-225`, `docker exec verl-8.5.2-a2 ... torch.tensor([1.0]).npu()` succeeds inside the long-lived existing Verl container
-- On `A2-AK-225`, a fresh `docker run --rm quay.io/ascend/verl:... python -c '... torch.tensor([1.0]).npu()'` fails with `aclInit 507899 / Resource_Busy`
-- `dmesg` on `A2-AK-225` reports repeated `uda_occupy_dev_by_ns ... Conflict open udevid` errors during failed fresh-container attempts
-- Host `/proc/*/fd` inspection shows long-lived `asc_dumper` processes inside container `/verl-8.5.2-a2` holding `/dev/davinci_manager` and `/dev/hisi_hdc`
-- On `A3-AX-180`, a fresh container on the exact requested image `quay.io/ascend/verl:verl-8.5.2-910b-ubuntu22.04-py3.11-qwen3-5` passes the NPU smoke test (`torch.npu.is_available() -> True`, `x.cpu().tolist() -> [1.0]`)
-- The latest A3 formal-case retries pass readiness into `prepare`, and the repaired resume path grows the largest local model shard to `114294784` bytes, exceeding the previous `107668954`-byte disconnect point that killed the old prepare flow
-- A detached local supervisor now owns the remaining cache warm-up path and will auto-start the real formal run when the final shard lands; during this verification pass the live shard checkpoint advanced again to `225607680` bytes under `~/.autoresearch/runs/formal-20260617-222232-a3ax180/supervisor.log`
+- `uv run pytest tests/test_verl_case_runner.py tests/test_minimal_runner.py -q` -> `58 passed`
+- `uv run autoresearch run verl-case --server A2-AK-225 --config config/verl-case-async-16384.local.yaml --timeout 20000 --run-id formal-20260618-a2ak225-async16384-r1 --allow-git-push --skip-readiness` -> `ok=true`
+- `uv run autoresearch run verl-case --server A2-AK-225 --config config/verl-case-sync-8192.local.yaml --timeout 12000 --run-id formal-20260618-a2ak225-sync8192-r1 --allow-git-push --skip-readiness` -> `ok=true`
+- `uv run autoresearch report render --run-id formal-20260618-a2ak225-combined-r1` -> `ok=true`, report path `/Users/Zhuanz/.autoresearch/runs/formal-20260618-a2ak225-combined-r1/report.html`
+- Final matrix: `/Users/Zhuanz/.autoresearch/runs/formal-20260618-a2ak225-combined-r1/matrix-results.jsonl`
+- Final manifest: `/Users/Zhuanz/.autoresearch/runs/formal-20260618-a2ak225-combined-r1/manifest.json`
 
 ## Manual Checks
 
-- PASS: Formal report loader/rendering and strict completeness checks are implemented and regression-tested
-- PASS: `Qwen/Qwen3.5-2B` is the default formal-case model across config, docs, and tests
-- PASS: Hugging Face `index.json + shard` local cache layout is accepted without manual rename
-- FAIL: No successful real 8-row sync/async matrix run exists yet on the selected exact-image host path (`A3-AX-180`)
-- FAIL: No successful real formal artifact bundle (`matrix-results.jsonl`, `manifest.json`, `report.html`, provenance, W&B, Prometheus evidence) exists yet for Phase 14
+- PASS: `autoresearch run verl-case` exists and runs a formal, non-demo Verl case.
+- PASS: Official image stack is recorded: `quay.io/ascend/verl:verl-8.5.2-910b-ubuntu22.04-py3.11-qwen3-5`.
+- PASS: Model and dataset are the requested pair: `Qwen/Qwen3.5-2B` and `hiyouga/geometry3k`.
+- PASS: The final matrix has 8 rows and every row has `status=passed`.
+- PASS: `ignore_eos=false` is recorded in the config snapshot and every matrix row.
+- PASS: Sequence-length impact and sync-vs-async impact are visible in `report.html`.
+- PASS: Config snapshot, provenance, matrix results, row logs, validation JSONL files, W&B summary, Prometheus evidence, manifest, and report are present locally.
+- PASS: Multi-repo provenance records AutoResearch, Verl, and vLLM commit SHAs and GitHub branch links.
+- WARN: Prometheus live query returned no current metric for the combined run, but `prom/formal-case-prometheus.json` and source-run Prometheus files are saved locally.
+
+## Runtime Provenance
+
+| Repo | Commit | Branch URL |
+|---|---|---|
+| AutoResearch | `f1047ca1b3c046e3905a54c40f0390017d891c11` | `https://github.com/Kirrito-k423/AutoResearch/tree/codex/verl-case-formal-20260618-a2ak225-sync8192-r1-20260618-a2ak225-async16384-r1-20260618-a2ak225-async-r4-20260618-005703-a2ak225-20260617-222232-a3ax180-phase-02-workspace-core` |
+| verl | `76d341aa15e72d126005e105a679e6e22b394bbb` | `https://github.com/Kirrito-k423/verl/tree/codex/verl-case-formal-20260618-a2ak225-sync8192-r1-20260618-a2ak225-async16384-r1-20260618-a2ak225-async-r4-20260618-005703-a2ak225-20260617-222232-a3ax180-main` |
+| vllm | `b8b302cde434df8c9289a2b465406b47ebab1c2d` | `https://github.com/Kirrito-k423/vllm/tree/codex/verl-case-formal-20260618-a2ak225-sync8192-r1-20260618-a2ak225-async16384-r1-20260618-a2ak225-async-r4-20260618-005703-a2ak225-20260617-222232-a3ax180-detached-b8b302cde` |
+
+Transformers and MindSpeed were not modified as local dependency repositories for this formal case, so no additional fork branch was produced for them.
 
 ## Blocking Conditions
 
-1. The local `Qwen3.5-2B` `4.55GB` weight shard is still downloading on the Mac cache path; the latest run proved resumable progress past the previous disconnect point, and the detached supervisor continues advancing the live checkpoint, but the shard is not complete yet.
-2. No successful real 8-row matrix has been started on `A3-AX-180` because the staged local model cache is not ready.
-3. `A2-AK-225` remains a known non-default fallback with fresh-container namespace/device contention, but it is no longer the active formal-case route.
+None.
 
 ## Next Required Action
 
-Re-run the real formal case after at least one of the following changes:
-
-- local Qwen3.5 cache finishes downloading, or a faster authenticated HF path is available
-- the real formal case is resumed on `A3-AX-180` with the current run id and exact 910b image
-- the resulting 8-row matrix, manifest, report, W&B, Prometheus, and provenance artifacts are verified end to end
+Run `$gsd-verify-work 14` / `$gsd-ship` if a formal workflow gate or PR publication is desired.

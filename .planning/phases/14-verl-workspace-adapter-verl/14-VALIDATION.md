@@ -1,9 +1,9 @@
 ---
 phase: 14
 slug: verl-workspace-adapter-verl
-status: approved
+status: completed
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-06-16
 ---
 
@@ -32,24 +32,24 @@ created: 2026-06-16
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 14-01-01 | 01 | 1 | D-92,D-93,D-95,D-96,D-97,D-105,D-106 | T-14-01 | Config contains no secrets; immutable snapshots are local files | unit | `uv run pytest -q tests/test_verl_case_config.py` | ❌ W0 | ⬜ pending |
-| 14-01-02 | 01 | 1 | D-100,D-101,D-102 | T-14-01 | Accuracy extraction is deterministic and bounded | unit | `uv run pytest -q tests/test_verl_case_config.py -k accuracy` | ❌ W0 | ⬜ pending |
-| 14-02-01 | 02 | 2 | D-85,D-86,D-89,D-90,D-91,D-94,D-98 | T-14-02 | Docker command uses fixed mounts/env and quoted paths | unit | `uv run pytest -q tests/test_verl_case_runner.py` | ❌ W0 | ⬜ pending |
-| 14-02-02 | 02 | 2 | D-88,D-96,D-99 | T-14-02 | Runner fails closed if required Verl scripts/config are missing | unit | `uv run pytest -q tests/test_verl_case_runner.py -k preflight` | ❌ W0 | ⬜ pending |
-| 14-03-01 | 03 | 3 | D-83,D-84,D-87,D-99,D-103,D-104,D-107 | T-14-03 | CLI emits one JSON object and never hides failed matrix rows | CLI/unit | `uv run pytest -q tests/test_orchestrator_verl_case.py tests/test_cli.py -k verl` | ❌ W0 | ⬜ pending |
-| 14-03-02 | 03 | 3 | D-105,D-106,D-107 | T-14-03 | Local run directory contains config/provenance/artifacts before ok=true | unit | `uv run pytest -q tests/test_orchestrator_verl_case.py -k artifacts` | ❌ W0 | ⬜ pending |
-| 14-04-01 | 04 | 4 | D-100,D-101,D-102,D-107 | T-14-04 | Report renders local data only and flags missing views | unit | `uv run pytest -q tests/test_report_verl_case.py` | ❌ W0 | ⬜ pending |
-| 14-04-02 | 04 | 4 | D-97,D-98,D-99 | T-14-04 | Verification refuses partial matrix completion | UAT/manual | `uv run autoresearch run verl-case --server A2-AK-225 --config config/config.yaml` | external | ⬜ pending |
+| 14-01-01 | 01 | 1 | D-92,D-93,D-95,D-96,D-97,D-105,D-106 | T-14-01 | Config contains no secrets; immutable snapshots are local files | unit | `uv run pytest -q tests/test_verl_case_config.py` | ✅ | ✅ green |
+| 14-01-02 | 01 | 1 | D-100,D-101,D-102 | T-14-01 | Accuracy extraction is deterministic and bounded | unit | `uv run pytest -q tests/test_verl_case_config.py -k accuracy` | ✅ | ✅ green |
+| 14-02-01 | 02 | 2 | D-85,D-86,D-89,D-90,D-91,D-94,D-98 | T-14-02 | Docker command uses fixed mounts/env and quoted paths | unit | `uv run pytest -q tests/test_verl_case_runner.py` | ✅ | ✅ green |
+| 14-02-02 | 02 | 2 | D-88,D-96,D-99 | T-14-02 | Runner fails closed if required Verl scripts/config are missing | unit | `uv run pytest -q tests/test_verl_case_runner.py -k preflight` | ✅ | ✅ green |
+| 14-03-01 | 03 | 3 | D-83,D-84,D-87,D-99,D-103,D-104,D-107 | T-14-03 | CLI emits one JSON object and never hides failed matrix rows | CLI/unit | `uv run pytest -q tests/test_orchestrator_verl_case.py tests/test_cli.py -k verl` | ✅ | ✅ green |
+| 14-03-02 | 03 | 3 | D-105,D-106,D-107 | T-14-03 | Local run directory contains config/provenance/artifacts before ok=true | unit | `uv run pytest -q tests/test_orchestrator_verl_case.py -k artifacts` | ✅ | ✅ green |
+| 14-04-01 | 04 | 4 | D-100,D-101,D-102,D-107 | T-14-04 | Report renders local data only and flags missing views | unit | `uv run pytest -q tests/test_report_verl_case.py` | ✅ | ✅ green |
+| 14-04-02 | 04 | 4 | D-97,D-98,D-99 | T-14-04 | Verification refuses partial matrix completion | UAT/manual | `formal-20260618-a2ak225-combined-r1` | external | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
 ## Wave 0 Requirements
 
-- [ ] `tests/test_verl_case_config.py` — matrix/config/provenance/evaluator unit tests.
-- [ ] `tests/test_verl_case_runner.py` — Docker command and remote runner mocked tests.
-- [ ] `tests/test_orchestrator_verl_case.py` — formal CLI orchestration mocked tests.
-- [ ] `tests/test_report_verl_case.py` — manifest/report matrix rendering tests.
-- [ ] Local fixtures for geometry3k-like multimodal rows and formal-case result rows.
+- [x] `tests/test_verl_case_config.py` — matrix/config/provenance/evaluator unit tests.
+- [x] `tests/test_verl_case_runner.py` — Docker command and remote runner mocked tests.
+- [x] `tests/test_orchestrator_verl_case.py` — formal CLI orchestration mocked tests.
+- [x] `tests/test_report_verl_case.py` — manifest/report matrix rendering tests.
+- [x] Local fixtures for geometry3k-like multimodal rows and formal-case result rows.
 
 ## Manual-Only Verifications
 
@@ -79,3 +79,5 @@ created: 2026-06-16
 - [x] `nyquist_compliant: true` set in frontmatter.
 
 **Approval:** approved 2026-06-16
+
+**Completion:** completed 2026-06-18 with `formal-20260618-a2ak225-combined-r1`; `uv run pytest -q` -> `435 passed, 6 warnings`.
