@@ -585,7 +585,7 @@ def _maybe_relax_readiness_for_formal_case(
     net_step = next((step for step in steps if step.get("id") == "net"), None)
     if net_step and net_step.get("status") == "fail":
         rows = list((((net_step.get("payload") or {}).get("data") or {}).get("rows") or []))
-        failed_rows = [row for row in rows if not row.get("ok")]
+        failed_rows = [row for row in rows if _net_probe_row_failed(row)]
         only_remote_hf_failed = bool(failed_rows) and all(
             row.get("location") == "remote" and row.get("target_label") == "huggingface"
             for row in failed_rows
@@ -593,7 +593,7 @@ def _maybe_relax_readiness_for_formal_case(
         local_hf_ok = any(
             row.get("location") == "local"
             and row.get("target_label") == "huggingface"
-            and row.get("ok")
+            and not _net_probe_row_failed(row)
             for row in rows
         )
         if only_remote_hf_failed and local_hf_ok:
@@ -623,6 +623,14 @@ def _maybe_relax_readiness_for_formal_case(
         "steps": steps,
     }
     return (0 if summary["failed"] == 0 else readiness_exit), updated_payload, warnings
+
+
+def _net_probe_row_failed(row: dict[str, Any]) -> bool:
+    if row.get("ok") is False:
+        return True
+    if row.get("ok") is True:
+        return False
+    return str(row.get("status") or "").strip().lower() == "fail"
 
 
 def _docker_formal_stack_ready(spec: ServerSpec) -> tuple[bool, str]:

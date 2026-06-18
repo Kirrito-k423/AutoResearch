@@ -567,9 +567,9 @@ def test_verl_case_formal_readiness_ignores_remote_huggingface_when_local_stage_
                     "severity": "fail",
                     "data": {
                         "rows": [
-                            {"location": "local", "target_label": "huggingface", "ok": True},
-                            {"location": "remote", "target_label": "huggingface", "ok": False},
-                            {"location": "remote", "target_label": "github", "ok": True},
+                            {"location": "local", "target_label": "huggingface", "status": "warn"},
+                            {"location": "remote", "target_label": "huggingface", "status": "fail"},
+                            {"location": "remote", "target_label": "github", "status": "warn"},
                         ]
                     },
                 },
