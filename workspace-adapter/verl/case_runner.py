@@ -251,7 +251,7 @@ def _formal_row_script(
         f"RUN_CONFIG = json.loads({config_json!r})\n"
         f"ROW_KEY = {row_key!r}\n"
         f"PROFILE = {execution_profile!r}\n"
-        f"PATHS = json.loads({json.dumps(json.dumps(paths), ensure_ascii=False)!r})\n"
+        f"PATHS = json.loads({json.dumps(paths, ensure_ascii=False)!r})\n"
         "\n"
         "def _path(name, default):\n"
         "    value = PATHS.get(name)\n"

@@ -1253,6 +1253,7 @@ def test_row_command_uses_custom_exec_paths():
     assert "/home/t00906153/autoresearch/runs/run123/deps/verl" in command
     assert "/home/t00906153/autoresearch/runs/run123/model" in command
     assert "/home/t00906153/autoresearch/dataset" in command
+    assert '\\"verl_root\\"' not in command
     assert "PYTHONUNBUFFERED" in command
     assert "RAY_EXPERIMENTAL_NOSET_ASCEND_RT_VISIBLE_DEVICES" in command
     assert "ASCEND_RT_VISIBLE_DEVICES" in command
