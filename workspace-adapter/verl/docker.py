@@ -43,6 +43,20 @@ def build_docker_pull_command(image: str, proxy_url: str | None = None) -> str:
     return " ".join(parts)
 
 
+def build_docker_exec_command(
+    *,
+    container_name: str,
+    command: str,
+    interactive: bool = True,
+) -> str:
+    """Build a docker exec command for a reusable Ascend container."""
+    parts = ["docker", "exec"]
+    if interactive:
+        parts.append("-i")
+    parts.extend([_q(container_name), command])
+    return " ".join(parts)
+
+
 def build_docker_run_command(
     *,
     image: str,

@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from click.testing import CliRunner
+from workspace_core.config import ServerSpec
 
 from autoresearch.cli import main
 from autoresearch.orchestrator.verl_case import run_verl_case_orchestration
@@ -22,6 +23,7 @@ def _config_file(
     *,
     dependency_path: Path | None = None,
     server_workdir: str = "/root",
+    extra_servers: str = "",
 ) -> Path:
     dep_yaml = ""
     if dependency_path is not None:
@@ -39,6 +41,7 @@ servers:
     user: root
     conda_env: verl-env
     workdir: {server_workdir}
+{extra_servers}
 verl_case:
   cache_root: {tmp_path / "cache"}
   output_tokens: [2048, 4096]
@@ -150,7 +153,8 @@ def _fake_prepared_dataset(tmp_path: Path, *, with_parquet: bool = False):
 def test_verl_case_readiness_failure_skips_remote_runner(tmp_path):
     config = _config_file(tmp_path)
 
-    with patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(1, {"ok": False, "error": "hw failed"})), \
+    with patch("autoresearch.orchestrator.verl_case._qualify_formal_case_host", return_value=(True, "ok")), \
+         patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(1, {"ok": False, "error": "hw failed"})), \
          patch("autoresearch.orchestrator.verl_case.run_verl_case") as remote:
         exit_code, payload = run_verl_case_orchestration(
             server="A2-AK-225",
@@ -182,7 +186,8 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path):
         assert kwargs["remote_output_path"] == "/home/t00906153/autoresearch/runs/run123"
         return _remote_result(run_config)
 
-    with patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
+    with patch("autoresearch.orchestrator.verl_case._qualify_formal_case_host", return_value=(True, "ok")), \
+         patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
          patch("autoresearch.orchestrator.verl_case.ensure_proxy_tunnel", side_effect=lambda *args, **kwargs: ensured.append((args, kwargs)) or {"remote_proxy_url": "http://127.0.0.1:17892"}), \
          patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance), \
          patch("autoresearch.orchestrator.verl_case.prepare_model_cache", return_value=_fake_model_cache(tmp_path)), \
@@ -236,7 +241,8 @@ def test_verl_case_orchestration_stages_cached_geometry3k_parquet(tmp_path):
         assert kwargs["remote_dataset_path"] == "/home/t00906153/autoresearch/dataset"
         return _remote_result(run_config)
 
-    with patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
+    with patch("autoresearch.orchestrator.verl_case._qualify_formal_case_host", return_value=(True, "ok")), \
+         patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
          patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance), \
          patch("autoresearch.orchestrator.verl_case.prepare_geometry3k", return_value=_fake_prepared_dataset(tmp_path, with_parquet=True)), \
          patch("autoresearch.orchestrator.verl_case.prepare_model_cache", return_value=_fake_model_cache(tmp_path)), \
@@ -269,7 +275,8 @@ def test_verl_case_matrix_failure_sets_failed_step_matrix(tmp_path):
         (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
         return wandb_dir
 
-    with patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
+    with patch("autoresearch.orchestrator.verl_case._qualify_formal_case_host", return_value=(True, "ok")), \
+         patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
          patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance), \
          patch("autoresearch.orchestrator.verl_case.prepare_model_cache", return_value=_fake_model_cache(tmp_path)), \
          patch("autoresearch.orchestrator.verl_case.stage_model_cache", return_value="/home/t00906153/autoresearch/runs/run123/model"), \
@@ -298,7 +305,8 @@ def test_verl_case_missing_dependency_repo_is_warning_not_failure(tmp_path):
         (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
         return wandb_dir
 
-    with patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
+    with patch("autoresearch.orchestrator.verl_case._qualify_formal_case_host", return_value=(True, "ok")), \
+         patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
          patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance) as capture, \
          patch("autoresearch.orchestrator.verl_case.prepare_model_cache", return_value=_fake_model_cache(tmp_path)), \
          patch("autoresearch.orchestrator.verl_case.stage_model_cache", return_value="/home/t00906153/autoresearch/runs/run123/model"), \
@@ -316,6 +324,43 @@ def test_verl_case_missing_dependency_repo_is_warning_not_failure(tmp_path):
     assert exit_code == 0
     assert any("dependency repo path missing: verl" in item for item in payload["warnings"])
     assert capture.call_args_list[0].kwargs["allow_commit_push"] is True
+
+
+def test_capture_provenance_skips_local_vllm_for_veomni(tmp_path):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    verl_repo = tmp_path / "verl"
+    verl_repo.mkdir()
+    vllm_repo = tmp_path / "vllm"
+    vllm_repo.mkdir()
+    veomni_repo = tmp_path / "veomni"
+    veomni_repo.mkdir()
+
+    config = case_config.VerlCaseConfig(
+        dependency_repo_paths={
+            "verl": str(verl_repo),
+            "vllm": str(vllm_repo),
+            "veomni": str(veomni_repo),
+        }
+    )
+
+    with patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance) as capture:
+        rows, warnings = importlib.import_module("autoresearch.orchestrator.verl_case")._capture_provenance(
+            repo_root=repo_root,
+            case_config=config,
+            allow_git_push=False,
+            run_id="run123",
+            server_name="A3-AX-180",
+        )
+
+    captured_paths = [Path(call.args[0]) for call in capture.call_args_list]
+
+    assert all("vllm" not in item for item in warnings)
+    assert repo_root in captured_paths
+    assert verl_repo in captured_paths
+    assert veomni_repo in captured_paths
+    assert vllm_repo not in captured_paths
+    assert [row.repo for row in rows] == ["repo", "verl", "veomni"]
 
 
 def test_verl_case_cli_outputs_single_json_object():
@@ -387,7 +432,8 @@ def test_verl_case_docker_stack_override_allows_readiness_to_continue(tmp_path):
         (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
         return wandb_dir
 
-    with patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(1, readiness_payload)), \
+    with patch("autoresearch.orchestrator.verl_case._qualify_formal_case_host", return_value=(True, "ok")), \
+         patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(1, readiness_payload)), \
          patch("autoresearch.orchestrator.verl_case._docker_formal_stack_ready", return_value=(True, "docker ok")), \
          patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance), \
          patch("autoresearch.orchestrator.verl_case.prepare_model_cache", return_value=_fake_model_cache(tmp_path)), \
@@ -468,7 +514,8 @@ def test_verl_case_formal_readiness_ignores_archon_and_host_python(tmp_path):
         (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
         return wandb_dir
 
-    with patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(1, readiness_payload)), \
+    with patch("autoresearch.orchestrator.verl_case._qualify_formal_case_host", return_value=(True, "ok")), \
+         patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(1, readiness_payload)), \
          patch("autoresearch.orchestrator.verl_case._docker_formal_stack_ready", return_value=(True, "docker ok")), \
          patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance), \
          patch("autoresearch.orchestrator.verl_case.prepare_model_cache", return_value=_fake_model_cache(tmp_path)), \
@@ -543,7 +590,8 @@ def test_verl_case_formal_readiness_ignores_remote_huggingface_when_local_stage_
         (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
         return wandb_dir
 
-    with patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(1, readiness_payload)), \
+    with patch("autoresearch.orchestrator.verl_case._qualify_formal_case_host", return_value=(True, "ok")), \
+         patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(1, readiness_payload)), \
          patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance), \
          patch("autoresearch.orchestrator.verl_case.prepare_model_cache", return_value=_fake_model_cache(tmp_path)), \
          patch("autoresearch.orchestrator.verl_case.stage_model_cache", return_value="/home/t00906153/autoresearch/runs/run123/model"), \
@@ -562,3 +610,105 @@ def test_verl_case_formal_readiness_ignores_remote_huggingface_when_local_stage_
     assert payload["ok"] is True
     assert remote_called is True
     assert any("net override" in item for item in payload["warnings"])
+
+
+def test_verl_case_prepare_fails_when_explicit_host_not_qualified(tmp_path):
+    config = _config_file(tmp_path)
+
+    with patch("autoresearch.orchestrator.verl_case._qualify_formal_case_host", return_value=(False, "resource busy")), \
+         patch("autoresearch.orchestrator.verl_case.run_check_all") as readiness, \
+         patch("autoresearch.orchestrator.verl_case.run_verl_case") as remote:
+        exit_code, payload = run_verl_case_orchestration(
+            server="A2-AK-225",
+            config=str(config),
+            run_id="run123",
+            runs_root=tmp_path / "runs",
+        )
+
+    assert exit_code == 1
+    assert payload["failed_step"] == "prepare"
+    readiness.assert_not_called()
+    remote.assert_not_called()
+
+
+def test_qualify_formal_case_host_reuses_running_container_after_resource_busy():
+    orchestrator = importlib.import_module("autoresearch.orchestrator.verl_case")
+    calls = []
+
+    def fake_run_in_env(spec, command, *, conda_env, workdir, timeout):
+        calls.append(command)
+        if command.startswith("docker --version"):
+            return 0, "", ""
+        if command.startswith("docker image inspect"):
+            return 0, "", ""
+        if command.startswith("docker run"):
+            return 1, "", "Resource_Busy(EL0005)\nrtGetDevMsg execution failed\n507899"
+        if command.startswith("docker ps --filter status=running"):
+            return 0, "verl-8.5.2-a2\n", ""
+        if "ps -eo args=" in command:
+            return 0, "", ""
+        if "AR_FORMAL_SMOKE_OK=1" in command:
+            return 0, "AR_FORMAL_SMOKE_OK=1\nAR_FORMAL_SMOKE_VALUE=[1.0]\n", ""
+        raise AssertionError(command)
+
+    with patch("autoresearch.orchestrator.verl_case.run_in_env", side_effect=fake_run_in_env):
+        ok, detail = orchestrator._qualify_formal_case_host(
+            ServerSpec(name="A2-AK-225", host="192.168.9.225", user="root", workdir="/home/t00906153"),
+            docker_image="quay.io/ascend/verl:verl-8.5.2-910b-ubuntu22.04-py3.11-qwen3-5",
+            config_path="/tmp/config.yaml",
+            local_proxy_url=None,
+            remote_proxy_port=17892,
+        )
+
+    assert ok is True
+    assert "reused running container verl-8.5.2-a2" in detail
+    assert any(command.startswith("docker exec -i verl-8.5.2-a2") for command in calls)
+
+
+def test_verl_case_auto_selects_first_qualified_host(tmp_path):
+    config = _config_file(
+        tmp_path,
+        extra_servers="""
+  - name: A3-AX-180
+    host: 192.168.13.180
+    user: root
+    conda_env: verl-env
+    workdir: /home/t00906153
+""",
+    )
+    runs_root = tmp_path / "runs"
+    wandb_dir = runs_root / "run123" / "wandb"
+
+    def qualify(spec, **_kwargs):
+        if spec.name == "A2-AK-225":
+            return False, "resource busy"
+        return True, "exact image NPU smoke passed"
+
+    def sync_all(_run_id, _spec, **_kwargs):
+        (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
+        return wandb_dir
+
+    def remote(spec, run_config, **_kwargs):
+        assert spec.name == "A3-AX-180"
+        assert run_config.server == "A3-AX-180"
+        return _remote_result(run_config)
+
+    with patch("autoresearch.orchestrator.verl_case._qualify_formal_case_host", side_effect=qualify), \
+         patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})) as readiness, \
+         patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance), \
+         patch("autoresearch.orchestrator.verl_case.prepare_model_cache", return_value=_fake_model_cache(tmp_path)), \
+         patch("autoresearch.orchestrator.verl_case.stage_model_cache", return_value="/home/t00906153/autoresearch/model-cache/Qwen__Qwen3.5-2B"), \
+         patch("autoresearch.orchestrator.verl_case.run_verl_case", side_effect=remote), \
+         patch("autoresearch.orchestrator.verl_case.sync_all_runs", side_effect=sync_all), \
+         patch("autoresearch.orchestrator.verl_case.push_metrics", return_value=True), \
+         patch("autoresearch.orchestrator.verl_case.run_render", side_effect=_fake_report):
+        exit_code, payload = run_verl_case_orchestration(
+            config=str(config),
+            run_id="run123",
+            runs_root=runs_root,
+        )
+
+    assert exit_code == 0
+    assert payload["server"] == "A3-AX-180"
+    assert any("auto-selected host: A3-AX-180" in item for item in payload["warnings"])
+    assert readiness.call_args.kwargs["server"] == "A3-AX-180"

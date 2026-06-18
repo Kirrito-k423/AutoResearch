@@ -17,6 +17,7 @@ REPO_MOUNT_PATHS: dict[str, str] = {
     "vllm": "/vllm",
     "transformers": "/transformers",
     "mindspeed": "/mindspeed",
+    "veomni": "/veomni",
 }
 
 _SKIP_PARTS = {
@@ -33,6 +34,23 @@ _SKIP_SUFFIXES = {".pyc", ".pyo"}
 
 class DependencySourceSyncError(RuntimeError):
     """Raised when a configured dependency repo cannot be staged remotely."""
+
+
+def filter_dependency_repo_paths(
+    *,
+    dependency_repo_paths: dict[str, str] | None,
+    server: str,
+    model_id: str,
+    execution_profile: str | None = None,
+) -> dict[str, str]:
+    """Return the dependency repos that should be mounted for this execution profile."""
+    configured = dict(dependency_repo_paths or {})
+    profile = (execution_profile or "").strip().lower()
+    if not profile and server.startswith("A3-") and "Qwen3.5" in model_id:
+        profile = "veomni"
+    if profile == "veomni":
+        configured.pop("vllm", None)
+    return configured
 
 
 def stage_dependency_sources(
@@ -63,8 +81,7 @@ def stage_dependency_sources(
         sftp = client.sftp()
         try:
             for repo_name, raw_path in configured.items():
-                container_path = REPO_MOUNT_PATHS.get(repo_name)
-                if not container_path:
+                if repo_name not in REPO_MOUNT_PATHS:
                     supported = ", ".join(sorted(REPO_MOUNT_PATHS))
                     raise DependencySourceSyncError(
                         f"unsupported dependency repo '{repo_name}', supported: {supported}"
@@ -74,6 +91,7 @@ def stage_dependency_sources(
                     raise DependencySourceSyncError(
                         f"dependency repo path missing: {repo_name}={local_path}"
                     )
+                container_path = _container_mount_path(repo_name, local_path)
                 remote_repo_dir = remote_root / repo_name
                 _sync_repo_archive(
                     client,
@@ -140,3 +158,12 @@ def _build_repo_archive(local_path: Path) -> Path:
     with tarfile.open(archive_path, "w:gz") as tar:
         tar.add(str(local_path), arcname=local_path.name, filter=_filter)
     return archive_path
+
+
+def _container_mount_path(repo_name: str, local_path: Path) -> str:
+    if repo_name == "transformers":
+        package_root = local_path / "utils" / "generic.py"
+        repo_root = local_path / "src" / "transformers"
+        if package_root.exists() and not repo_root.exists():
+            return "/transformers/src/transformers"
+    return REPO_MOUNT_PATHS[repo_name]

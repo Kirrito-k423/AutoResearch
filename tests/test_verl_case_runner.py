@@ -17,6 +17,7 @@ data_prep = importlib.import_module("workspace-adapter.verl.data_prep")
 model_sync = importlib.import_module("workspace-adapter.verl.model_sync")
 provenance = importlib.import_module("workspace-adapter.verl.provenance")
 case_runner = importlib.import_module("workspace-adapter.verl.case_runner")
+source_sync = importlib.import_module("workspace-adapter.verl.source_sync")
 
 
 def _run_config():
@@ -88,6 +89,15 @@ def test_docker_pull_command_includes_proxy_env_when_configured():
     assert "https_proxy=http://127.0.0.1:17895" in command
     assert "ALL_PROXY=http://127.0.0.1:17895" in command
     assert command.endswith("docker pull quay.io/ascend/verl:test")
+
+
+def test_docker_exec_command_wraps_shell_command():
+    command = docker.build_docker_exec_command(
+        container_name="verl-8.5.2-a2",
+        command="/bin/bash -lc 'echo ok'",
+    )
+
+    assert command == "docker exec -i verl-8.5.2-a2 /bin/bash -lc 'echo ok'"
 
 
 def test_docker_run_command_allows_smaller_device_count():
@@ -331,6 +341,128 @@ def test_prepare_model_cache_prefers_existing_incomplete_resume(tmp_path, monkey
     assert prepared.ready is True
     assert prepared.downloaded is True
     assert prepared.model_cache == model_cache
+
+
+def test_stage_model_cache_reuses_shared_remote_cache(tmp_path, monkeypatch):
+    model_cache = tmp_path / "cache" / "models" / "Qwen__Qwen3.5-2B"
+    model_cache.mkdir(parents=True)
+    (model_cache / "config.json").write_text("{}", encoding="utf-8")
+    (model_cache / "model.safetensors.index.json").write_text(
+        json.dumps({"weight_map": {"model.embed_tokens.weight": "model.safetensors-00001-of-00001.safetensors"}}),
+        encoding="utf-8",
+    )
+    (model_cache / "model.safetensors-00001-of-00001.safetensors").write_bytes(b"stub")
+
+    exec_calls = []
+    put_calls = []
+
+    class _SFTP:
+        def put(self, local_path, remote_path):
+            put_calls.append((local_path, remote_path))
+
+        def close(self):
+            return None
+
+    class _Client:
+        def __init__(self, host, bootstrap_password=None):
+            self.host = host
+            self.bootstrap_password = bootstrap_password
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def exec(self, command, timeout):
+            exec_calls.append(command)
+            if "/home/t00906153/autoresearch/model-cache/Qwen__Qwen3.5-2B/config.json" in command:
+                return 0, "", ""
+            raise AssertionError(f"unexpected exec command: {command}")
+
+        def sftp(self):
+            return _SFTP()
+
+    monkeypatch.setattr(model_sync, "SSHClient", _Client)
+
+    remote_path = model_sync.stage_model_cache(
+        ServerSpec(name="A3-AX-180", host="192.168.13.180", user="root"),
+        local_model_dir=model_cache,
+        remote_model_dir="/home/t00906153/autoresearch/runs/run123/model",
+        remote_shared_model_root="/home/t00906153/autoresearch/model-cache",
+    )
+
+    assert remote_path == "/home/t00906153/autoresearch/model-cache/Qwen__Qwen3.5-2B"
+    assert put_calls == []
+    assert len(exec_calls) == 1
+
+
+def test_source_sync_maps_transformers_package_dir_to_src_mount(tmp_path):
+    package_dir = tmp_path / "transformers"
+    (package_dir / "utils").mkdir(parents=True)
+    (package_dir / "utils" / "generic.py").write_text("# stub\n", encoding="utf-8")
+
+    repo_dir = tmp_path / "transformers-repo"
+    (repo_dir / "src" / "transformers" / "utils").mkdir(parents=True)
+    (repo_dir / "src" / "transformers" / "utils" / "generic.py").write_text("# stub\n", encoding="utf-8")
+
+    assert source_sync._container_mount_path("transformers", package_dir) == "/transformers/src/transformers"
+    assert source_sync._container_mount_path("transformers", repo_dir) == "/transformers"
+
+
+def test_source_sync_filters_local_vllm_for_veomni_profile():
+    filtered = source_sync.filter_dependency_repo_paths(
+        dependency_repo_paths={
+            "verl": "/tmp/verl",
+            "vllm": "/tmp/vllm",
+            "veomni": "/tmp/veomni",
+            "transformers": "/tmp/transformers",
+        },
+        server="A3-AX-180",
+        model_id="Qwen/Qwen3.5-2B",
+    )
+
+    assert filtered == {
+        "verl": "/tmp/verl",
+        "veomni": "/tmp/veomni",
+        "transformers": "/tmp/transformers",
+    }
+
+
+def test_default_source_syncer_skips_local_vllm_for_veomni(monkeypatch):
+    run_config = case_config.VerlCaseRunConfig(
+        run_id="run123",
+        created_at=datetime(2026, 6, 16, 8, 0, tzinfo=timezone.utc),
+        server="A3-AX-180",
+        config=case_config.VerlCaseConfig(
+            dependency_repo_paths={
+                "verl": "/tmp/verl",
+                "vllm": "/tmp/vllm",
+                "veomni": "/tmp/veomni",
+            }
+        ),
+        matrix=case_config.build_length_matrix(case_config.VerlCaseConfig()),
+    )
+    captured = {}
+
+    def fake_stage_dependency_sources(spec, *, run_id, remote_workdir, dependency_repo_paths):
+        captured["run_id"] = run_id
+        captured["remote_workdir"] = remote_workdir
+        captured["dependency_repo_paths"] = dependency_repo_paths
+        return {}
+
+    monkeypatch.setattr(case_runner, "stage_dependency_sources", fake_stage_dependency_sources)
+
+    result = case_runner._default_source_syncer(
+        ServerSpec(name="A3-AX-180", host="192.168.13.180", user="root"),
+        run_config,
+    )
+
+    assert result == {}
+    assert captured["run_id"] == "run123"
+    assert "vllm" not in captured["dependency_repo_paths"]
+    assert captured["dependency_repo_paths"]["verl"] == "/tmp/verl"
+    assert captured["dependency_repo_paths"]["veomni"] == "/tmp/veomni"
 
 
 def test_resume_model_download_continues_largest_incomplete(tmp_path, monkeypatch):
@@ -952,12 +1084,18 @@ def test_run_verl_case_passes_all_rows_and_script_contains_ignore_eos_false():
 
 def test_run_verl_case_mounts_staged_dependency_sources():
     run_config = _run_config()
-    run_config.config.dependency_repo_paths = {"verl": "/Users/Zhuanz/work/github/verl"}
+    run_config.config.dependency_repo_paths = {
+        "verl": "/Users/Zhuanz/work/github/verl",
+        "veomni": "/Users/Zhuanz/work/test/ut-addition/repos/VeOmni",
+    }
     calls = []
 
     def source_syncer(spec, config):
         assert config.run_id == "run123"
-        return {"/verl": "/remote/deps/verl"}
+        return {
+            "/verl": "/remote/deps/verl",
+            "/veomni": "/remote/deps/veomni",
+        }
 
     def runner(spec, command, timeout):
         calls.append(command)
@@ -986,6 +1124,51 @@ def test_run_verl_case_mounts_staged_dependency_sources():
     docker_runs = [command for command in calls if command.startswith("docker run")]
     assert docker_runs
     assert any("/remote/deps/verl:/verl" in command for command in docker_runs)
+    assert any("/remote/deps/veomni:/veomni" in command for command in docker_runs)
+
+
+def test_run_verl_case_reuses_matching_running_container():
+    run_config = _run_config()
+    run_config.config.dependency_repo_paths = {"verl": "/Users/Zhuanz/work/github/verl"}
+    calls = []
+
+    def source_syncer(spec, config):
+        return {"/verl": "/home/t00906153/autoresearch/runs/run123/deps/verl"}
+
+    def runner(spec, command, timeout):
+        calls.append(command)
+        if command.startswith("docker image inspect"):
+            return 0, "", ""
+        if command.startswith("docker ps --filter status=running"):
+            return 0, "verl-8.5.2-a2\n", ""
+        if "ps -eo args=" in command:
+            return 0, "", ""
+        if "AR_FORMAL_SMOKE_OK=1" in command:
+            return 0, "AR_FORMAL_SMOKE_OK=1\nAR_FORMAL_SMOKE_VALUE=[1.0]\n", ""
+        payload = {
+            "status": "passed",
+            "elapsed_seconds": 1.0,
+            "tokens_per_second": 2.0,
+            "latency_ms": 500.0,
+            "sample_count": 1,
+            "accuracy": 1.0,
+            "consistency": 1.0,
+        }
+        return 0, "VERL_CASE_RESULT=" + json.dumps(payload), ""
+
+    result = case_runner.run_verl_case(
+        ServerSpec(name="A2-AK-225", host="h", user="root"),
+        run_config,
+        timeout=1.0,
+        runner=runner,
+        source_syncer=source_syncer,
+    )
+
+    assert result.ok is True
+    assert all(not command.startswith("docker run") for command in calls)
+    exec_calls = [command for command in calls if command.startswith("docker exec -i verl-8.5.2-a2")]
+    assert exec_calls
+    assert any("/home/t00906153/autoresearch/runs/run123/deps/verl" in command for command in exec_calls)
 
 
 def test_run_verl_case_surfaces_dependency_sync_errors():
@@ -1053,12 +1236,76 @@ def test_row_command_builds_formal_verl_script():
     assert "trainer.balance_batch=True" in command
     assert "trainer.device=npu" in command
     assert "data.return_raw_chat=True" in command
+
+
+def test_row_command_uses_custom_exec_paths():
+    command = case_runner._row_command(
+        _run_config(),
+        "sync-1024-2048",
+        paths={
+            "verl_root": "/home/t00906153/autoresearch/runs/run123/deps/verl",
+            "model_root": "/home/t00906153/autoresearch/runs/run123/model",
+            "dataset_root": "/home/t00906153/autoresearch/dataset",
+            "output_root": "/home/t00906153/autoresearch/runs/run123",
+        },
+    )
+
+    assert "/home/t00906153/autoresearch/runs/run123/deps/verl" in command
+    assert "/home/t00906153/autoresearch/runs/run123/model" in command
+    assert "/home/t00906153/autoresearch/dataset" in command
     assert "PYTHONUNBUFFERED" in command
     assert "RAY_EXPERIMENTAL_NOSET_ASCEND_RT_VISIBLE_DEVICES" in command
     assert "ASCEND_RT_VISIBLE_DEVICES" in command
     assert "HCCL_CONNECT_TIMEOUT" in command
     assert "WANDB_DIR" in command
+
+
+def test_row_command_uses_veomni_profile_for_a3_qwen35():
+    config = case_config.VerlCaseConfig()
+    run_config = case_config.VerlCaseRunConfig(
+        run_id="run123",
+        created_at=datetime(2026, 6, 16, 8, 0, tzinfo=timezone.utc),
+        server="A3-AX-180",
+        config=config,
+        matrix=case_config.build_length_matrix(config),
+    )
+
+    command = case_runner._row_command(run_config, "sync-1024-2048")
+
+    assert case_runner._execution_profile(run_config) == "veomni"
+    assert "model_engine=veomni" in command
+    assert "actor_rollout_ref.actor.veomni.param_offload=True" in command
+    assert "actor_rollout_ref.ref.veomni.param_offload=True" in command
+    assert "veomni_init_device =" in command
+    assert "n_gpus > 1 else" in command
+    assert "actor_rollout_ref.actor.veomni.init_device={veomni_init_device}" in command
+    assert "actor_rollout_ref.ref.veomni.init_device={veomni_init_device}" in command
+    assert "actor_rollout_ref.actor.veomni.rms_norm_gated_implementation=eager" in command
+    assert "actor_rollout_ref.actor.veomni.causal_conv1d_implementation=eager" in command
+    assert "actor_rollout_ref.actor.veomni.chunk_gated_delta_rule_implementation=eager" in command
+    assert "actor_rollout_ref.rollout.data_parallel_size={rollout_data_parallel_size}" in command
     assert "trainer.logger=[console,wandb]" in command
-    assert "trainer.use_legacy_worker_impl" not in command
+    assert "trainer.use_legacy_worker_impl=disable" in command
+    assert "/veomni" in command
+    assert "PYTHONPATH" in command
     assert "row_timeout_seconds" in command
     assert "VERL_CASE_RESULT=" in command
+
+
+def test_row_command_uses_npu_init_device_for_single_gpu_veomni():
+    config = case_config.VerlCaseConfig(n_gpus_per_node=1, tensor_model_parallel_size=1)
+    run_config = case_config.VerlCaseRunConfig(
+        run_id="run123",
+        created_at=datetime(2026, 6, 16, 8, 0, tzinfo=timezone.utc),
+        server="A3-AX-180",
+        config=config,
+        matrix=case_config.build_length_matrix(config),
+    )
+
+    command = case_runner._row_command(run_config, "sync-1024-2048")
+
+    assert case_runner._execution_profile(run_config) == "veomni"
+    assert "veomni_init_device =" in command
+    assert "n_gpus > 1 else" in command
+    assert "actor_rollout_ref.actor.veomni.init_device={veomni_init_device}" in command
+    assert "actor_rollout_ref.ref.veomni.init_device={veomni_init_device}" in command

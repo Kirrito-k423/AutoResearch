@@ -171,8 +171,9 @@ def stage_model_cache(
     *,
     local_model_dir: str | Path,
     remote_model_dir: str | PurePosixPath,
+    remote_shared_model_root: str | PurePosixPath | None = None,
 ) -> str:
-    """Upload the prepared local model cache into the current remote run directory."""
+    """Upload the prepared local model cache or reuse an existing remote cache."""
     local_path = Path(local_model_dir).expanduser()
     if not _model_ready(local_path):
         raise ModelSyncError(f"本地模型缓存不可用: {local_path}")
@@ -187,8 +188,15 @@ def stage_model_cache(
         identity_file=id_file,
     )
     remote_dir = PurePosixPath(str(remote_model_dir))
+    shared_dir = (
+        PurePosixPath(str(remote_shared_model_root)) / local_path.name
+        if remote_shared_model_root
+        else remote_dir
+    )
     with SSHClient(host, bootstrap_password=password) as client:
-        _ensure_remote_dir(client, remote_dir.parent)
+        if _remote_model_cache_ready(client, shared_dir):
+            return shared_dir.as_posix()
+        _ensure_remote_dir(client, shared_dir.parent)
         archive = _build_model_archive(local_path)
         remote_archive = PurePosixPath("/tmp") / archive.name
         sftp = client.sftp()
@@ -199,9 +207,9 @@ def stage_model_cache(
             archive.unlink(missing_ok=True)
         command = " && ".join(
             [
-                f"rm -rf {shlex.quote(remote_dir.as_posix())}",
-                f"mkdir -p {shlex.quote(remote_dir.as_posix())}",
-                f"tar -xf {shlex.quote(remote_archive.as_posix())} -C {shlex.quote(remote_dir.as_posix())} --strip-components 1",
+                f"rm -rf {shlex.quote(shared_dir.as_posix())}",
+                f"mkdir -p {shlex.quote(shared_dir.as_posix())}",
+                f"tar -xf {shlex.quote(remote_archive.as_posix())} -C {shlex.quote(shared_dir.as_posix())} --strip-components 1",
                 f"rm -f {shlex.quote(remote_archive.as_posix())}",
             ]
         )
@@ -209,7 +217,7 @@ def stage_model_cache(
         if code != 0:
             detail = (stderr or stdout or "").strip() or f"exit={code}"
             raise ModelSyncError(f"远端模型缓存同步失败: {detail}")
-    return remote_dir.as_posix()
+    return shared_dir.as_posix()
 
 
 def _model_ready(model_cache: Path) -> bool:
@@ -648,6 +656,24 @@ def _ensure_remote_dir(client: SSHClient, remote_dir: PurePosixPath) -> None:
     if code != 0:
         detail = (stderr or stdout or "").strip() or f"exit={code}"
         raise ModelSyncError(f"远端目录创建失败 {remote_dir}: {detail}")
+
+
+def _remote_model_cache_ready(client: SSHClient, remote_dir: PurePosixPath) -> bool:
+    command = " && ".join(
+        [
+            f"test -f {shlex.quote((remote_dir / 'config.json').as_posix())}",
+            "("
+            + " || ".join(
+                [
+                    f"test -f {shlex.quote((remote_dir / MODEL_FILE).as_posix())}",
+                    f"test -f {shlex.quote((remote_dir / MODEL_INDEX_FILE).as_posix())}",
+                ]
+            )
+            + ")",
+        ]
+    )
+    code, _stdout, _stderr = client.exec(command, timeout=30.0)
+    return code == 0
 
 
 def _build_model_archive(local_path: Path) -> Path:

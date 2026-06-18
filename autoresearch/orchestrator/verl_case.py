@@ -24,9 +24,12 @@ from .models import StepResult, skipped_step, step_result, summarize_steps
 
 case_config_mod = importlib.import_module("workspace-adapter.verl.case_config")
 case_runner_mod = importlib.import_module("workspace-adapter.verl.case_runner")
+container_runtime_mod = importlib.import_module("workspace-adapter.verl.container_runtime")
 data_prep_mod = importlib.import_module("workspace-adapter.verl.data_prep")
+docker_mod = importlib.import_module("workspace-adapter.verl.docker")
 model_sync_mod = importlib.import_module("workspace-adapter.verl.model_sync")
 provenance_mod = importlib.import_module("workspace-adapter.verl.provenance")
+source_sync_mod = importlib.import_module("workspace-adapter.verl.source_sync")
 conda_utils_mod = importlib.import_module("workspace-adapter.common.conda_utils")
 
 VerlCaseConfig = case_config_mod.VerlCaseConfig
@@ -34,13 +37,18 @@ VerlCaseRunConfig = case_config_mod.VerlCaseRunConfig
 build_length_matrix = case_config_mod.build_length_matrix
 now_utc = case_config_mod.now_utc
 write_immutable_config = case_config_mod.write_immutable_config
+build_docker_pull_command = docker_mod.build_docker_pull_command
+build_docker_run_command = docker_mod.build_docker_run_command
 run_verl_case = case_runner_mod.run_verl_case
+discover_reusable_container = container_runtime_mod.discover_reusable_container
+is_resource_busy_error = container_runtime_mod.is_resource_busy_error
 prepare_geometry3k = data_prep_mod.prepare_geometry3k
 stage_geometry3k = data_prep_mod.stage_geometry3k
 prepare_model_cache = model_sync_mod.prepare_model_cache
 stage_model_cache = model_sync_mod.stage_model_cache
 capture_repo_provenance = provenance_mod.capture_repo_provenance
 run_in_env = conda_utils_mod.run_in_env
+filter_dependency_repo_paths = source_sync_mod.filter_dependency_repo_paths
 
 
 DEFAULT_PUSHGATEWAY_URL = "http://127.0.0.1:17891"
@@ -51,6 +59,7 @@ DEPENDENCY_REPOS = {
     "vllm": "https://github.com/vllm-project/vllm.git",
     "transformers": "https://github.com/huggingface/transformers.git",
     "mindspeed": "https://github.com/Ascend/MindSpeed.git",
+    "veomni": "https://github.com/ByteDance-Seed/VeOmni.git",
 }
 
 
@@ -88,7 +97,15 @@ def run_verl_case_orchestration(
 
     try:
         cfg = from_path(cfg_path)
-        spec = _resolve_spec(cfg, server)
+        spec, selection_warnings = _resolve_spec(
+            cfg,
+            server,
+            docker_image=cfg.verl_case.docker_image,
+            config_path=cfg_path,
+            local_proxy_url=local_proxy_url,
+            remote_proxy_port=remote_proxy_port,
+        )
+        warnings.extend(selection_warnings)
         server_name = spec.name
         resolved_workdir = workdir or cfg.verl_case.remote_workdir or getattr(spec, "workdir", "")
         spec = spec.model_copy(update={"workdir": resolved_workdir})
@@ -165,6 +182,7 @@ def run_verl_case_orchestration(
             case_config=adapter_config,
             allow_git_push=allow_git_push,
             run_id=rid,
+            server_name=server_name,
         )
         warnings.extend(provenance_warnings)
         prepared = prepare_geometry3k(adapter_config, adapter_config.cache_root)
@@ -177,6 +195,7 @@ def run_verl_case_orchestration(
             spec,
             local_model_dir=prepared_model.model_cache,
             remote_model_dir=f"{resolved_workdir}/autoresearch/runs/{rid}/model",
+            remote_shared_model_root=f"{resolved_workdir}/autoresearch/model-cache",
         )
         if prepared.train_parquet and prepared.test_parquet:
             remote_dataset_path = stage_geometry3k(
@@ -462,14 +481,43 @@ def _adapter_config(cfg: Any, *, cache_root: str | Path | None, workdir: str) ->
     return VerlCaseConfig.model_validate(payload)
 
 
-def _resolve_spec(cfg: Any, server: str | None) -> ServerSpec:
+def _resolve_spec(
+    cfg: Any,
+    server: str | None,
+    *,
+    docker_image: str,
+    config_path: str,
+    local_proxy_url: str | None,
+    remote_proxy_port: int,
+) -> tuple[ServerSpec, list[str]]:
     if not cfg.servers:
         raise ConfigError("config.servers 为空，无法选择运行机器")
     if server is None:
-        return cfg.servers[0]
+        failures: list[str] = []
+        for item in cfg.servers:
+            ok, detail = _qualify_formal_case_host(
+                item,
+                docker_image=docker_image,
+                config_path=config_path,
+                local_proxy_url=local_proxy_url,
+                remote_proxy_port=remote_proxy_port,
+            )
+            if ok:
+                return item, [f"formal case auto-selected host: {item.name} ({detail})"]
+            failures.append(f"{item.name}: {detail}")
+        raise ConfigError("没有找到可运行 formal case 的宿主机: " + "; ".join(failures))
     for item in cfg.servers:
         if item.name == server:
-            return item
+            ok, detail = _qualify_formal_case_host(
+                item,
+                docker_image=docker_image,
+                config_path=config_path,
+                local_proxy_url=local_proxy_url,
+                remote_proxy_port=remote_proxy_port,
+            )
+            if not ok:
+                raise ConfigError(f"formal case 宿主机不可用: {item.name}: {detail}")
+            return item, []
     raise ConfigError(f"未找到服务器: {server}")
 
 
@@ -595,12 +643,101 @@ def _docker_formal_stack_ready(spec: ServerSpec) -> tuple[bool, str]:
     return False, detail
 
 
+def _qualify_formal_case_host(
+    spec: ServerSpec,
+    *,
+    docker_image: str,
+    config_path: str,
+    local_proxy_url: str | None,
+    remote_proxy_port: int,
+) -> tuple[bool, str]:
+    docker_ok, docker_detail = _docker_formal_stack_ready(spec)
+    if not docker_ok:
+        return False, f"docker/ascend precheck failed: {docker_detail}"
+    host_workdir = getattr(spec, "workdir", "") or "/root"
+
+    def _runner(target: ServerSpec, command: str, command_timeout: float) -> tuple[int, str, str]:
+        return run_in_env(
+            target,
+            command,
+            conda_env="",
+            workdir=host_workdir,
+            timeout=command_timeout,
+        )
+
+    proxy_url = None
+    if local_proxy_url:
+        ensure_proxy_tunnel(
+            spec.name,
+            config_path=config_path,
+            local_proxy_url=local_proxy_url,
+            remote_proxy_port=remote_proxy_port,
+        )
+        proxy_url = _container_proxy_url(
+            local_proxy_url=local_proxy_url,
+            remote_proxy_port=remote_proxy_port,
+        )
+
+    inspect = f"docker image inspect {json.dumps(docker_image)} >/dev/null 2>&1"
+    inspect_code, _inspect_stdout, _inspect_stderr = _runner(spec, inspect, 60.0)
+    if inspect_code != 0:
+        pull = build_docker_pull_command(docker_image, proxy_url=proxy_url)
+        pull_code, pull_stdout, pull_stderr = _runner(spec, pull, 900.0)
+        if pull_code != 0:
+            detail = (pull_stderr or pull_stdout or "").strip()[:240] or f"exit={pull_code}"
+            return False, f"docker pull failed: {detail}"
+
+    smoke = build_docker_run_command(
+        image=docker_image,
+        run_id=f"host-smoke-{_sanitize_name(spec.name)}",
+        model_mount="/tmp",
+        dataset_mount="/tmp",
+        output_mount="/tmp",
+        command=_formal_host_smoke_command(),
+        proxy_url=proxy_url,
+        device_count=1,
+        container_name=f"autoresearch-host-smoke-{_sanitize_name(spec.name)}",
+    )
+    code, stdout, stderr = _runner(spec, smoke, 240.0)
+    output = (stdout or "") + ("\n" + stderr if stderr else "")
+    if code == 0 and "AR_FORMAL_SMOKE_OK=1" in output:
+        return True, "exact image NPU smoke passed"
+    if is_resource_busy_error(output):
+        container_name, reusable_detail = discover_reusable_container(
+            spec,
+            image=docker_image,
+            runner=_runner,
+            timeout=240.0,
+        )
+        if container_name:
+            return True, reusable_detail
+    detail = output.strip().splitlines()[-1] if output.strip() else f"exit={code}"
+    return False, f"exact image NPU smoke failed: {detail[:240]}"
+
+
+def _formal_host_smoke_command() -> str:
+    command = (
+        "python3 -c "
+        "\"import torch, torch_npu; "
+        "value = torch.tensor([1.0]).npu().tolist(); "
+        "print('AR_FORMAL_SMOKE_OK=1'); "
+        "print('AR_FORMAL_SMOKE_VALUE=' + repr(value))\""
+    )
+    return "/bin/bash -lc " + json.dumps(command)
+
+
+def _sanitize_name(value: str) -> str:
+    safe = "".join(ch.lower() if ch.isalnum() else "-" for ch in value)
+    return safe.strip("-") or "host"
+
+
 def _capture_provenance(
     *,
     repo_root: Path,
     case_config: Any,
     allow_git_push: bool,
     run_id: str,
+    server_name: str,
 ) -> tuple[list[Any], list[str]]:
     rows: list[Any] = []
     warnings: list[str] = []
@@ -613,11 +750,14 @@ def _capture_provenance(
             branch_prefix=branch_prefix,
         )
     )
-    configured_paths = dict(getattr(case_config, "dependency_repo_paths", {}) or {})
+    configured_paths = filter_dependency_repo_paths(
+        dependency_repo_paths=dict(getattr(case_config, "dependency_repo_paths", {}) or {}),
+        server=server_name,
+        model_id=str(getattr(case_config, "model_id", "")),
+    )
     for repo, upstream_url in DEPENDENCY_REPOS.items():
         raw_path = configured_paths.get(repo)
         if not raw_path:
-            warnings.append(f"dependency repo path not configured: {repo}")
             continue
         path = Path(raw_path).expanduser()
         if not path.exists():
