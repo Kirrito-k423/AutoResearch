@@ -15,7 +15,7 @@ def test_from_yaml_minimal():
     assert cfg.verl_case.ignore_eos is False
     assert cfg.verl_case.output_tokens == [2048, 4096, 8192, 16384]
     assert cfg.verl_case.dependency_repo_paths == {}
-    assert cfg.verl_case.row_timeout_seconds == 1800
+    assert cfg.verl_case.row_timeout_seconds == 7200
 
 
 def test_from_yaml_with_servers():

@@ -29,13 +29,13 @@ Useful options:
 - Output lengths: `2048`, `4096`, `8192`, `16384`
 - Modes: `sync`, `async`
 - `ignore_eos`: `false`
-- Default row timeout: `verl_case.row_timeout_seconds=1800`
+- Default row timeout: `verl_case.row_timeout_seconds=7200`
 
 The formal run is incomplete unless every sync/async row through 16k is present and passed.
 
 ## Runtime Knobs
 
-The generated Docker row script streams `verl.trainer.main_ppo` output to `rows/<row>/verl.log` while the row is running, and records `__AR_TIMEOUT__=<seconds>s` if `row_timeout_seconds` is exceeded. The default smoke-safe execution uses `trainer_val_only=true`, `train_batch_size=8`, `train_max_samples=8`, `val_batch_size=1`, and `val_max_samples=2`.
+The generated Docker row script streams `verl.trainer.main_ppo` output to `rows/<row>/verl.log` while the row is running, and records `__AR_TIMEOUT__=<seconds>s` if `row_timeout_seconds` is exceeded. The default formal timeout is sized for 16k rows on the current A2 path, while the default smoke-safe execution still uses `trainer_val_only=true`, `train_batch_size=8`, `train_max_samples=8`, `val_batch_size=1`, and `val_max_samples=2`.
 
 Sync rows follow the current upstream rollout contract by omitting the deprecated `actor_rollout_ref.rollout.mode=sync` override entirely. Async rows keep `actor_rollout_ref.rollout.mode=async` so the matrix still measures async inference behavior explicitly.
 

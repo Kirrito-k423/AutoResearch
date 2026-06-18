@@ -142,7 +142,7 @@ class VerlCaseConfig(BaseModel):
     n_gpus_per_node: int = Field(default=8, ge=1)
     tensor_model_parallel_size: int = Field(default=2, ge=1)
     row_timeout_seconds: int = Field(
-        default=1800,
+        default=7200,
         ge=1,
         description="Per formal matrix row timeout inside the container.",
     )
