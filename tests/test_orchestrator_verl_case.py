@@ -631,6 +631,80 @@ def test_verl_case_prepare_fails_when_explicit_host_not_qualified(tmp_path):
     remote.assert_not_called()
 
 
+def test_verl_case_formal_readiness_ignores_local_huggingface_when_prepare_is_authoritative(tmp_path):
+    config = _config_file(tmp_path)
+    runs_root = tmp_path / "runs"
+    wandb_dir = runs_root / "run123" / "wandb"
+    remote_called = False
+
+    readiness_payload = {
+        "ok": False,
+        "command": "check",
+        "server": "A2-AK-225",
+        "config": str(config),
+        "failed_step": "net",
+        "summary": {"total": 8, "passed": 4, "warned": 0, "failed": 1, "skipped": 2, "failed_step": "net"},
+        "steps": [
+            {"id": "config", "label": "customer-config", "ok": True, "status": "pass", "exit_code": 0, "diagnosis": None, "payload": {"ok": True}},
+            {"id": "services", "label": "local-services-health", "ok": True, "status": "pass", "exit_code": 0, "diagnosis": None, "payload": {"ok": True}},
+            {"id": "hw", "label": "server-hardware-probe", "ok": True, "status": "pass", "exit_code": 0, "diagnosis": None, "payload": {"ok": True}},
+            {
+                "id": "net",
+                "label": "network-check",
+                "ok": False,
+                "status": "fail",
+                "exit_code": 1,
+                "diagnosis": "local/huggingface failed",
+                "payload": {
+                    "ok": False,
+                    "severity": "fail",
+                    "data": {
+                        "rows": [
+                            {"location": "local", "target_label": "huggingface", "status": "fail"},
+                            {"location": "remote", "target_label": "huggingface", "status": "warn"},
+                            {"location": "remote", "target_label": "github", "status": "warn"},
+                        ]
+                    },
+                },
+            },
+            {"id": "reach", "label": "service-reachability", "ok": True, "status": "pass", "exit_code": 0, "diagnosis": None, "payload": {"ok": True}},
+            {"id": "stack", "label": "train-stack-health", "ok": True, "status": "pass", "exit_code": 0, "diagnosis": None, "payload": {"ok": True}},
+            {"id": "collect", "label": "data-collection", "ok": True, "status": "skipped", "exit_code": None, "diagnosis": "x", "payload": {"ok": None, "skipped": True}},
+            {"id": "report", "label": "experiment-report", "ok": True, "status": "skipped", "exit_code": None, "diagnosis": "x", "payload": {"ok": None, "skipped": True}},
+        ],
+    }
+
+    def remote(_spec, run_config, **_kwargs):
+        nonlocal remote_called
+        remote_called = True
+        return _remote_result(run_config)
+
+    def sync_all(_run_id, _spec, **_kwargs):
+        (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
+        return wandb_dir
+
+    with patch("autoresearch.orchestrator.verl_case._qualify_formal_case_host", return_value=(True, "ok")), \
+         patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(1, readiness_payload)), \
+         patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance), \
+         patch("autoresearch.orchestrator.verl_case.prepare_model_cache", return_value=_fake_model_cache(tmp_path)), \
+         patch("autoresearch.orchestrator.verl_case.stage_model_cache", return_value="/home/t00906153/autoresearch/runs/run123/model"), \
+         patch("autoresearch.orchestrator.verl_case.run_verl_case", side_effect=remote), \
+         patch("autoresearch.orchestrator.verl_case.sync_all_runs", side_effect=sync_all), \
+         patch("autoresearch.orchestrator.verl_case.push_metrics", return_value=True), \
+         patch("autoresearch.orchestrator.verl_case.run_render", side_effect=_fake_report):
+        exit_code, payload = run_verl_case_orchestration(
+            server="A2-AK-225",
+            config=str(config),
+            run_id="run123",
+            runs_root=runs_root,
+        )
+
+    assert exit_code == 0
+    assert payload["ok"] is True
+    assert remote_called is True
+    assert any("net override" in item for item in payload["warnings"])
+
+
 def test_qualify_formal_case_host_reuses_running_container_after_resource_busy():
     orchestrator = importlib.import_module("autoresearch.orchestrator.verl_case")
     calls = []

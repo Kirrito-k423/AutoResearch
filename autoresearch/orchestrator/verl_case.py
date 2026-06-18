@@ -586,6 +586,10 @@ def _maybe_relax_readiness_for_formal_case(
     if net_step and net_step.get("status") == "fail":
         rows = list((((net_step.get("payload") or {}).get("data") or {}).get("rows") or []))
         failed_rows = [row for row in rows if _net_probe_row_failed(row)]
+        only_huggingface_failed = bool(failed_rows) and all(
+            row.get("target_label") == "huggingface"
+            for row in failed_rows
+        )
         only_remote_hf_failed = bool(failed_rows) and all(
             row.get("location") == "remote" and row.get("target_label") == "huggingface"
             for row in failed_rows
@@ -596,19 +600,22 @@ def _maybe_relax_readiness_for_formal_case(
             and not _net_probe_row_failed(row)
             for row in rows
         )
-        if only_remote_hf_failed and local_hf_ok:
+        if only_huggingface_failed:
             net_step["ok"] = True
             net_step["status"] = "warn"
             net_step["exit_code"] = 0
-            net_step["diagnosis"] = "远端 huggingface 不可达，但 formal case 依赖本地模型缓存和 SSH stage，可继续。"
+            if only_remote_hf_failed and local_hf_ok:
+                net_step["diagnosis"] = "远端 huggingface 不可达，但 formal case 依赖本地模型缓存和 SSH stage，可继续。"
+            else:
+                net_step["diagnosis"] = "huggingface 可达性失败，但 formal case 以本地缓存准备结果为准，可继续到 prepare 阶段。"
             payload = dict(net_step.get("payload") or {})
             payload["ok"] = True
             payload["severity"] = "warn"
-            payload["formal_case_optional"] = ["remote-huggingface"]
-            payload["message"] = "网络检查通过 (formal case 忽略远端 huggingface 访问)"
+            payload["formal_case_optional"] = ["huggingface"]
+            payload["message"] = "网络检查通过 (formal case 以本地缓存准备替代 huggingface 直连)"
             net_step["payload"] = payload
             warnings.append(
-                f"readiness net override: ignore remote huggingface reachability for formal case on {spec.name}"
+                f"readiness net override: ignore huggingface reachability gating for formal case on {spec.name}"
             )
 
     if not warnings:
