@@ -55,6 +55,32 @@ def _ssh_exec_capture(
         client.close()
 
 
+def _ssh_exec_capture_until_marker(
+    spec: ServerSpec,
+    command: str,
+    *,
+    marker: str,
+    timeout: float = ONE_STEP_TIMEOUT_S,
+    grace_period: float = 0.2,
+) -> tuple[int, str, str]:
+    """跑远程命令; 读到 marker 后主动收口 channel."""
+    pw = resolve_secret(spec.bootstrap_password_secret) if spec.bootstrap_password_secret else None
+    client = SSHClient(_host_spec(spec), bootstrap_password=pw)
+    try:
+        client.connect(connect_timeout=5.0)
+    except (AuthError, SSHError) as e:
+        raise BootstrapFailed(f"SSH 连接失败: {e}") from e
+    try:
+        return client.exec_until_marker(
+            command,
+            marker=marker,
+            timeout=timeout,
+            grace_period=grace_period,
+        )
+    finally:
+        client.close()
+
+
 def build_conda_command(conda_env: str, command: str) -> str:
     """拼 `conda run -n <env> <command>` 或直通 (无 env 时).
 
@@ -93,3 +119,25 @@ def run_in_env(
     env_cmd = build_conda_command(conda_env, command) if conda_env else command
     full_cmd = build_cd_command(workdir, env_cmd)
     return _ssh_exec_capture(spec, full_cmd, timeout=timeout)
+
+
+def run_in_env_until_marker(
+    spec: ServerSpec,
+    command: str,
+    *,
+    marker: str,
+    conda_env: str = "",
+    workdir: str = "",
+    timeout: float = ONE_STEP_TIMEOUT_S,
+    grace_period: float = 0.2,
+) -> tuple[int, str, str]:
+    """远程跑命令; 一旦输出出现 marker 就主动结束本地等待."""
+    env_cmd = build_conda_command(conda_env, command) if conda_env else command
+    full_cmd = build_cd_command(workdir, env_cmd)
+    return _ssh_exec_capture_until_marker(
+        spec,
+        full_cmd,
+        marker=marker,
+        timeout=timeout,
+        grace_period=grace_period,
+    )

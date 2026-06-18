@@ -1222,6 +1222,48 @@ def test_run_verl_case_skips_pull_when_image_already_exists():
     assert result.ok is True
 
 
+def test_run_verl_case_default_row_runner_uses_marker_exec(monkeypatch):
+    run_config = _run_config()
+    inspect_calls = []
+    row_calls = []
+
+    def fake_run_in_env(spec, command, *, conda_env, workdir, timeout):
+        inspect_calls.append((command, conda_env, workdir, timeout))
+        if command.startswith("docker image inspect"):
+            return 0, "", ""
+        if command.startswith("docker ps --filter status=running"):
+            return 1, "", ""
+        raise AssertionError(command)
+
+    def fake_run_in_env_until_marker(spec, command, *, marker, conda_env, workdir, timeout, grace_period=0.2):
+        row_calls.append((command, marker, conda_env, workdir, timeout, grace_period))
+        payload = {
+            "status": "passed",
+            "elapsed_seconds": 1.0,
+            "tokens_per_second": 2.0,
+            "latency_ms": 500.0,
+            "sample_count": 1,
+            "accuracy": 1.0,
+            "consistency": 1.0,
+        }
+        return 0, "VERL_CASE_RESULT=" + json.dumps(payload), ""
+
+    monkeypatch.setattr(case_runner, "run_in_env", fake_run_in_env)
+    monkeypatch.setattr(case_runner, "run_in_env_until_marker", fake_run_in_env_until_marker)
+
+    result = case_runner.run_verl_case(
+        ServerSpec(name="A2-AK-225", host="h", user="root", workdir="/home/t00906153", conda_env="verl-qwen3.5"),
+        run_config,
+        timeout=1.0,
+        source_syncer=lambda *_args, **_kwargs: {},
+    )
+
+    assert result.ok is True
+    assert inspect_calls
+    assert row_calls
+    assert all(marker == "VERL_CASE_RESULT=" for _cmd, marker, *_rest in row_calls)
+
+
 def test_row_command_builds_formal_verl_script():
     command = case_runner._row_command(_run_config(), "sync-1024-2048")
     async_command = case_runner._row_command(_run_config(), "async-1024-2048")

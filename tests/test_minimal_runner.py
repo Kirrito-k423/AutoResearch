@@ -13,6 +13,7 @@ _verl_runner = importlib.import_module("workspace-adapter.verl.minimal_runner")
 _veomni_runner = importlib.import_module("workspace-adapter.veomni.minimal_runner")
 
 run_in_env = _conda.run_in_env
+run_in_env_until_marker = _conda.run_in_env_until_marker
 build_conda_command = _conda.build_conda_command
 build_cd_command = _conda.build_cd_command
 run_minimal = _verl_runner.run_minimal
@@ -53,6 +54,20 @@ def test_run_in_env_wraps_cd_before_conda():
     with patch.object(_conda, "_ssh_exec_capture", return_value=(0, "", "")) as mock:
         run_in_env(spec, "python x.py", conda_env="verl-env", workdir="/root")
     assert mock.call_args.args[1] == "cd '/root' && conda run -n verl-env python x.py"
+
+
+def test_run_in_env_until_marker_wraps_cd_before_conda():
+    spec = _mock_spec()
+    with patch.object(_conda, "_ssh_exec_capture_until_marker", return_value=(0, "", "")) as mock:
+        run_in_env_until_marker(
+            spec,
+            "python x.py",
+            marker="VERL_CASE_RESULT=",
+            conda_env="verl-env",
+            workdir="/root",
+        )
+    assert mock.call_args.args[1] == "cd '/root' && conda run -n verl-env python x.py"
+    assert mock.call_args.kwargs["marker"] == "VERL_CASE_RESULT="
 
 
 # === _parse_one_step_output ===

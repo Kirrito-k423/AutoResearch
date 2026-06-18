@@ -141,15 +141,66 @@ class SSHClient:
         if self._client is None:
             raise SSHError(f"未连接; 先调 connect() — host={self.host.host}")
         _, stdout, _ = self._client.exec_command(command, timeout=timeout)
-        channel = stdout.channel
+        return self._consume_exec_output(
+            command=command,
+            stdout_stream=stdout,
+            timeout=timeout,
+        )
+
+    def exec_until_marker(
+        self,
+        command: str,
+        *,
+        marker: str,
+        timeout: float = DEFAULT_CMD_TIMEOUT_S,
+        grace_period: float = 0.2,
+    ) -> tuple[int, str, str]:
+        """执行命令; 一旦 stdout/stderr 出现 marker 就主动收口 channel.
+
+        适用于远端已产出最终结果, 但 SSH 会话回收可能继续悬挂的场景.
+        返回值保持与 exec 一致; 若因 marker 提前结束, exit_code 固定为 0.
+        """
+        if self._client is None:
+            raise SSHError(f"未连接; 先调 connect() — host={self.host.host}")
+        _, stdout, _ = self._client.exec_command(command, timeout=timeout)
+        return self._consume_exec_output(
+            command=command,
+            stdout_stream=stdout,
+            timeout=timeout,
+            marker=marker,
+            grace_period=grace_period,
+        )
+
+    def _consume_exec_output(
+        self,
+        *,
+        command: str,
+        stdout_stream,
+        timeout: float,
+        marker: str | None = None,
+        grace_period: float = 0.0,
+    ) -> tuple[int, str, str]:
+        channel = stdout_stream.channel
         deadline = time.monotonic() + timeout
         stdout_bytes = bytearray()
         stderr_bytes = bytearray()
+        marker_seen_at: float | None = None
         while True:
             while channel.recv_ready():
                 stdout_bytes.extend(channel.recv(32768))
             while channel.recv_stderr_ready():
                 stderr_bytes.extend(channel.recv_stderr(32768))
+            if marker and marker_seen_at is None:
+                marker_bytes = marker.encode("utf-8")
+                if marker_bytes in stdout_bytes or marker_bytes in stderr_bytes:
+                    marker_seen_at = time.monotonic()
+            if marker_seen_at is not None and time.monotonic() - marker_seen_at >= grace_period:
+                channel.close()
+                return (
+                    0,
+                    stdout_bytes.decode("utf-8", errors="replace"),
+                    stderr_bytes.decode("utf-8", errors="replace"),
+                )
             if channel.exit_status_ready():
                 while channel.recv_ready():
                     stdout_bytes.extend(channel.recv(32768))

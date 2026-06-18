@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from workspace_core.config import ServerSpec
 
-from ..common.conda_utils import run_in_env
+from ..common.conda_utils import run_in_env, run_in_env_until_marker
 from .case_config import (
     VerlCaseResultRow,
     VerlCaseRunConfig,
@@ -42,6 +42,17 @@ class VerlCaseRunResult(BaseModel):
 
 def _default_runner(spec: ServerSpec, command: str, timeout: float) -> tuple[int, str, str]:
     return run_in_env(spec, command, conda_env=getattr(spec, "conda_env", "") or "", workdir=getattr(spec, "workdir", "") or "", timeout=timeout)
+
+
+def _default_row_runner(spec: ServerSpec, command: str, timeout: float) -> tuple[int, str, str]:
+    return run_in_env_until_marker(
+        spec,
+        command,
+        marker="VERL_CASE_RESULT=",
+        conda_env=getattr(spec, "conda_env", "") or "",
+        workdir=getattr(spec, "workdir", "") or "",
+        timeout=timeout,
+    )
 
 
 def _default_source_syncer(spec: ServerSpec, run_config: VerlCaseRunConfig) -> dict[str, str]:
@@ -80,6 +91,7 @@ def run_verl_case(
     remote_dataset_path: str | Path = "/home/t00906153/autoresearch/dataset",
     remote_output_path: str | Path | None = None,
     runner: RemoteRunner = _default_runner,
+    row_runner: RemoteRunner | None = None,
     source_syncer: SourceSyncer = _default_source_syncer,
 ) -> VerlCaseRunResult:
     """Run every strict matrix row on the remote host via Docker."""
@@ -130,6 +142,9 @@ def run_verl_case(
     )
     remote_log_path = str(output_path / "verl-case.log")
     remote_matrix_path = str(output_path / "matrix-results.jsonl")
+    effective_row_runner = row_runner
+    if effective_row_runner is None:
+        effective_row_runner = _default_row_runner if runner is _default_runner else runner
     for matrix_row in run_config.matrix:
         row_command = _row_command(run_config, matrix_row.key, paths=execution_paths)
         if reusable_container_name:
@@ -149,7 +164,7 @@ def run_verl_case(
                 command=row_command,
             )
         commands.append(command)
-        code, stdout, stderr = runner(spec, command, timeout)
+        code, stdout, stderr = effective_row_runner(spec, command, timeout)
         parsed = _parse_result(stdout)
         if code == 0 and parsed:
             row = VerlCaseResultRow.model_validate(
