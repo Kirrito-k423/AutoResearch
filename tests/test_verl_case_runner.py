@@ -1082,6 +1082,42 @@ def test_run_verl_case_passes_all_rows_and_script_contains_ignore_eos_false():
     assert '"ignore_eos": false' in case_runner.build_remote_case_script(run_config)
 
 
+def test_run_verl_case_recovers_row_result_from_remote_file_when_marker_missing():
+    run_config = _run_config()
+    calls = []
+    payload = {
+        "status": "passed",
+        "elapsed_seconds": 1.0,
+        "tokens_per_second": 2.0,
+        "latency_ms": 500.0,
+        "sample_count": 1,
+        "accuracy": 1.0,
+        "consistency": 1.0,
+    }
+
+    def runner(spec, command, timeout):
+        calls.append(command)
+        if command.startswith("docker image inspect"):
+            return 0, "", ""
+        if command.startswith("docker ps --filter status=running"):
+            return 0, "", ""
+        if command.startswith("test -f ") and command.endswith("result.json"):
+            return 0, json.dumps(payload), ""
+        return 0, "row completed without marker", ""
+
+    result = case_runner.run_verl_case(
+        ServerSpec(name="A2-AK-225", host="h", user="root"),
+        run_config,
+        timeout=1.0,
+        runner=runner,
+    )
+
+    assert result.ok is True
+    assert len(result.rows) == 8
+    assert all(row.status == "passed" for row in result.rows)
+    assert len([command for command in calls if command.startswith("test -f ")]) == 8
+
+
 def test_run_verl_case_mounts_staged_dependency_sources():
     run_config = _run_config()
     run_config.config.dependency_repo_paths = {
@@ -1282,6 +1318,8 @@ def test_row_command_builds_formal_verl_script():
     assert "/tmp" in command
     assert "rollout_max_model_len = max_tokens if is_async else max(max_tokens, 24576)" in async_command
     assert "rollout_max_num_batched_tokens = rollout_max_model_len" in async_command
+    assert "result_path = row_dir" in command
+    assert "result.json" in command
     assert async_command.index("is_async =") < async_command.index(
         "rollout_max_model_len = max_tokens if is_async else max(max_tokens, 24576)"
     )

@@ -164,9 +164,20 @@ def run_verl_case(
                 command=row_command,
             )
         commands.append(command)
-        code, stdout, stderr = effective_row_runner(spec, command, timeout)
+        try:
+            code, stdout, stderr = effective_row_runner(spec, command, timeout)
+        except Exception as exc:  # pragma: no cover - exercised through integration SSH failures.
+            code, stdout, stderr = 1, "", str(exc)
         parsed = _parse_result(stdout)
-        if code == 0 and parsed:
+        if parsed is None:
+            parsed = _read_remote_row_result(
+                spec,
+                runner,
+                output_path=output_path,
+                row_key=matrix_row.key,
+                timeout=min(timeout, 60.0),
+            )
+        if parsed:
             row = VerlCaseResultRow.model_validate(
                 {
                     "run_id": run_config.run_id,
@@ -584,10 +595,34 @@ def _formal_row_script(
         "    'log_path': str(log_path),\n"
         "    'error': error,\n"
         "}\n"
+        "result_path = row_dir / 'result.json'\n"
+        "result_path.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding='utf-8')\n"
         "print('VERL_CASE_RESULT=' + json.dumps(result, ensure_ascii=False))\n"
         "PY"
     )
     return script
+
+
+def _read_remote_row_result(
+    spec: ServerSpec,
+    runner: RemoteRunner,
+    *,
+    output_path: Path,
+    row_key: str,
+    timeout: float,
+) -> dict[str, object] | None:
+    result_path = output_path / "rows" / row_key / "result.json"
+    quoted = shlex.quote(str(result_path))
+    code, stdout, _stderr = runner(spec, f"test -f {quoted} && cat {quoted}", timeout)
+    if code != 0:
+        return None
+    text = stdout.strip()
+    if not text:
+        return None
+    try:
+        return json.loads(text.splitlines()[-1])
+    except json.JSONDecodeError:
+        return None
 
 
 def _parse_result(stdout: str) -> dict[str, object] | None:
