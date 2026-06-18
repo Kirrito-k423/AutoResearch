@@ -1282,6 +1282,9 @@ def test_row_command_builds_formal_verl_script():
     assert "/tmp" in command
     assert "rollout_max_model_len = max_tokens if is_async else max(max_tokens, 24576)" in async_command
     assert "rollout_max_num_batched_tokens = rollout_max_model_len" in async_command
+    assert async_command.index("is_async =") < async_command.index(
+        "rollout_max_model_len = max_tokens if is_async else max(max_tokens, 24576)"
+    )
 
 
 def test_row_command_uses_custom_exec_paths():
