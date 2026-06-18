@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.1
-milestone_name: Stable
-status: Phase 14 formal Verl case completed on A2-AK-225 with 8/8 sync/async matrix rows passed
-stopped_at: Phase 14 14-05 completed; next route is optional verify/ship workflow
-last_updated: "2026-06-18T11:16:20Z"
+milestone_name: Formal Verl
+status: v1.1 Formal Verl archived; awaiting next milestone definition
+stopped_at: Milestone v1.1 completed and archived; next route is gsd-new-milestone
+last_updated: "2026-06-18T11:45:00Z"
 last_activity: 2026-06-18
 progress:
-  total_phases: 14
-  completed_phases: 14
-  total_plans: 42
-  completed_plans: 42
+  total_phases: 1
+  completed_phases: 1
+  total_plans: 5
+  completed_plans: 5
   percent: 100
 ---
 
@@ -18,17 +18,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-15 after v1.0 milestone)
+See: .planning/PROJECT.md (updated 2026-06-18 after v1.1 milestone)
 
 **Core value:** "常实践，详记录，知得失，会设计，有整理"——每个 skill 跑一次都留下可被复盘、可被二次开发的产物。
 
-**Current focus:** Phase 14 is completed. The final formal Verl case artifact is `formal-20260618-a2ak225-combined-r1`.
+**Current focus:** v1.1 is archived. The next milestone has not been defined yet.
 
 ## Position
 
-- **Milestone:** v1.1 Stable planning
-- **Phase:** Phase 14 — 跑通 Verl 正式案例并沉淀 workspace-adapter/verl 实验闭环
-- **Plan:** 14-05 completed; final run `formal-20260618-a2ak225-combined-r1` has 8/8 passed rows
+- **Milestone:** v1.1 Formal Verl shipped
+- **Phase:** complete — Phase 14 formal Verl case
+- **Plan:** complete — final run `formal-20260618-a2ak225-combined-r1` has 8/8 passed rows
 - **Last activity:** 2026-06-18
 
 ## Session Continuity
@@ -93,6 +93,13 @@ Items acknowledged and deferred at milestone close on 2026-06-15:
 | requirement_gap | HW-CONN-01 / HW-CONN-02 | multi-server SSH/BMC UAT follow-up |
 | requirement_gap | HW-OCC-01 / HW-OCC-02 | process ownership data depends on real npu-smi output |
 | requirement_gap | NET-TUNNEL-01 / NET-TUNNEL-02 | implementation path exists; all-server UAT follow-up |
+
+Items acknowledged and deferred at milestone close on 2026-06-18:
+
+- `uat_gap`: Phase 04 / 04-UAT.md — partial, 0 pending scenarios; carried from v1.0 known gaps
+- `uat_gap`: Phase 12 / 12-UAT.md — passed, 0 pending scenarios; audit-open false-positive
+- `uat_gap`: Phase 13 / 13-UAT.md — passed, 0 pending scenarios; audit-open false-positive
+- `uat_gap`: Phase 14 / 14-UAT.md — passed, 0 pending scenarios; audit-open false-positive
 
 ### Files Created This Session (08-03 / 08-04)
 
@@ -198,14 +205,14 @@ Items acknowledged and deferred at milestone close on 2026-06-15:
 
 ## Next Steps
 
-1. Run `$gsd-verify-work 14` if a conversational workflow sign-off is desired
-2. Run `$gsd-ship` or update the existing GitHub PR with the Phase 14 closure commit
-3. Preserve `/Users/Zhuanz/.autoresearch/runs/formal-20260618-a2ak225-combined-r1` as the final formal-case evidence bundle
+1. Preserve `/Users/Zhuanz/.autoresearch/runs/formal-20260618-a2ak225-combined-r1` as the v1.1 evidence bundle
+2. Start the next milestone with `$gsd-new-milestone` when scope is chosen
+3. Keep known multi-server hardware/network gaps visible for the next planning cycle
 
 ## Continuation Prompts
 
 ```
-$gsd-verify-work 14
+$gsd-new-milestone
 ```
 
 ## Metrics
@@ -219,13 +226,24 @@ $gsd-verify-work 14
 - **Phase 12 UAT:** pass; E2E run `01KV62JVH0N3ZRVRMH4PYWF1VB`
 - **Phase 13 archive:** `.planning/milestones/v1.0/`
 - **Latest PR:** `#1 Phase 12: E2E smoke validation`
-- **Tag:** `v1.0`
+- **Tags:** `v1.0`; `v1.1` after archive commit/tag push
 
 ## Branch & Commits
 
-- **Branch:** `codex/verl-case-01KVAM6VFTQQK60PCTWREW88K5-phase-02-workspace-core`
-- **Latest commit:** `docs: record shipped formal case provenance`
+- **Branch:** `codex/verl-case-formal-20260618-a2ak225-sync8192-r1-20260618-a2ak225-async16384-r1-20260618-a2ak225-async-r4-20260618-005703-a2ak225-20260617-222232-a3ax180-phase-02-workspace-core`
+- **Latest phase commit:** `845367c docs: close phase 14 formal verl case`
 - **Open PR:** `https://github.com/Kirrito-k423/AutoResearch/pull/1`
 
 ---
-*Last updated: 2026-06-18 after completing Phase 14 formal Verl runtime closure*
+*Last updated: 2026-06-18 after archiving v1.1 Formal Verl*
+
+## Current Position
+
+Phase: Milestone v1.1 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-18 — Milestone v1.1 completed and archived
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone

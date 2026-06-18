@@ -1,5 +1,49 @@
 # Milestones
 
+## v1.1 Formal Verl (Shipped: 2026-06-18)
+
+**Status:** shipped
+**Shipped:** 2026-06-18
+**Phases:** 14
+**Plans:** 5 summaries
+**Requirements:** scoped by Phase 14 ROADMAP goal and `v1.1-MILESTONE-AUDIT.md`
+**Final run:** `formal-20260618-a2ak225-combined-r1`
+**Tag:** `v1.1`
+
+### Delivered
+
+AutoResearch v1.1 ships a formal, non-demo Verl case loop for Qwen3.5-2B + geometry3k on Ascend. The final combined artifact preserves immutable configs, local W&B/Prometheus/log data, multi-repo provenance, and sync/async sequence-length results through 16k output tokens.
+
+### Key Accomplishments
+
+1. Added typed formal-case configuration, strict sync/async matrix generation, scoring, and immutable manifest/provenance fields.
+2. Added `autoresearch run verl-case` to orchestrate readiness checks, remote Docker execution, local artifact sync, and one final JSON result.
+3. Prepared and ran Qwen3.5-2B + geometry3k formal rows on `A2-AK-225` with the official Ascend Verl image path recorded.
+4. Completed the 8-row matrix: sync and async modes at 1024 input tokens with 2048, 4096, 8192, and 16384 output tokens.
+5. Preserved final evidence under `/Users/Zhuanz/.autoresearch/runs/formal-20260618-a2ak225-combined-r1`.
+6. Recorded sequence-length and async-vs-sync observations in the Phase 14 summary and final HTML report.
+
+### Verification
+
+- `uv run pytest tests/test_verl_case_runner.py tests/test_minimal_runner.py -q` -> 58 passed
+- `uv run pytest -q` -> 435 passed, 6 warnings
+- `uv run autoresearch report render --run-id formal-20260618-a2ak225-combined-r1` -> ok
+- Matrix result: 8/8 rows passed in `/Users/Zhuanz/.autoresearch/runs/formal-20260618-a2ak225-combined-r1/matrix-results.jsonl`
+
+### Known Gaps
+
+- Prometheus live query in the final report returned no current metric, but local Prometheus evidence is preserved at `prom/formal-case-prometheus.json`.
+- Accuracy uses the configured two-sample geometry3k validation slice and is not a broad model-quality benchmark.
+- Open artifact audit reported 4 UAT entries at close; all had 0 pending scenarios and were acknowledged in `STATE.md`.
+
+### Archive
+
+- `.planning/milestones/v1.1-ROADMAP.md`
+- `.planning/milestones/v1.1-REQUIREMENTS.md`
+- `.planning/milestones/v1.1-MILESTONE-AUDIT.md`
+
+---
+
 ## v1.0 MinViable Loop
 
 **Status:** shipped
