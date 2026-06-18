@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import shlex
+import time
 from pathlib import Path
 from typing import Callable
 
@@ -165,7 +166,17 @@ def run_verl_case(
             )
         commands.append(command)
         try:
-            code, stdout, stderr = effective_row_runner(spec, command, timeout)
+            if row_runner is None and runner is _default_runner:
+                code, stdout, stderr = _run_row_with_result_polling(
+                    spec,
+                    command,
+                    runner=runner,
+                    output_path=output_path,
+                    row_key=matrix_row.key,
+                    timeout=timeout,
+                )
+            else:
+                code, stdout, stderr = effective_row_runner(spec, command, timeout)
         except Exception as exc:  # pragma: no cover - exercised through integration SSH failures.
             code, stdout, stderr = 1, "", str(exc)
         parsed = _parse_result(stdout)
@@ -623,6 +634,67 @@ def _read_remote_row_result(
         return json.loads(text.splitlines()[-1])
     except json.JSONDecodeError:
         return None
+
+
+def _run_row_with_result_polling(
+    spec: ServerSpec,
+    command: str,
+    *,
+    runner: RemoteRunner,
+    output_path: Path,
+    row_key: str,
+    timeout: float,
+    poll_interval: float = 10.0,
+) -> tuple[int, str, str]:
+    row_dir = output_path / "rows" / row_key
+    result_path = row_dir / "result.json"
+    exit_path = row_dir / "launcher.exit"
+    pid_path = row_dir / "launcher.pid"
+    stdout_path = row_dir / "launcher.stdout"
+    stderr_path = row_dir / "launcher.stderr"
+    quoted = {path: shlex.quote(str(path)) for path in (row_dir, result_path, exit_path, pid_path, stdout_path, stderr_path)}
+    launch = (
+        f"mkdir -p {quoted[row_dir]} && "
+        f"rm -f {quoted[result_path]} {quoted[exit_path]} {quoted[pid_path]} "
+        f"{quoted[stdout_path]} {quoted[stderr_path]} && "
+        f"nohup /bin/bash -lc {shlex.quote(command)} "
+        f"> {quoted[stdout_path]} 2> {quoted[stderr_path]} < /dev/null & "
+        f"pid=$!; echo $pid > {quoted[pid_path]}; echo AR_ROW_PID=$pid"
+    )
+    launch_code, launch_stdout, launch_stderr = runner(spec, launch, min(timeout, 60.0))
+    if launch_code != 0:
+        return launch_code, launch_stdout, launch_stderr
+
+    deadline = time.monotonic() + timeout
+    last_stdout = launch_stdout
+    last_stderr = launch_stderr
+    while time.monotonic() < deadline:
+        code, stdout, stderr = runner(
+            spec,
+            f"test -f {quoted[result_path]} && cat {quoted[result_path]}",
+            min(timeout, 30.0),
+        )
+        if code == 0 and stdout.strip():
+            return 0, "VERL_CASE_RESULT=" + stdout.strip().splitlines()[-1], stderr
+        last_stdout, last_stderr = stdout or last_stdout, stderr or last_stderr
+
+        exit_code, exit_stdout, exit_stderr = runner(
+            spec,
+            f"test -f {quoted[exit_path]} && cat {quoted[exit_path]}",
+            min(timeout, 30.0),
+        )
+        if exit_code == 0 and exit_stdout.strip():
+            tail_cmd = (
+                f"tail -80 {quoted[stderr_path]} 2>/dev/null; "
+                f"tail -80 {quoted[stdout_path]} 2>/dev/null"
+            )
+            _tail_code, tail_stdout, tail_stderr = runner(spec, tail_cmd, min(timeout, 30.0))
+            detail = tail_stderr or tail_stdout or exit_stderr or exit_stdout
+            return int(exit_stdout.strip().splitlines()[-1] or "1"), "", detail
+
+        time.sleep(min(poll_interval, max(0.1, deadline - time.monotonic())))
+
+    return 124, last_stdout, last_stderr or f"row polling timeout after {timeout}s"
 
 
 def _parse_result(stdout: str) -> dict[str, object] | None:
