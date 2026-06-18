@@ -1236,6 +1236,8 @@ def test_row_command_builds_formal_verl_script():
     assert "trainer.balance_batch=True" in command
     assert "trainer.device=npu" in command
     assert "data.return_raw_chat=True" in command
+    assert "ray_tmp_root = Path(" in command
+    assert "/tmp" in command
 
 
 def test_row_command_uses_custom_exec_paths():
