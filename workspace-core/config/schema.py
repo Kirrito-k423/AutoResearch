@@ -140,10 +140,21 @@ class VerlCaseConfig(BaseModel):
             "for example verl/vllm/transformers/mindspeed."
         ),
     )
-    trainer_val_only: bool = Field(
-        default=True,
-        description="Run the formal case through Verl validation-only mode by default.",
+    case_mode: Literal["validation", "training"] = Field(
+        default="training",
+        description="Formal case mode; training is the Phase 15 default.",
     )
+    trainer_val_only: bool = Field(
+        default=False,
+        description="False enters the real GRPO training loop; true keeps the Phase 14 validation-only path.",
+    )
+    training_steps: int = Field(default=3, ge=1)
+    single_card_start_batch_size: int = Field(default=1, ge=1)
+    single_card_devices: list[int] = Field(default_factory=lambda: [0])
+    single_node_devices: list[int] = Field(default_factory=lambda: list(range(8)))
+    tuning_train_batch_sizes: list[int] = Field(default_factory=lambda: [1, 2, 4, 8])
+    tuning_ppo_mini_batch_sizes: list[int] = Field(default_factory=lambda: [1])
+    tuning_ppo_micro_batch_sizes_per_gpu: list[int] = Field(default_factory=lambda: [1])
     train_batch_size: int = Field(default=8, ge=1)
     val_batch_size: int = Field(default=1, ge=1)
     train_max_samples: int = Field(default=8, ge=1)

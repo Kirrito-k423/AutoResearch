@@ -30,6 +30,25 @@ def test_default_matrix_has_sync_async_lengths():
     assert all(r.ignore_eos is False for r in rows)
 
 
+def test_training_tuning_defaults_start_single_card_bs1():
+    config = case_config.VerlCaseConfig()
+
+    rows = case_config.build_training_tuning_matrix(config)
+
+    assert config.case_mode == "training"
+    assert config.trainer_val_only is False
+    assert config.training_steps == 3
+    assert config.single_card_start_batch_size == 1
+    assert config.single_card_devices == [0]
+    assert config.single_node_devices == list(range(8))
+    assert rows[0].device_count == 1
+    assert rows[0].visible_devices == [0]
+    assert rows[0].train_batch_size == 1
+    assert rows[0].input_tokens == 1024
+    assert rows[0].output_tokens == 2048
+    assert rows[0].case_id.startswith("train-1npu-bs1-")
+
+
 def test_immutable_config_snapshot_has_second_timestamp(tmp_path):
     created_at = datetime(2026, 6, 16, 8, 9, 10, tzinfo=timezone.utc)
     config = case_config.VerlCaseConfig()

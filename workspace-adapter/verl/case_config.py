@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 
 InferenceMode = Literal["sync", "async"]
+CaseMode = Literal["validation", "training"]
 
 
 class VerlCaseConfig(BaseModel):
@@ -30,7 +31,15 @@ class VerlCaseConfig(BaseModel):
     github_owner: str = "Kirrito-k423"
     remote_workdir: str = "/home/t00906153"
     dependency_repo_paths: dict[str, str] = Field(default_factory=dict)
-    trainer_val_only: bool = True
+    case_mode: CaseMode = "training"
+    trainer_val_only: bool = False
+    training_steps: int = 3
+    single_card_start_batch_size: int = 1
+    single_card_devices: list[int] = Field(default_factory=lambda: [0])
+    single_node_devices: list[int] = Field(default_factory=lambda: list(range(8)))
+    tuning_train_batch_sizes: list[int] = Field(default_factory=lambda: [1, 2, 4, 8])
+    tuning_ppo_mini_batch_sizes: list[int] = Field(default_factory=lambda: [1])
+    tuning_ppo_micro_batch_sizes_per_gpu: list[int] = Field(default_factory=lambda: [1])
     train_batch_size: int = 8
     val_batch_size: int = 1
     train_max_samples: int = 8
@@ -52,6 +61,26 @@ class VerlCaseMatrixRow(BaseModel):
     @property
     def key(self) -> str:
         return f"{self.inference_mode}-{self.input_tokens}-{self.output_tokens}"
+
+
+class VerlTrainingTuningRow(BaseModel):
+    """One GRPO training tuning attempt."""
+
+    case_id: str
+    input_tokens: int
+    output_tokens: int
+    inference_mode: InferenceMode = "sync"
+    ignore_eos: bool = False
+    device_count: int
+    visible_devices: list[int]
+    train_batch_size: int
+    ppo_mini_batch_size: int = 1
+    ppo_micro_batch_size_per_gpu: int = 1
+    rollout_n: int = 1
+
+    @property
+    def key(self) -> str:
+        return self.case_id
 
 
 class RepoProvenance(BaseModel):
@@ -117,6 +146,41 @@ def build_length_matrix(config: VerlCaseConfig) -> list[VerlCaseMatrixRow]:
     ]
 
 
+def build_training_tuning_matrix(config: VerlCaseConfig) -> list[VerlTrainingTuningRow]:
+    """Build the single-card training tuning candidates.
+
+    Promotion to 8-card single-node candidates is handled by orchestration after
+    a stable single-card boundary is observed.
+    """
+    output_tokens = min(config.output_tokens)
+    rows: list[VerlTrainingTuningRow] = []
+    train_batch_sizes = _unique_positive(
+        [config.single_card_start_batch_size, *config.tuning_train_batch_sizes]
+    )
+    for train_batch_size in train_batch_sizes:
+        for mini_batch_size in _unique_positive(config.tuning_ppo_mini_batch_sizes):
+            for micro_batch_size in _unique_positive(config.tuning_ppo_micro_batch_sizes_per_gpu):
+                rows.append(
+                    VerlTrainingTuningRow(
+                        case_id=(
+                            f"train-1npu-bs{train_batch_size}-mini{mini_batch_size}"
+                            f"-micro{micro_batch_size}-{config.input_tokens}-{output_tokens}"
+                        ),
+                        input_tokens=config.input_tokens,
+                        output_tokens=output_tokens,
+                        inference_mode=config.inference_modes[0],
+                        ignore_eos=config.ignore_eos,
+                        device_count=len(config.single_card_devices),
+                        visible_devices=list(config.single_card_devices),
+                        train_batch_size=train_batch_size,
+                        ppo_mini_batch_size=mini_batch_size,
+                        ppo_micro_batch_size_per_gpu=micro_batch_size,
+                        rollout_n=config.rollout_n,
+                    )
+                )
+    return rows
+
+
 def now_utc() -> datetime:
     """Return timezone-aware UTC now; split out for tests."""
     return datetime.now(timezone.utc)
@@ -170,6 +234,17 @@ def _token_slug(tokens: int) -> str:
     if tokens % 1024 == 0:
         return f"{tokens // 1024}K"
     return str(tokens)
+
+
+def _unique_positive(values: list[int]) -> list[int]:
+    seen: set[int] = set()
+    result: list[int] = []
+    for value in values:
+        if value <= 0 or value in seen:
+            continue
+        seen.add(value)
+        result.append(value)
+    return result
 
 
 def _safe_slug(value: str) -> str:
