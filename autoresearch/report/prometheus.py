@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from datetime import timedelta
 from typing import Any
@@ -10,12 +11,19 @@ from urllib.parse import urlencode, quote
 from urllib.request import urlopen
 
 from datalake.manifest import RunManifest
+from datalake.prometheus import RESOURCE_METRIC_NAMES
 
 from .models import MetricPoint, PrometheusView
 from .paths import resolve_bundle_path
 
 
 METRIC_NAME = "autoresearch_npu_count"
+RESOURCE_LABELS = {
+    "autoresearch_npu_hbm_used_mib": "HBM Used MiB",
+    "autoresearch_npu_hbm_total_mib": "HBM Total MiB",
+    "autoresearch_npu_aicore_utilization_percent": "AI Core %",
+    "autoresearch_npu_utilization_percent": "NPU Util %",
+}
 
 
 def build_prom_query(run_id: str) -> str:
@@ -66,6 +74,12 @@ def load_prometheus_view(
     query_url = build_prom_query_url(manifest.run_id, base_url=base_url)
     evidence_path, evidence = _load_evidence(manifest, base_dir=base_dir)
     notes = _evidence_notes(evidence)
+    resource_series = _load_resource_series(
+        evidence,
+        base_dir=base_dir or Path(manifest.workdir_local),
+        run_id=manifest.run_id,
+    )
+    sample_interval = evidence.get("sample_interval_seconds") or evidence.get("telemetry_sample_interval_seconds")
     default = PrometheusView(
         available=False,
         metric_name=METRIC_NAME,
@@ -74,6 +88,8 @@ def load_prometheus_view(
         service_url=base_url,
         current_value=None,
         series=[],
+        resource_series=resource_series,
+        sample_interval_seconds=int(sample_interval) if isinstance(sample_interval, (int, float)) else None,
         evidence_path=evidence_path,
         notes=notes,
         warning=None,
@@ -107,9 +123,17 @@ def load_prometheus_view(
                 default.series = [point]
                 default.current_value = point.y
                 return default
+        if resource_series:
+            default.available = True
+            default.warning = "Prometheus 查询成功但未返回该 run 的实时指标；已使用本地 telemetry evidence。"
+            return default
         default.warning = "Prometheus 查询成功但未返回该 run 的实时指标；请优先查看本地 evidence。"
         return default
     except (URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError) as exc:
+        if resource_series:
+            default.available = True
+            default.warning = f"Prometheus 不可达或返回异常: {exc}；已使用本地 telemetry evidence。"
+            return default
         default.warning = f"Prometheus 不可达或返回异常: {exc}"
         return default
 
@@ -143,6 +167,12 @@ def _evidence_notes(evidence: dict[str, Any]) -> list[str]:
     metrics = evidence.get("metrics_pushed")
     if isinstance(metrics, list) and metrics:
         notes.append("已推送指标: " + ", ".join(str(item) for item in metrics))
+    available = evidence.get("metrics_available")
+    if isinstance(available, list) and any(str(item) in RESOURCE_METRIC_NAMES for item in available):
+        notes.append("本地 evidence 包含 HBM/Core/NPU telemetry，可离线重建资源曲线。")
+    samples = evidence.get("telemetry_samples")
+    if isinstance(samples, int):
+        notes.append(f"npu-smi watch 采样点: {samples}，原生采样间隔 1s。")
     missing = evidence.get("missing_resource_metrics")
     if isinstance(missing, list) and missing:
         notes.append("尚未采集资源指标: " + ", ".join(str(item) for item in missing))
@@ -159,3 +189,66 @@ def _evidence_notes(evidence: dict[str, Any]) -> list[str]:
     if isinstance(note, str) and note:
         notes.append(note)
     return notes
+
+
+def _load_resource_series(
+    evidence: dict[str, Any],
+    *,
+    base_dir: Path,
+    run_id: str,
+) -> dict[str, list[MetricPoint]]:
+    path = resolve_bundle_path(
+        evidence.get("telemetry_openmetrics_file"),
+        base_dir=base_dir,
+        run_id=run_id,
+        alternates=[Path("prom") / "telemetry-openmetrics.prom"],
+    )
+    if path is None or not path.exists():
+        return {}
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return {}
+    return _parse_openmetrics_resource_series(text)
+
+
+def _parse_openmetrics_resource_series(text: str) -> dict[str, list[MetricPoint]]:
+    series: dict[str, list[MetricPoint]] = {}
+    counters: dict[str, int] = {}
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        match = re.match(r"^(?P<name>[a-zA-Z_:][a-zA-Z0-9_:]*)\{(?P<labels>[^}]*)\}\s+(?P<value>-?\d+(?:\.\d+)?)$", stripped)
+        if match is None:
+            continue
+        name = match.group("name")
+        if name not in RESOURCE_METRIC_NAMES:
+            continue
+        label_map = _parse_labels(match.group("labels"))
+        label = "/".join(
+            item
+            for item in (
+                label_map.get("case_id"),
+                f"npu{label_map['device_id']}" if "device_id" in label_map else None,
+            )
+            if item
+        )
+        index = counters.get(name, 0)
+        counters[name] = index + 1
+        series.setdefault(name, []).append(
+            MetricPoint(x=float(index), y=float(match.group("value")), label=label)
+        )
+    return series
+
+
+def _parse_labels(raw: str) -> dict[str, str]:
+    labels: dict[str, str] = {}
+    for match in re.finditer(r'([A-Za-z_][A-Za-z0-9_]*)="((?:\\.|[^"])*)"', raw):
+        labels[match.group(1)] = (
+            match.group(2)
+            .replace(r"\\", "\\")
+            .replace(r"\"", '"')
+            .replace(r"\n", "\n")
+        )
+    return labels

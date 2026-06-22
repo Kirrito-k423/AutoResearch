@@ -47,6 +47,15 @@ def _bundle(tmp_path: Path) -> ReportBundle:
             service_url="http://localhost:9090",
             current_value=8.0,
             series=[MetricPoint(x=1, y=8.0, label="instant")],
+            resource_series={
+                "autoresearch_npu_hbm_used_mib": [
+                    MetricPoint(x=0, y=1234, label="sync-1024-2048/npu0"),
+                    MetricPoint(x=1, y=2048, label="sync-1024-2048/npu0"),
+                ],
+                "autoresearch_npu_aicore_utilization_percent": [
+                    MetricPoint(x=0, y=71, label="sync-1024-2048/npu0"),
+                ],
+            },
             notes=["当前 evidence 只证明 NPU 数量。"],
         ),
         skills_used=[
@@ -70,4 +79,6 @@ def test_render_report_writes_html(tmp_path):
     assert "日志视图" in html
     assert "W&B 视图" in html
     assert "Prometheus 视图" in html
+    assert "HBM Used MiB" in html
+    assert "AI Core %" in html
     assert "本次使用的仓库 Skill" in html

@@ -445,6 +445,7 @@ def run_verl_case_orchestration(
             ),
             "missing_resource_metrics": [] if telemetry_rows else list(RESOURCE_METRIC_NAMES),
             "telemetry_samples": len(telemetry_rows),
+            "telemetry_sample_interval_seconds": 1 if telemetry_rows else None,
             "telemetry_openmetrics_file": str(telemetry_exposition_path) if telemetry_exposition_path else None,
             "row_count": len(remote_result.rows) if remote_result is not None else 0,
             "note": (

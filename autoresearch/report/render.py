@@ -64,6 +64,25 @@ def _metric_svg(points: list[MetricPoint], *, width: int = 220, height: int = 72
     )
 
 
+def _prom_resource_charts(bundle: ReportBundle) -> str:
+    labels = {
+        "autoresearch_npu_hbm_used_mib": "HBM Used MiB",
+        "autoresearch_npu_hbm_total_mib": "HBM Total MiB",
+        "autoresearch_npu_aicore_utilization_percent": "AI Core %",
+        "autoresearch_npu_utilization_percent": "NPU Util %",
+    }
+    if not bundle.prometheus.resource_series:
+        return ""
+    cards = "".join(
+        "<div class=\"resource-chart\">"
+        f"<h3>{escape(labels.get(metric_name, metric_name))}</h3>"
+        f"{_metric_svg(points)}"
+        "</div>"
+        for metric_name, points in bundle.prometheus.resource_series.items()
+    )
+    return f"<div class=\"resource-grid\">{cards}</div>"
+
+
 def _fmt_metric(value: float | None, *, percent: bool = False) -> str:
     if value is None:
         return "无"
@@ -271,6 +290,7 @@ def render_report(bundle: ReportBundle, output_path: Path) -> Path:
         if bundle.prometheus.evidence_path
         else ""
     )
+    prom_resource_charts = _prom_resource_charts(bundle)
 
     html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
@@ -383,6 +403,13 @@ def render_report(bundle: ReportBundle, output_path: Path) -> Path:
 	      vertical-align: top;
 	    }}
 	    th {{ color: var(--muted); font-size: 12px; text-transform: uppercase; }}
+    .resource-grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }}
+    .resource-chart h3 {{ font-size: 14px; margin-top: 0; }}
 	  </style>
 </head>
 <body>
@@ -454,6 +481,7 @@ def render_report(bundle: ReportBundle, output_path: Path) -> Path:
       <h3>采集说明</h3>
       <ul>{prom_notes}</ul>
       {_metric_svg(bundle.prometheus.series)}
+      {prom_resource_charts}
     </section>
   </main>
 </body>

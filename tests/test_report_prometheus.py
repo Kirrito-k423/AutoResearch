@@ -87,3 +87,49 @@ def test_load_prometheus_view_includes_evidence_notes(tmp_path):
     assert view.evidence_path == prom_file
     assert any("NPU 数量" in note for note in view.notes)
     assert any("尚未采集资源指标" in note for note in view.notes)
+
+
+def test_load_prometheus_view_uses_saved_resource_curves_when_live_is_down(tmp_path):
+    prom_dir = tmp_path / "prom"
+    prom_dir.mkdir()
+    openmetrics = prom_dir / "telemetry-openmetrics.prom"
+    openmetrics.write_text(
+        "\n".join(
+            [
+                "# TYPE autoresearch_npu_hbm_used_mib gauge",
+                'autoresearch_npu_hbm_used_mib{run_id="run123",case_id="sync-1024-2048",server="A2-AK-225",device_id="0",source="npu-smi-watch"} 1234',
+                'autoresearch_npu_aicore_utilization_percent{run_id="run123",case_id="sync-1024-2048",server="A2-AK-225",device_id="0",source="npu-smi-watch"} 71',
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    prom_file = prom_dir / "formal-case-prometheus.json"
+    prom_file.write_text(
+        json.dumps(
+            {
+                "run_id": "run123",
+                "npu_count": 8,
+                "metrics_available": [
+                    "autoresearch_npu_count",
+                    "autoresearch_npu_hbm_used_mib",
+                    "autoresearch_npu_aicore_utilization_percent",
+                ],
+                "missing_resource_metrics": [],
+                "telemetry_samples": 1,
+                "telemetry_sample_interval_seconds": 1,
+                "telemetry_openmetrics_file": str(openmetrics),
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with patch("autoresearch.report.prometheus.urlopen", side_effect=OSError("down")):
+        view = load_prometheus_view(_manifest(prom_file), base_dir=tmp_path)
+
+    assert view.available is True
+    assert "已使用本地 telemetry evidence" in (view.warning or "")
+    assert view.sample_interval_seconds == 1
+    assert view.resource_series["autoresearch_npu_hbm_used_mib"][0].y == 1234
+    assert view.resource_series["autoresearch_npu_aicore_utilization_percent"][0].label == "sync-1024-2048/npu0"
+    assert any("原生采样间隔 1s" in note for note in view.notes)
