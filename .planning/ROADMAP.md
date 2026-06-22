@@ -60,11 +60,15 @@ No active milestone is defined. Start the next milestone with `$gsd-new-mileston
 - 数据仓保存 Verl 推理、logp、update 等阶段耗时，总吞吐、精度指标、W&B 原始数据和不可变配置快照，能通过 run 命名和 git provenance 对应到具体代码版本。
 
 **Depends on:** Phase 14
-**Plans:** 1/4 plans executed
+**Plans:** 4/4 implementation plans summarized; UAT partial
 
 Plans:
 
 - [x] 15-01 Runtime NPU HBM/Core Telemetry And Prometheus Evidence
-- [ ] 15-02 Real Qwen3.5-2B GRPO Training Tuning Matrix
-- [ ] 15-03 Verl Stage Timing Extraction From W&B And Raw Logs
-- [ ] 15-04 Numbered Data Repository Bundle And Rebuildable Visualizations
+- [x] 15-02 Real Qwen3.5-2B GRPO Training Tuning Matrix
+- [x] 15-03 Verl Stage Timing Extraction From W&B And Raw Logs
+- [x] 15-04 Numbered Data Repository Bundle And Rebuildable Visualizations
+
+**Verification:** partial. See `.planning/phases/15-verl-npu-hbm-core-qwen3-5-grpo/15-UAT.md` and `15-VERIFICATION.md`.
+
+**Operational blocker:** no successful Qwen3.5-2B GRPO row has yet completed `completed_training_steps=3`. A2-AK-225 remains occupied by an existing `Qwen3.5-2B-GRPO-video` Ray/Verl workload; A3 hosts fail the exact image NPU smoke with `OnesLike ADD_TO_LAUNCHER_LIST_AICORE failed`.

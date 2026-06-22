@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: v1.1 Formal Verl follow-up
 status: executing
-stopped_at: Phase 15 implementation complete; 2026-06-22 22:26 real 3-step GRPO UAT blocked by existing Verl/Ray/VLLM workload on A2
-last_updated: "2026-06-22T14:34:30Z"
-last_activity: 2026-06-22
+stopped_at: Phase 15 verification partial; 2026-06-23 02:14 CST real 3-step GRPO UAT still blocked by A2 workload and A3 image incompatibility
+last_updated: "2026-06-22T18:14:14Z"
+last_activity: 2026-06-23
 progress:
   total_phases: 1
   completed_phases: 0
@@ -28,16 +28,16 @@ See: .planning/PROJECT.md (updated 2026-06-18 after v1.1 milestone)
 
 - **Milestone:** v1.1 Formal Verl shipped
 - **Phase:** executing — Phase 15 implementation complete, real GRPO UAT pending a free A2 host
-- **Plan:** 4/4 implementation plans summarized — next run should execute the real 3-step `autoresearch run verl-case` UAT when NPU resources are free
-- **Last activity:** 2026-06-22
+- **Plan:** 4/4 implementation plans summarized; `15-UAT.md` is partial and `15-VERIFICATION.md` is `human_needed`
+- **Last activity:** 2026-06-23
 
 ## Session Continuity
 
-**Resume file:** .planning/phases/15-verl-npu-hbm-core-qwen3-5-grpo/15-02-SUMMARY.md
+**Resume file:** .planning/phases/15-verl-npu-hbm-core-qwen3-5-grpo/15-VERIFICATION.md
 
-- **Last session:** 2026-06-22T14:34:30Z
-- **Stopped At:** Implementation complete; real 3-step GRPO UAT attempt failed at prepare because an existing Verl/Ray/VLLM workload occupied A2 NPUs
-- **Resume File:** .planning/phases/15-verl-npu-hbm-core-qwen3-5-grpo/15-02-SUMMARY.md
+- **Last session:** 2026-06-22T18:14:14Z
+- **Stopped At:** Verification partial; A2-AK-225 still has an existing `Qwen3.5-2B-GRPO-video` Ray/Verl workload, while A3-AX-180 and A3-AK-182 fail the exact image NPU smoke with `OnesLike ADD_TO_LAUNCHER_LIST_AICORE failed`
+- **Resume File:** .planning/phases/15-verl-npu-hbm-core-qwen3-5-grpo/15-VERIFICATION.md
 
 ### Decisions Made This Session (2026-06-15)
 
