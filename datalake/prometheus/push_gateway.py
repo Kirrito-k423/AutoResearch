@@ -5,6 +5,7 @@ import re
 import shlex
 import importlib
 from pathlib import Path
+from typing import Any, Iterable
 
 from workspace_core.config import ServerSpec
 from workspace_core.ssh import HostSpec
@@ -18,6 +19,14 @@ PUSHGATEWAY_LOCAL_PORT = 9091
 
 class PushError(Exception):
     """Pushgateway write failed."""
+
+
+RESOURCE_METRIC_NAMES = (
+    "autoresearch_npu_hbm_used_mib",
+    "autoresearch_npu_hbm_total_mib",
+    "autoresearch_npu_aicore_utilization_percent",
+    "autoresearch_npu_utilization_percent",
+)
 
 
 def _job_suffix(run_id: str) -> str:
@@ -63,6 +72,102 @@ def push_metrics(
         detail = (stderr or stdout or "").strip()
         raise PushError(f"pushgateway 推送失败 exit={ec}: {detail[:200]}")
     return True
+
+
+def build_telemetry_exposition(samples: Iterable[Any]) -> str:
+    """Build Prometheus text exposition for normalized NPU telemetry rows."""
+    lines = [
+        "# TYPE autoresearch_npu_hbm_used_mib gauge",
+        "# TYPE autoresearch_npu_hbm_total_mib gauge",
+        "# TYPE autoresearch_npu_aicore_utilization_percent gauge",
+        "# TYPE autoresearch_npu_utilization_percent gauge",
+    ]
+    emitted = 0
+    for sample in samples:
+        labels = _telemetry_labels(sample)
+        values = {
+            "autoresearch_npu_hbm_used_mib": _sample_value(sample, "hbm_used_mib"),
+            "autoresearch_npu_hbm_total_mib": _sample_value(sample, "hbm_total_mib"),
+            "autoresearch_npu_aicore_utilization_percent": _sample_value(
+                sample,
+                "ai_core_utilization_percent",
+            ),
+            "autoresearch_npu_utilization_percent": _sample_value(
+                sample,
+                "npu_utilization_percent",
+            ),
+        }
+        for name, value in values.items():
+            if value is None:
+                continue
+            lines.append(f"{name}{{{labels}}} {float(value):g}")
+            emitted += 1
+    if emitted == 0:
+        return ""
+    return "\n".join(lines + [""])
+
+
+def push_telemetry_metrics(
+    server: ServerSpec,
+    run_id: str,
+    samples: Iterable[Any],
+    *,
+    pushgateway_url: str = "http://localhost:9091",
+    timeout: float = 10.0,
+    exposition: str | None = None,
+) -> bool:
+    """Push normalized NPU telemetry metrics through the remote host."""
+    if not run_id:
+        raise PushError("run_id 不能为空")
+    metric = exposition if exposition is not None else build_telemetry_exposition(samples)
+    if not metric.strip():
+        return False
+
+    endpoint = f"{pushgateway_url.rstrip('/')}/metrics/job/ar_{_job_suffix(run_id)}"
+    command = (
+        f"printf %s {shlex.quote(metric)} "
+        f"| curl --fail --silent --show-error --data-binary @- {shlex.quote(endpoint)}"
+    )
+    tunnel = _open_pushgateway_tunnel(server)
+    try:
+        ec, stdout, stderr = run_in_env(
+            server,
+            command,
+            conda_env=getattr(server, "conda_env", "") or "",
+            workdir=getattr(server, "workdir", "/root") or "/root",
+            timeout=timeout,
+        )
+    finally:
+        tunnel.stop(timeout_s=3.0)
+    if ec != 0:
+        detail = (stderr or stdout or "").strip()
+        raise PushError(f"pushgateway 推送失败 exit={ec}: {detail[:200]}")
+    return True
+
+
+def _telemetry_labels(sample: Any) -> str:
+    label_values = {
+        "run_id": _sample_value(sample, "run_id"),
+        "case_id": _sample_value(sample, "case_id"),
+        "server": _sample_value(sample, "server"),
+        "device_id": _sample_value(sample, "device_id"),
+        "source": _sample_value(sample, "source") or "npu-smi-watch",
+    }
+    return ",".join(
+        f'{name}="{_label_escape(str(value))}"'
+        for name, value in label_values.items()
+        if value is not None
+    )
+
+
+def _sample_value(sample: Any, key: str) -> Any:
+    if isinstance(sample, dict):
+        return sample.get(key)
+    return getattr(sample, key, None)
+
+
+def _label_escape(value: str) -> str:
+    return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
 
 
 def _open_pushgateway_tunnel(server: ServerSpec):

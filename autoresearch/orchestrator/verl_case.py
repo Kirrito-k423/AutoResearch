@@ -10,7 +10,13 @@ from typing import Any
 from datalake.manifest import RunManifest
 from datalake.manifest import write as write_manifest
 from datalake.logs.collector import LogFetchError, collect_tree
-from datalake.prometheus import PushError, push_metrics
+from datalake.prometheus import (
+    RESOURCE_METRIC_NAMES,
+    PushError,
+    build_telemetry_exposition,
+    push_metrics,
+    push_telemetry_metrics,
+)
 from datalake.wandb.sync import WandbSyncError, sync_all_runs
 from workspace_core.config import ConfigError, ServerSpec, from_path
 from workspace_core.progress import emit_progress
@@ -345,6 +351,14 @@ def run_verl_case_orchestration(
             )
         except LogFetchError as exc:
             warnings.append(f"formal row artifact fetch failed: {exc}")
+    telemetry_rows = _read_telemetry_rows(run_dir / "rows")
+    telemetry_exposition = build_telemetry_exposition(telemetry_rows)
+    telemetry_exposition_path = None
+    if telemetry_exposition.strip():
+        telemetry_exposition_path = _write_text(
+            run_dir / "prom" / "telemetry-openmetrics.prom",
+            telemetry_exposition,
+        )
     matrix_ok = bool(remote_result and remote_result.ok and matrix_path and matrix_path.exists())
     matrix_payload = {
         "ok": matrix_ok,
@@ -385,10 +399,12 @@ def run_verl_case_orchestration(
             warnings.append(f"formal wandb sync failed: {exc}")
 
     prom_pushed = False
+    count_prom_pushed = False
+    telemetry_prom_pushed = False
     npu_count = int(getattr(adapter_config, "n_gpus_per_node", 0) or 0)
     if npu_count > 0:
         try:
-            prom_pushed = push_metrics(
+            count_prom_pushed = push_metrics(
                 spec,
                 rid,
                 npu_count,
@@ -396,6 +412,18 @@ def run_verl_case_orchestration(
             )
         except PushError as exc:
             warnings.append(f"formal prom push failed: {exc}")
+    if telemetry_exposition.strip():
+        try:
+            telemetry_prom_pushed = push_telemetry_metrics(
+                spec,
+                rid,
+                telemetry_rows,
+                pushgateway_url=pushgateway_url,
+                exposition=telemetry_exposition,
+            )
+        except PushError as exc:
+            warnings.append(f"formal telemetry prom push failed: {exc}")
+    prom_pushed = count_prom_pushed or telemetry_prom_pushed
 
     prom_metrics = _write_json(
         run_dir / "prom" / "formal-case-prometheus.json",
@@ -404,15 +432,26 @@ def run_verl_case_orchestration(
             "pushgateway_url": pushgateway_url,
             "prometheus_url": prometheus_url,
             "prom_pushed": prom_pushed,
+            "count_prom_pushed": count_prom_pushed,
+            "telemetry_prom_pushed": telemetry_prom_pushed,
             "npu_count": npu_count,
-            "metrics_pushed": ["autoresearch_npu_count"] if prom_pushed else [],
-            "missing_resource_metrics": [
-                "autoresearch_npu_hbm_used_mib",
-                "autoresearch_npu_hbm_total_mib",
-                "autoresearch_npu_aicore_utilization_percent",
-            ],
+            "metrics_pushed": (
+                (["autoresearch_npu_count"] if count_prom_pushed else [])
+                + (list(RESOURCE_METRIC_NAMES) if telemetry_prom_pushed else [])
+            ),
+            "metrics_available": (
+                ["autoresearch_npu_count"]
+                + (list(RESOURCE_METRIC_NAMES) if telemetry_rows else [])
+            ),
+            "missing_resource_metrics": [] if telemetry_rows else list(RESOURCE_METRIC_NAMES),
+            "telemetry_samples": len(telemetry_rows),
+            "telemetry_openmetrics_file": str(telemetry_exposition_path) if telemetry_exposition_path else None,
             "row_count": len(remote_result.rows) if remote_result is not None else 0,
-            "note": "当前 evidence 只保存 run 级别 NPU 数量；HBM 显存和 AI Core 利用率尚未接入采集。",
+            "note": (
+                "已保存 npu-smi watch HBM/Core/NPU telemetry，可从本地 evidence 重建资源曲线。"
+                if telemetry_rows
+                else "当前 evidence 未找到 npu-smi watch 采样行；资源曲线需要检查 rows/*/npu-telemetry.jsonl。"
+            ),
         },
     )
     manifest_path = _write_manifest(
@@ -840,11 +879,38 @@ def _write_json(path: Path, payload: Any) -> Path:
     return path
 
 
+def _write_text(path: Path, text: str) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
 def _write_matrix(path: Path, rows: list[Any]) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     text = "".join(row.model_dump_json() + "\n" for row in rows)
     path.write_text(text, encoding="utf-8")
     return path
+
+
+def _read_telemetry_rows(rows_dir: Path) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    if not rows_dir.exists():
+        return rows
+    for path in sorted(rows_dir.glob("**/npu-telemetry.jsonl")):
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            if not line.strip():
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(row, dict):
+                rows.append(row)
+    return rows
 
 
 def _write_log(path: Path, run_config: Any, remote_result: Any, warnings: list[str]) -> Path:
