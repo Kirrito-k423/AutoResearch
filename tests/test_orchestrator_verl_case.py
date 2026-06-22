@@ -197,6 +197,12 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path):
         assert spec.workdir == "/home/t00906153"
         assert kwargs["proxy_url"] == "http://127.0.0.1:17892"
         assert kwargs["remote_output_path"] == "/home/t00906153/autoresearch/runs/run123"
+        assert run_config.config.trainer_val_only is False
+        assert run_config.extra["case_matrix_kind"] == "training_tuning"
+        assert run_config.matrix[0].case_id.startswith("train-1npu-bs1-")
+        assert run_config.matrix[0].device_count == 1
+        assert run_config.matrix[0].visible_devices == [0]
+        assert run_config.matrix[0].train_batch_size == 1
         return _remote_result(run_config)
 
     with patch("autoresearch.orchestrator.verl_case._qualify_formal_case_host", return_value=(True, "ok")), \
@@ -341,7 +347,7 @@ def test_verl_case_defaults_to_configured_artifact_root_and_readable_run_id(tmp_
 
     assert exit_code == 0
     assert payload["run_id"].startswith("Qwen35-2B-GRPO-1Kto4K-")
-    assert "-valonly-modes-sync-async-noignoreeos" in payload["run_id"]
+    assert "-train-modes-sync-async-noignoreeos" in payload["run_id"]
     assert Path(payload["manifest"]).is_relative_to(artifact_root)
 
 
@@ -387,7 +393,7 @@ def test_verl_case_matrix_failure_sets_failed_step_matrix(tmp_path):
     wandb_dir = tmp_path / "runs" / "run123" / "wandb"
 
     def remote(_spec, run_config, **_kwargs):
-        return _remote_result(run_config, failed_key="async-1024-4096")
+        return _remote_result(run_config, failed_key=run_config.matrix[-1].key)
 
     def sync_all(_run_id, _spec, **_kwargs):
         (wandb_dir / "files").mkdir(parents=True, exist_ok=True)

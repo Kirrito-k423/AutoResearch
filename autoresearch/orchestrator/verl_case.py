@@ -42,6 +42,7 @@ conda_utils_mod = importlib.import_module("workspace-adapter.common.conda_utils"
 VerlCaseConfig = case_config_mod.VerlCaseConfig
 VerlCaseRunConfig = case_config_mod.VerlCaseRunConfig
 build_length_matrix = case_config_mod.build_length_matrix
+build_training_tuning_matrix = case_config_mod.build_training_tuning_matrix
 build_readable_run_id = case_config_mod.build_readable_run_id
 now_utc = case_config_mod.now_utc
 write_immutable_config = case_config_mod.write_immutable_config
@@ -236,9 +237,10 @@ def run_verl_case_orchestration(
             created_at=now_utc(),
             server=server_name,
             config=adapter_config,
-            matrix=build_length_matrix(adapter_config),
+            matrix=_build_case_matrix(adapter_config),
             provenance=provenance_rows,
             extra={
+                "case_matrix_kind": _case_matrix_kind(adapter_config),
                 "cache": {
                     **prepared.model_dump(mode="json"),
                     "local_model_cache": prepared_model.model_dump(mode="json"),
@@ -560,6 +562,20 @@ def _adapter_config(
     if artifact_root is not None:
         payload["artifact_root"] = str(artifact_root)
     return VerlCaseConfig.model_validate(payload)
+
+
+def _case_matrix_kind(adapter_config: Any) -> str:
+    if getattr(adapter_config, "trainer_val_only", False):
+        return "length_validation"
+    if getattr(adapter_config, "case_mode", "training") == "validation":
+        return "length_validation"
+    return "training_tuning"
+
+
+def _build_case_matrix(adapter_config: Any) -> list[Any]:
+    if _case_matrix_kind(adapter_config) == "training_tuning":
+        return build_training_tuning_matrix(adapter_config)
+    return build_length_matrix(adapter_config)
 
 
 def _resolve_spec(
@@ -1058,8 +1074,8 @@ def _write_artifact_readme(run_dir: Path, run_config: Any, rebuild_env_path: Pat
 - `manifest.json`: 交付件索引和来源真相
 - `{Path(rebuild_env_path).name}`: 按记录的 git commit 重建代码环境
 - `wandb/rebuild-wandb.sh`: 将原始 W&B offline runs 重新导入本地 W&B
-- `matrix-results.jsonl`: 严格序列长度矩阵结果
-- `rows/`: 每个矩阵行的 Verl 日志、验证输出和 result 文件
+- `matrix-results.jsonl`: 每个 case 的矩阵/调参结果
+- `rows/`: 每个 case 的 Verl 日志、验证输出、NPU telemetry 和 result 文件
 - `report.html`: 本地渲染报告
 """
     path = run_dir / "README.md"
