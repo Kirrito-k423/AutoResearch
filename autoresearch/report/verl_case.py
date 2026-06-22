@@ -8,7 +8,7 @@ from typing import Any
 
 from datalake.manifest import RunManifest
 
-from .models import ArtifactStatus, VerlCaseMatrixRowView, VerlCaseView
+from .models import ArtifactStatus, VerlCaseMatrixRowView, VerlCaseView, VerlStageTimingView
 from .paths import resolve_bundle_path
 
 
@@ -33,13 +33,22 @@ def load_verl_case_view(
         manifest.formal_case.get("matrix_results"),
         base_dir=base_dir,
         run_id=manifest.run_id,
-        alternates=["matrix-results.jsonl"],
+        alternates=[Path("6-rows") / "matrix-results.jsonl", "matrix-results.jsonl"],
     )
     rows: list[VerlCaseMatrixRowView] = []
     if matrix_path and matrix_path.exists():
         rows = [_row_view(row) for row in _read_jsonl(matrix_path)]
     else:
         warnings.append("缺少 matrix-results.jsonl")
+    stage_timing_path = _resolve_path(
+        manifest.formal_case.get("stage_timings"),
+        base_dir=base_dir,
+        run_id=manifest.run_id,
+        alternates=[Path("6-rows") / "stage-timings.jsonl", "stage-timings.jsonl"],
+    )
+    stage_timings = _stage_timing_rows(stage_timing_path)
+    if not stage_timings:
+        warnings.append("缺少 Verl 阶段耗时数据: 6-rows/stage-timings.jsonl")
 
     expected = _expected_matrix(manifest, base_dir=base_dir)
     complete_matrix = _complete_matrix(rows, expected, warnings)
@@ -55,6 +64,8 @@ def load_verl_case_view(
         trainer_val_only=trainer_val_only,
         training_mode=_training_mode_label(trainer_val_only),
         score_diagnostics=_score_diagnostics(rows, config=config, trainer_val_only=trainer_val_only),
+        stage_timings=stage_timings,
+        stage_timing_summary=_stage_timing_summary(stage_timings),
         artifacts=artifacts,
         warnings=warnings,
     )
@@ -83,6 +94,43 @@ def _row_view(row: dict[str, Any]) -> VerlCaseMatrixRowView:
     )
 
 
+def _stage_timing_rows(path: Path | None) -> list[VerlStageTimingView]:
+    if path is None or not path.exists():
+        return []
+    rows: list[VerlStageTimingView] = []
+    for row in _read_jsonl(path):
+        try:
+            rows.append(
+                VerlStageTimingView(
+                    case_id=str(row.get("case_id") or ""),
+                    stage=str(row.get("stage") or "other"),
+                    elapsed_seconds=float(row.get("elapsed_seconds") or 0.0),
+                    source=str(row.get("source") or ""),
+                    step=int(row["step"]) if row.get("step") is not None else None,
+                    original_key=str(row.get("original_key") or ""),
+                )
+            )
+        except (TypeError, ValueError):
+            continue
+    return rows
+
+
+def _stage_timing_summary(rows: list[VerlStageTimingView]) -> list[dict[str, Any]]:
+    summary: list[dict[str, Any]] = []
+    for stage in sorted({row.stage for row in rows}):
+        chunk = [row for row in rows if row.stage == stage]
+        summary.append(
+            {
+                "stage": stage,
+                "count": len(chunk),
+                "total_seconds": sum(row.elapsed_seconds for row in chunk),
+                "avg_seconds": mean(row.elapsed_seconds for row in chunk),
+                "sources": ", ".join(sorted({row.source for row in chunk if row.source})),
+            }
+        )
+    return summary
+
+
 def _resolve_path(
     value: Any,
     *,
@@ -102,12 +150,13 @@ def _artifact_statuses(manifest: RunManifest, *, base_dir: Path) -> list[Artifac
     formal = manifest.formal_case or {}
     specs = [
         ("manifest", "运行索引", base_dir / "manifest.json", []),
-        ("config", "不可变配置", manifest.config_snapshot, ["config.lock.json"]),
-        ("provenance", "代码版本锁", base_dir / "provenance.json" if manifest.provenance else formal.get("provenance"), ["provenance.lock.json"]),
-        ("matrix", "矩阵结果", formal.get("matrix_results"), ["matrix-results.jsonl"]),
-        ("log", "日志", manifest.log_files[0] if manifest.log_files else formal.get("log_path"), [Path("logs") / "verl-case.log"]),
-        ("wandb", "W&B 原始数据", manifest.wandb_path, ["wandb"]),
-        ("prometheus", "Prometheus evidence", manifest.prom_metrics_file, [Path("prom") / "formal-case-prometheus.json"]),
+        ("config", "不可变配置", manifest.config_snapshot, [Path("4-config") / "config.lock.json", "config.lock.json"]),
+        ("provenance", "代码版本锁", base_dir / "5-provenance" / "provenance.json" if manifest.provenance else formal.get("provenance"), [Path("5-provenance") / "provenance.lock.json", "provenance.lock.json"]),
+        ("matrix", "矩阵结果", formal.get("matrix_results"), [Path("6-rows") / "matrix-results.jsonl", "matrix-results.jsonl"]),
+        ("stage_timings", "阶段耗时", formal.get("stage_timings"), [Path("6-rows") / "stage-timings.jsonl", "stage-timings.jsonl"]),
+        ("log", "日志", manifest.log_files[0] if manifest.log_files else formal.get("log_path"), [Path("3-raw-logs") / "verl-case.log", Path("logs") / "verl-case.log"]),
+        ("wandb", "W&B 原始数据", manifest.wandb_path, ["1-wandb", "wandb"]),
+        ("prometheus", "Prometheus evidence", manifest.prom_metrics_file, [Path("2-prometheus") / "formal-case-prometheus.json", Path("prom") / "formal-case-prometheus.json"]),
     ]
     statuses = []
     for key, name, raw_path, alternates in specs:
@@ -174,7 +223,7 @@ def _load_config_payload(manifest: RunManifest, *, base_dir: Path) -> dict[str, 
         manifest.config_snapshot,
         base_dir=base_dir,
         run_id=manifest.run_id,
-        alternates=["config.lock.json"],
+        alternates=[Path("4-config") / "config.lock.json", "config.lock.json"],
     )
     if config_path and config_path.exists():
         try:

@@ -39,7 +39,10 @@ def load_log_view(
         raw_path,
         base_dir=base_dir or Path(manifest.workdir_local),
         run_id=manifest.run_id,
-        alternates=[Path("logs") / Path(raw_path).name],
+        alternates=[
+            Path("3-raw-logs") / Path(raw_path).name,
+            Path("logs") / Path(raw_path).name,
+        ],
     )
     if path is None or not path.exists():
         return LogView(

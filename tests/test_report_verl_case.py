@@ -64,6 +64,22 @@ def _seed_formal_run(tmp_path: Path, *, missing_async_16k: bool = False) -> Path
         "".join(json.dumps(row) + "\n" for row in _matrix_rows(missing_async_16k=missing_async_16k)),
         encoding="utf-8",
     )
+    stage_timing_path = run_root / "stage-timings.jsonl"
+    stage_timing_path.write_text(
+        json.dumps(
+            {
+                "run_id": "run123",
+                "case_id": "sync-1024-2048",
+                "stage": "rollout",
+                "original_key": "timing/rollout_generate_seconds",
+                "elapsed_seconds": 1.25,
+                "source": "log",
+                "step": 1,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     config_path = run_root / "config-20260616T155609.json"
     config_path.write_text(
         json.dumps(
@@ -106,6 +122,7 @@ def _seed_formal_run(tmp_path: Path, *, missing_async_16k: bool = False) -> Path
             "kind": "verl-case",
             "matrix_results": str(matrix_path),
             "log_path": str(log_path),
+            "stage_timings": str(stage_timing_path),
         },
         exit_code=0,
         config_snapshot=config_path,
@@ -131,6 +148,8 @@ def test_load_verl_case_view_reports_complete_matrix(tmp_path):
     assert {item["output_tokens"] for item in view.length_summary} == {2048, 4096, 8192, 16384}
     assert isinstance(view.accuracy_overall, float)
     assert isinstance(view.consistency_overall, float)
+    assert view.stage_timings[0].stage == "rollout"
+    assert view.stage_timing_summary[0]["avg_seconds"] == 1.25
     assert view.trainer_val_only is True
     assert "验证矩阵" in view.training_mode
     assert any("val_max_samples=2" in item for item in view.score_diagnostics)
@@ -161,6 +180,8 @@ def test_render_formal_case_sections(tmp_path, monkeypatch):
     assert "同步/异步影响" in html
     assert "准确率" in html
     assert "一致性与诊断" in html
+    assert "Verl 阶段耗时" in html
+    assert "rollout" in html
     assert "交付件完整性" in html
     assert "不可变配置" in html
     assert "矩阵结果" in html

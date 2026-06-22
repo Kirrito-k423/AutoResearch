@@ -30,7 +30,7 @@ def load_wandb_view(
         manifest.wandb_path,
         base_dir=bundle_dir,
         run_id=manifest.run_id,
-        alternates=["wandb"],
+        alternates=["1-wandb", "wandb"],
     )
     links = [ArtifactLink(label="W&B 本地首页", href=base_url, note=run_id or "")]
 
@@ -69,7 +69,7 @@ def load_wandb_view(
                 run_links=run_links,
                 warning=(
                     "缺少 wandb-summary.json，报告已用 matrix-results.jsonl 生成汇总；"
-                    "W&B Web 历史视图请用 wandb/rebuild-wandb.sh 或全局 rebuild-all.sh 恢复。"
+                    "W&B Web 历史视图请用 1-wandb/rebuild-wandb.sh 或全局 rebuild-all.sh 恢复。"
                 ),
             )
         if stage_timings:
@@ -137,7 +137,16 @@ def _load_run_links(wandb_path: Path) -> list[ArtifactLink]:
 
 
 def _summary_from_matrix(bundle_dir: Path) -> dict[str, Any]:
-    matrix_path = bundle_dir / "matrix-results.jsonl"
+    matrix_path = next(
+        (
+            path for path in (
+                bundle_dir / "6-rows" / "matrix-results.jsonl",
+                bundle_dir / "matrix-results.jsonl",
+            )
+            if path.exists()
+        ),
+        bundle_dir / "matrix-results.jsonl",
+    )
     if not matrix_path.exists():
         return {}
     rows = []

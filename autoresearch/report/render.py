@@ -139,6 +139,27 @@ def _formal_case_sections(bundle: ReportBundle) -> str:
         "</tr>"
         for item in view.mode_summary
     ) or "<tr><td colspan='5'>暂无模式数据</td></tr>"
+    stage_summary_rows = "".join(
+        "<tr>"
+        f"<td>{escape(str(item['stage']))}</td>"
+        f"<td>{int(item.get('count') or 0)}</td>"
+        f"<td>{escape(_fmt_metric(item.get('avg_seconds')))}</td>"
+        f"<td>{escape(_fmt_metric(item.get('total_seconds')))}</td>"
+        f"<td>{escape(str(item.get('sources') or ''))}</td>"
+        "</tr>"
+        for item in view.stage_timing_summary
+    ) or "<tr><td colspan='5'>暂无阶段耗时汇总</td></tr>"
+    stage_rows = "".join(
+        "<tr>"
+        f"<td>{escape(row.case_id)}</td>"
+        f"<td>{escape(str(row.step) if row.step is not None else '')}</td>"
+        f"<td>{escape(row.stage)}</td>"
+        f"<td>{escape(_fmt_metric(row.elapsed_seconds))}</td>"
+        f"<td>{escape(row.source)}</td>"
+        f"<td>{escape(row.original_key)}</td>"
+        "</tr>"
+        for row in view.stage_timings[:80]
+    ) or "<tr><td colspan='6'>暂无阶段耗时明细</td></tr>"
     artifact_rows = "".join(
         "<tr>"
         f"<td>{escape(item.name)}</td>"
@@ -197,6 +218,19 @@ def _formal_case_sections(bundle: ReportBundle) -> str:
         <ul>{warnings}</ul>
       </section>
     </div>
+
+    <section class="section">
+      <h2>Verl 阶段耗时</h2>
+      <table>
+        <thead><tr><th>阶段</th><th>样本数</th><th>平均秒</th><th>总秒</th><th>来源</th></tr></thead>
+        <tbody>{stage_summary_rows}</tbody>
+      </table>
+      <h3>明细</h3>
+      <table>
+        <thead><tr><th>Case</th><th>Step</th><th>阶段</th><th>秒</th><th>来源</th><th>原始 Key</th></tr></thead>
+        <tbody>{stage_rows}</tbody>
+      </table>
+    </section>
 
     <section class="section">
       <h2>交付件完整性</h2>

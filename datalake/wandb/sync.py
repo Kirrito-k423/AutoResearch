@@ -242,6 +242,7 @@ def sync_all_runs(
     workdir: str = "",
     local_runs_root: Path | None = None,
     run_id_prefix: str = "",
+    local_wandb_dir: Path | None = None,
 ) -> Path:
     """Fetch and sync every offline wandb run under one remote workdir.
 
@@ -263,7 +264,7 @@ def sync_all_runs(
             f"请确认 formal case 已启用 wandb logger"
         )
 
-    local_root = local_runs_root / local_run_id / "wandb"
+    local_root = Path(local_wandb_dir).expanduser() if local_wandb_dir else local_runs_root / local_run_id / "wandb"
     if local_root.exists():
         shutil.rmtree(local_root)
     local_root.mkdir(parents=True, exist_ok=True)

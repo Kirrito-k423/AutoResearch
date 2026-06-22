@@ -77,3 +77,42 @@ def test_extract_stage_timings_missing_wandb_dir_returns_empty(tmp_path):
         run_id="run123",
         case_id="case-a",
     ) == []
+
+
+def test_extract_stage_timings_from_log_dict_and_key_value_lines(tmp_path):
+    log_text = "\n".join(
+        [
+            "global_step: 1 timing_raw: {'rollout_generate_seconds': 1.5, 'actor_log_prob_ms': 250}",
+            "training step 2 timing reward_time=0.75 optimizer_step_time=1.25",
+            "__ar_command__=trainer.total_training_steps=3",
+        ]
+    )
+
+    rows = stage_timing.extract_stage_timings_from_log(
+        log_text,
+        run_id="run123",
+        case_id="case-a",
+    )
+
+    assert {row.source for row in rows} == {"log"}
+    assert {row.stage for row in rows} == {"rollout", "logp", "reward", "update"}
+    assert {row.step for row in rows} == {1, 2}
+    logp = next(row for row in rows if row.stage == "logp")
+    assert logp.elapsed_seconds == 0.25
+    assert "actor_log_prob_ms" in (logp.raw_line or "")
+
+    output = stage_timing.write_stage_timings_jsonl(tmp_path / "stage-timings.jsonl", rows)
+    lines = output.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 4
+    assert json.loads(lines[0])["case_id"] == "case-a"
+
+
+def test_count_completed_training_steps_handles_zero_to_three_steps():
+    assert stage_timing.count_completed_training_steps("") == 0
+    assert stage_timing.count_completed_training_steps("global_step: 1") == 1
+    assert stage_timing.count_completed_training_steps("training step 2/3") == 2
+    assert stage_timing.count_completed_training_steps(
+        "__ar_command__=trainer.total_training_steps=3\n"
+        "step: 1\n"
+        "global step 3"
+    ) == 3

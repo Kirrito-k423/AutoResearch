@@ -24,9 +24,10 @@
 2. 跑 1-6 readiness，选择满足 Docker/NPU/网络/训练栈要求的远程机器。
 3. 准备 Qwen3.5-2B 和 `hiyouga/geometry3k`，5GB 内允许本地缓存。
 4. 生成不可变 `config.lock.json` 和 `provenance.lock.json`，记录所有参与仓的 commit / branch / GitHub 链接；默认使用当前分支，不按 run 自动创建新分支。
-5. 运行 1K prompt 到 2K/4K/8K/16K response，sync/async 成对矩阵，`ignore_eos=false`。
-6. 采集 `matrix-results.jsonl`、`rows/`、`logs/`、`wandb/`、`prom/`、`reports/`、`restore/`。
-7. 报告必须说明 `trainer_val_only`：`true` 是验证矩阵，`false` 才进入真实 GRPO 训练。
+5. 真实 GRPO 训练从单卡 BS=1 开始调参，逐步增大 batch/micro-batch 等旋钮；每个 case 必须完成 3 个 training step，少于 3 步的结果只能记为失败数据点。
+6. 稳定单卡候选再晋升到单机 8 卡吞吐 case；仍需保留每个 case 的 `completed_training_steps`、`target_training_steps`、失败类别、吞吐和资源曲线。
+7. 交付件使用编号目录：`0-report/`、`1-wandb/`、`2-prometheus/`、`3-raw-logs/`、`4-config/`、`5-provenance/`、`6-rows/`、`restore/`；manifest 的 `artifact_layout` 是路径事实来源。
+8. 报告必须说明 `trainer_val_only`：`true` 是验证矩阵，`false` 才进入真实 GRPO 训练。
 
 ## Git 管理约定
 
@@ -37,6 +38,6 @@
 
 ## TOP3 排错经验
 
-1. **W&B 页面看起来没数据**：先确认 project 是否是 `verl`，run display name 是否按语义命名；再检查 `wandb/runs.json` 和全局 `wandb/rebuild-all.sh` 是否能重建历史 Web 视图。
-2. **Prometheus 没有显存/Core 曲线**：当前只推 `autoresearch_npu_count` 就只能证明 NPU 数量；HBM/Core 必须新增采样指标，例如 `autoresearch_npu_hbm_used_mib`、`autoresearch_npu_hbm_total_mib`、`autoresearch_npu_aicore_utilization_percent`。
+1. **W&B 页面看起来没数据**：先确认 project 是否是 `verl`，run display name 是否按语义命名；再检查 `1-wandb/source-runs.json`、`1-wandb/rebuild-wandb.sh` 和全局 `rebuild-all.sh` 是否能重建历史 Web 视图。
+2. **Prometheus 没有显存/Core 曲线**：确认运行期是否持续采集 `npu-smi info`/watch 原始日志，并写入 `6-rows/cases/*/host-npu-smi-watch.raw.log`；报告应能从 `2-prometheus/telemetry-openmetrics.prom` 回放 `autoresearch_npu_hbm_used_mib`、`autoresearch_npu_hbm_total_mib`、`autoresearch_npu_aicore_utilization_percent`。
 3. **geo3k acc 为 0**：检查 `rows/*/validation/0.jsonl` 的 `output/gts/acc`。模型即使算出正确数值，若未按 reward 要求输出 `\\boxed{}`，严格 acc 仍可能为 0；val-only 不会更新模型参数。

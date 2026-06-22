@@ -70,6 +70,24 @@ def test_run_render_accepts_manifest_path(tmp_path):
     assert Path(payload["report"]).exists()
 
 
+def test_run_render_uses_numbered_report_section_from_manifest(tmp_path):
+    bundle = _bundle(tmp_path)
+    bundle.manifest_path.write_text(
+        json.dumps({"artifact_layout": {"sections": {"report": "0-report"}}}),
+        encoding="utf-8",
+    )
+    with patch("autoresearch.report.cli.load_report_bundle_from_manifest", return_value=bundle):
+        exit_code, payload = run_render(
+            run_id="",
+            manifest_path=bundle.manifest_path,
+            open_report=False,
+        )
+
+    assert exit_code == 0
+    assert Path(payload["report"]) == bundle.manifest_path.parent / "0-report" / "report.html"
+    assert Path(payload["report"]).exists()
+
+
 def test_report_render_cli_outputs_single_json_object():
     runner = CliRunner()
     with patch(

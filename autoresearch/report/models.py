@@ -105,6 +105,18 @@ class VerlCaseMatrixRowView:
     error: str | None = None
 
 
+@dataclass(frozen=True)
+class VerlStageTimingView:
+    """One normalized stage timing row for a formal Verl case."""
+
+    case_id: str
+    stage: str
+    elapsed_seconds: float
+    source: str
+    step: int | None = None
+    original_key: str = ""
+
+
 @dataclass
 class VerlCaseView:
     """Normalized formal Verl case report data."""
@@ -120,6 +132,8 @@ class VerlCaseView:
     trainer_val_only: bool | None = None
     training_mode: str = ""
     score_diagnostics: list[str] = field(default_factory=list)
+    stage_timings: list[VerlStageTimingView] = field(default_factory=list)
+    stage_timing_summary: list[dict[str, Any]] = field(default_factory=list)
     artifacts: list[ArtifactStatus] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 

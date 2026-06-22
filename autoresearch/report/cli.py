@@ -24,7 +24,7 @@ def run_render(
         bundle = load_report_bundle_from_manifest(manifest_path)
     else:
         bundle = load_report_bundle(run_id, root=runs_root)
-    report_path = bundle.manifest_path.parent / "report.html"
+    report_path = _report_output_path(bundle.manifest_path)
     render_report(bundle, report_path)
 
     warnings = list(bundle.warnings)
@@ -45,6 +45,24 @@ def run_render(
         "warnings": warnings,
     }
     return 0, payload
+
+
+def _report_output_path(manifest_path: Path) -> Path:
+    """Resolve report output path, honoring numbered formal-run layouts."""
+    try:
+        payload = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return Path(manifest_path).parent / "report.html"
+    layout = payload.get("artifact_layout")
+    if not isinstance(layout, dict):
+        return Path(manifest_path).parent / "report.html"
+    sections = layout.get("sections")
+    if not isinstance(sections, dict):
+        return Path(manifest_path).parent / "report.html"
+    report_section = str(sections.get("report") or "").strip()
+    if not report_section:
+        return Path(manifest_path).parent / "report.html"
+    return Path(manifest_path).parent / report_section / "report.html"
 
 
 @click.command(name="render")

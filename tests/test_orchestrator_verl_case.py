@@ -224,7 +224,7 @@ def test_verl_case_skip_readiness_skips_formal_host_qualification(tmp_path):
     assert any("host qualification skipped" in warning for warning in payload["warnings"])
 
 
-def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path):
+def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path, monkeypatch):
     config = _config_file(tmp_path)
     runs_root = tmp_path / "runs"
     wandb_dir = runs_root / "run123" / "wandb"
@@ -255,6 +255,16 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path):
             assert run_config.matrix[0].visible_devices == list(range(8))
         return _remote_result(run_config)
 
+    def collect_with_stage_timing(_spec, _remote_dir, local_dir, **_kwargs):
+        row_dir = Path(local_dir) / "train-1npu-bs1-mini1-micro1-1024-2048"
+        row_dir.mkdir(parents=True, exist_ok=True)
+        (row_dir / "run123-train-1npu-bs1-mini1-micro1-1024-2048.log").write_text(
+            "global_step: 1 timing_raw: {'rollout_generate_seconds': 1.5, 'actor_log_prob_ms': 250}\n",
+            encoding="utf-8",
+        )
+        return Path(local_dir)
+
+    monkeypatch.setattr("autoresearch.orchestrator.verl_case.collect_tree", collect_with_stage_timing)
     with patch("autoresearch.orchestrator.verl_case._qualify_formal_case_host", return_value=(True, "ok")), \
          patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
          patch("autoresearch.orchestrator.verl_case.ensure_proxy_tunnel", side_effect=lambda *args, **kwargs: ensured.append((args, kwargs)) or {"remote_proxy_url": "http://127.0.0.1:17892"}), \
@@ -282,7 +292,7 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path):
     assert Path(payload["matrix_results"]).exists()
     assert Path(payload["log_path"]).exists()
     assert Path(payload["report"]).exists()
-    assert Path(runs_root / "run123" / "wandb" / "files" / "wandb-summary.json").exists()
+    assert Path(runs_root / "run123" / "1-wandb" / "files" / "wandb-summary.json").exists()
     matrix_lines = Path(payload["matrix_results"]).read_text(encoding="utf-8").splitlines()
     assert len(matrix_lines) == 5
     assert any("train-8npu-bs" in line for line in matrix_lines)
@@ -291,14 +301,21 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path):
     assert manifest["config_snapshot"] == payload["config_snapshot"]
     assert manifest["provenance"][0]["commit_sha"] == "abc123"
     assert manifest["prom_pushed"] is True
-    prom_evidence = json.loads((runs_root / "run123" / "prom" / "formal-case-prometheus.json").read_text(encoding="utf-8"))
+    prom_evidence = json.loads((runs_root / "run123" / "2-prometheus" / "formal-case-prometheus.json").read_text(encoding="utf-8"))
     assert prom_evidence["metrics_pushed"] == ["autoresearch_npu_count"]
     assert "autoresearch_npu_hbm_used_mib" in prom_evidence["missing_resource_metrics"]
-    assert manifest["wandb_path"] == str(wandb_dir)
-    assert manifest["formal_case"]["rows_dir"] == str(runs_root / "run123" / "rows")
-    assert manifest["formal_case"]["rebuild_environment_script"] == str(runs_root / "run123" / "rebuild-environment.sh")
+    assert manifest["artifact_layout"]["sections"]["report"] == "0-report"
+    assert manifest["wandb_path"] == str(runs_root / "run123" / "1-wandb")
+    assert manifest["formal_case"]["rows_dir"] == str(runs_root / "run123" / "6-rows" / "cases")
+    assert manifest["formal_case"]["stage_timings"] == str(runs_root / "run123" / "6-rows" / "stage-timings.jsonl")
+    stage_lines = (runs_root / "run123" / "6-rows" / "stage-timings.jsonl").read_text(encoding="utf-8").splitlines()
+    assert len(stage_lines) == 2
+    assert json.loads(stage_lines[0])["stage"] == "rollout"
+    assert (runs_root / "run123" / "6-rows" / "cases" / "train-1npu-bs1-mini1-micro1-1024-2048" / "stage-timings.jsonl").exists()
+    assert manifest["formal_case"]["rebuild_environment_script"] == str(runs_root / "run123" / "restore" / "rebuild-environment.sh")
     assert Path(runs_root / "run123" / "README.md").exists()
-    assert Path(runs_root / "run123" / "rebuild-environment.sh").exists()
+    assert Path(runs_root / "run123" / "RUN.md").exists()
+    assert Path(runs_root / "run123" / "restore" / "rebuild-environment.sh").exists()
     assert ensured
     assert ensured[0][0][0] == "A2-AK-225"
     assert ensured[0][1]["remote_proxy_port"] == 17892
@@ -360,7 +377,7 @@ def test_verl_case_orchestration_saves_telemetry_prometheus_evidence(tmp_path, m
 
     assert exit_code == 0
     assert payload["ok"] is True
-    prom_evidence = json.loads((runs_root / "run123" / "prom" / "formal-case-prometheus.json").read_text(encoding="utf-8"))
+    prom_evidence = json.loads((runs_root / "run123" / "2-prometheus" / "formal-case-prometheus.json").read_text(encoding="utf-8"))
     assert prom_evidence["telemetry_samples"] == 1
     assert prom_evidence["missing_resource_metrics"] == []
     assert "autoresearch_npu_hbm_used_mib" in prom_evidence["metrics_pushed"]
@@ -423,10 +440,10 @@ def test_verl_case_orchestration_rebuilds_telemetry_from_host_raw_log(tmp_path, 
     assert exit_code == 0
     assert payload["ok"] is True
     normalized = (
-        runs_root / "run123" / "rows" / "train-1npu-bs1-mini1-micro1-1024-2048" / "host-npu-telemetry.jsonl"
+        runs_root / "run123" / "6-rows" / "cases" / "train-1npu-bs1-mini1-micro1-1024-2048" / "host-npu-telemetry.jsonl"
     )
     assert normalized.exists()
-    prom_evidence = json.loads((runs_root / "run123" / "prom" / "formal-case-prometheus.json").read_text(encoding="utf-8"))
+    prom_evidence = json.loads((runs_root / "run123" / "2-prometheus" / "formal-case-prometheus.json").read_text(encoding="utf-8"))
     assert prom_evidence["telemetry_samples"] == 1
     assert prom_evidence["missing_resource_metrics"] == []
     assert telemetry_calls[0][1][0]["source"] == "host-npu-smi-watch"

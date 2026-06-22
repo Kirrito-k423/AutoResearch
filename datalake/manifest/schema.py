@@ -21,6 +21,7 @@ class RunManifest(BaseModel):
     workdir_local: Path
     one_step: dict[str, Any] | None = None
     formal_case: dict[str, Any] | None = None
+    artifact_layout: dict[str, Any] | None = None
     exit_code: int | None = None
     error: str | None = None
     config_snapshot: Path | None = None

@@ -147,7 +147,10 @@ def _load_evidence(
         manifest.prom_metrics_file,
         base_dir=base_dir or Path(manifest.workdir_local),
         run_id=manifest.run_id,
-        alternates=[Path("prom") / "formal-case-prometheus.json"],
+        alternates=[
+            Path("2-prometheus") / "formal-case-prometheus.json",
+            Path("prom") / "formal-case-prometheus.json",
+        ],
     )
     if path is None or not path.exists():
         return path, {}
@@ -201,7 +204,10 @@ def _load_resource_series(
         evidence.get("telemetry_openmetrics_file"),
         base_dir=base_dir,
         run_id=run_id,
-        alternates=[Path("prom") / "telemetry-openmetrics.prom"],
+        alternates=[
+            Path("2-prometheus") / "telemetry-openmetrics.prom",
+            Path("prom") / "telemetry-openmetrics.prom",
+        ],
     )
     if path is None or not path.exists():
         return {}

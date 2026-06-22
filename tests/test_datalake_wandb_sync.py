@@ -252,6 +252,29 @@ def test_sync_all_runs_happy_path(tmp_path):
     assert "source-runs/offline-run-20260615_050749-abc123" in index["source_runs"][0]["local_dir"]
 
 
+def test_sync_all_runs_honors_local_wandb_dir(tmp_path):
+    spec = _spec()
+    local_root = tmp_path / "runs"
+    local_wandb_dir = tmp_path / "bundle" / "1-wandb"
+    remote_runs = ["offline-run-20260615_050749-abc123"]
+    with patch("datalake.wandb.sync._check_wandb_cli"), \
+         patch("datalake.wandb.sync._list_remote_wandb_runs", return_value=remote_runs), \
+         patch("datalake.wandb.sync._sftp_fetch_dir") as mock_fetch, \
+         patch("datalake.wandb.sync._wandb_sync_subprocess", return_value=(0, "ok", "")):
+        result = sync_all_runs(
+            "run123",
+            spec,
+            workdir="/remote/formal",
+            local_runs_root=local_root,
+            local_wandb_dir=local_wandb_dir,
+        )
+
+    assert result == local_wandb_dir
+    assert mock_fetch.call_args_list[0][0][2] == local_wandb_dir / "source-runs" / "offline-run-20260615_050749-abc123"
+    assert (local_wandb_dir / "rebuild-wandb.sh").exists()
+    assert (local_wandb_dir / "source-runs.json").exists()
+
+
 def test_sync_all_runs_no_remote_run_raises(tmp_path):
     spec = _spec()
     local_root = tmp_path / "runs"

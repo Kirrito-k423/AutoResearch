@@ -37,6 +37,7 @@ docker_mod = importlib.import_module("workspace-adapter.verl.docker")
 model_sync_mod = importlib.import_module("workspace-adapter.verl.model_sync")
 provenance_mod = importlib.import_module("workspace-adapter.verl.provenance")
 source_sync_mod = importlib.import_module("workspace-adapter.verl.source_sync")
+stage_timing_mod = importlib.import_module("workspace-adapter.verl.stage_timing")
 telemetry_mod = importlib.import_module("workspace-adapter.verl.telemetry")
 conda_utils_mod = importlib.import_module("workspace-adapter.common.conda_utils")
 
@@ -61,6 +62,8 @@ capture_repo_provenance = provenance_mod.capture_repo_provenance
 run_in_env = conda_utils_mod.run_in_env
 filter_dependency_repo_paths = source_sync_mod.filter_dependency_repo_paths
 parse_npu_smi_watch_output = telemetry_mod.parse_npu_smi_watch_output
+extract_stage_timings_from_log = stage_timing_mod.extract_stage_timings_from_log
+write_stage_timings_jsonl = stage_timing_mod.write_stage_timings_jsonl
 SOURCE_HOST_NPU_SMI_WATCH = telemetry_mod.SOURCE_HOST_NPU_SMI_WATCH
 SOURCE_NPU_SMI_WATCH = telemetry_mod.SOURCE_NPU_SMI_WATCH
 
@@ -68,6 +71,17 @@ SOURCE_NPU_SMI_WATCH = telemetry_mod.SOURCE_NPU_SMI_WATCH
 DEFAULT_PUSHGATEWAY_URL = "http://127.0.0.1:17891"
 DEFAULT_PROMETHEUS_URL = "http://localhost:9090"
 DEFAULT_LOCAL_PROXY_URL = "http://127.0.0.1:7890"
+FORMAL_ARTIFACT_LAYOUT_VERSION = 1
+FORMAL_ARTIFACT_SECTIONS = {
+    "report": "0-report",
+    "wandb": "1-wandb",
+    "prometheus": "2-prometheus",
+    "raw_logs": "3-raw-logs",
+    "config": "4-config",
+    "provenance": "5-provenance",
+    "rows": "6-rows",
+    "restore": "restore",
+}
 DEPENDENCY_REPOS = {
     "verl": "https://github.com/verl-project/verl.git",
     "vllm": "https://github.com/vllm-project/vllm.git",
@@ -75,6 +89,15 @@ DEPENDENCY_REPOS = {
     "mindspeed": "https://github.com/Ascend/MindSpeed.git",
     "veomni": "https://github.com/ByteDance-Seed/VeOmni.git",
 }
+
+
+def _formal_artifact_layout(run_dir: Path) -> dict[str, Any]:
+    paths = {key: run_dir / value for key, value in FORMAL_ARTIFACT_SECTIONS.items()}
+    return {
+        "version": FORMAL_ARTIFACT_LAYOUT_VERSION,
+        "sections": dict(FORMAL_ARTIFACT_SECTIONS),
+        "paths": paths,
+    }
 
 
 def run_verl_case_orchestration(
@@ -114,8 +137,9 @@ def run_verl_case_orchestration(
         rid = run_id or _unique_run_id(root, build_readable_run_id(preliminary_config, started_at))
         run_dir = root / rid
         run_dir.mkdir(parents=True, exist_ok=True)
-        for subdir in ("wandb", "prom", "rows"):
-            (run_dir / subdir).mkdir(parents=True, exist_ok=True)
+        artifact_layout = _formal_artifact_layout(run_dir)
+        for path in artifact_layout["paths"].values():
+            Path(path).mkdir(parents=True, exist_ok=True)
 
         emit_progress("orch.verl_case.start", server=server, run_id=rid, config=cfg_path)
         spec, selection_warnings = _resolve_spec(
@@ -260,12 +284,12 @@ def run_verl_case_orchestration(
                 "remote_dataset_path": remote_dataset_path,
             },
         )
-        config_snapshot = write_immutable_config(run_config, run_dir)
+        config_snapshot = write_immutable_config(run_config, artifact_layout["paths"]["config"])
         provenance_path = _write_json(
-            run_dir / "provenance.json",
+            artifact_layout["paths"]["provenance"] / "provenance.json",
             [item.model_dump(mode="json") for item in provenance_rows],
         )
-        rebuild_env_path = _write_rebuild_environment_script(run_dir, provenance_rows)
+        rebuild_env_path = _write_rebuild_environment_script(artifact_layout["paths"]["restore"], provenance_rows)
         _write_artifact_readme(run_dir, run_config, rebuild_env_path)
     except Exception as exc:
         steps.append(
@@ -348,23 +372,30 @@ def run_verl_case_orchestration(
 
     matrix_path: Path | None = None
     remote_rows_dir: Path | None = None
-    log_path = _write_log(run_dir / f"{rid}-orchestration.log", run_config, remote_result, warnings)
+    stage_timings_path: Path | None = None
+    log_path = _write_log(artifact_layout["paths"]["raw_logs"] / f"{rid}-orchestration.log", run_config, remote_result, warnings)
     if remote_result is not None and remote_result.rows:
-        matrix_path = _write_matrix(run_dir / "matrix-results.jsonl", remote_result.rows)
+        matrix_path = _write_matrix(artifact_layout["paths"]["rows"] / "matrix-results.jsonl", remote_result.rows)
         try:
             remote_rows_dir = collect_tree(
                 spec,
                 f"{resolved_workdir}/autoresearch/runs/{rid}/rows",
-                run_dir / "rows",
+                artifact_layout["paths"]["rows"] / "cases",
             )
         except LogFetchError as exc:
             warnings.append(f"formal row artifact fetch failed: {exc}")
-    telemetry_rows = _read_telemetry_rows(run_dir / "rows", run_id=rid, server=server_name)
+        if remote_rows_dir is not None:
+            stage_timings_path = _write_stage_timings_from_rows(
+                remote_rows_dir,
+                artifact_layout["paths"]["rows"] / "stage-timings.jsonl",
+                run_id=rid,
+            )
+    telemetry_rows = _read_telemetry_rows(artifact_layout["paths"]["rows"], run_id=rid, server=server_name)
     telemetry_exposition = build_telemetry_exposition(telemetry_rows)
     telemetry_exposition_path = None
     if telemetry_exposition.strip():
         telemetry_exposition_path = _write_text(
-            run_dir / "prom" / "telemetry-openmetrics.prom",
+            artifact_layout["paths"]["prometheus"] / "telemetry-openmetrics.prom",
             telemetry_exposition,
         )
     matrix_ok = bool(remote_result and remote_result.ok and matrix_path and matrix_path.exists())
@@ -392,12 +423,14 @@ def run_verl_case_orchestration(
     wandb_path: Path | None = None
     if remote_result is not None and remote_result.rows:
         try:
-            wandb_path = sync_all_runs(
+            sync_all_runs(
                 rid,
                 spec,
                 workdir=f"{resolved_workdir}/autoresearch/runs/{rid}",
                 local_runs_root=root,
+                local_wandb_dir=artifact_layout["paths"]["wandb"],
             )
+            wandb_path = artifact_layout["paths"]["wandb"]
             _write_formal_wandb_summary(
                 wandb_path,
                 remote_result,
@@ -434,7 +467,7 @@ def run_verl_case_orchestration(
     prom_pushed = count_prom_pushed or telemetry_prom_pushed
 
     prom_metrics = _write_json(
-        run_dir / "prom" / "formal-case-prometheus.json",
+        artifact_layout["paths"]["prometheus"] / "formal-case-prometheus.json",
         {
             "run_id": rid,
             "pushgateway_url": pushgateway_url,
@@ -480,6 +513,8 @@ def run_verl_case_orchestration(
         wandb_path=wandb_path,
         remote_rows_dir=remote_rows_dir,
         rebuild_env_path=rebuild_env_path,
+        artifact_layout=artifact_layout,
+        stage_timings_path=stage_timings_path,
     )
     collect_payload = {
         "ok": (
@@ -1074,6 +1109,48 @@ def _read_telemetry_jsonl(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def _write_stage_timings_from_rows(rows_dir: Path, output_path: Path, *, run_id: str) -> Path:
+    all_rows: list[Any] = []
+    if rows_dir.exists():
+        for case_dir in sorted(path for path in rows_dir.iterdir() if path.is_dir()):
+            case_rows: list[Any] = []
+            for log_path in sorted(case_dir.glob("*.log")):
+                try:
+                    text = log_path.read_text(encoding="utf-8", errors="replace")
+                except OSError:
+                    continue
+                case_rows.extend(
+                    extract_stage_timings_from_log(
+                        text,
+                        run_id=run_id,
+                        case_id=case_dir.name,
+                    )
+                )
+            case_rows = _dedupe_stage_timings(case_rows)
+            if case_rows:
+                write_stage_timings_jsonl(case_dir / "stage-timings.jsonl", case_rows)
+                all_rows.extend(case_rows)
+    return write_stage_timings_jsonl(output_path, _dedupe_stage_timings(all_rows))
+
+
+def _dedupe_stage_timings(rows: list[Any]) -> list[Any]:
+    seen: set[tuple[str, str, int | None, str, str]] = set()
+    deduped: list[Any] = []
+    for row in rows:
+        key = (
+            str(getattr(row, "case_id", "")),
+            str(getattr(row, "stage", "")),
+            getattr(row, "step", None),
+            str(getattr(row, "original_key", "")),
+            str(getattr(row, "source", "")),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(row)
+    return deduped
+
+
 def _write_log(path: Path, run_config: Any, remote_result: Any, warnings: list[str]) -> Path:
     lines = [
         f"run_id={run_config.run_id}",
@@ -1123,18 +1200,28 @@ def _write_manifest(
     wandb_path: Path | None,
     remote_rows_dir: Path | None = None,
     rebuild_env_path: Path | None = None,
+    artifact_layout: dict[str, Any] | None = None,
+    stage_timings_path: Path | None = None,
 ) -> Path:
+    artifact_layout_payload = None
+    if artifact_layout:
+        artifact_layout_payload = {
+            "version": artifact_layout.get("version"),
+            "sections": artifact_layout.get("sections"),
+        }
     formal_case = {
         "kind": "verl-case",
         "matrix_results": str(matrix_path) if matrix_path else None,
         "log_path": str(log_path),
-        "rows_dir": str(remote_rows_dir) if remote_rows_dir else str(run_dir / "rows"),
+        "rows_dir": str(remote_rows_dir) if remote_rows_dir else str(run_dir / FORMAL_ARTIFACT_SECTIONS["rows"]),
         "remote_matrix_path": remote_result.remote_matrix_path if remote_result is not None else None,
         "remote_log_path": remote_result.remote_log_path if remote_result is not None else None,
         "row_count": len(remote_result.rows) if remote_result is not None else 0,
         "ok": bool(remote_result and remote_result.ok and matrix_path and matrix_path.exists()),
         "wandb_restore_script": str(wandb_path / "rebuild-wandb.sh") if wandb_path else None,
         "rebuild_environment_script": str(rebuild_env_path) if rebuild_env_path else None,
+        "stage_timings": str(stage_timings_path) if stage_timings_path else None,
+        "artifact_layout": artifact_layout_payload,
     }
     manifest = RunManifest(
         run_id=run_id,
@@ -1145,6 +1232,7 @@ def _write_manifest(
         lib="verl",
         workdir_remote=workdir,
         workdir_local=run_dir,
+        artifact_layout=artifact_layout_payload,
         formal_case=formal_case,
         exit_code=0 if formal_case["ok"] else 1,
         error=None if formal_case["ok"] else "formal case matrix failed",
@@ -1216,14 +1304,23 @@ def _write_artifact_readme(run_dir: Path, run_config: Any, rebuild_env_path: Pat
 重要入口:
 
 - `manifest.json`: 交付件索引和来源真相
-- `{Path(rebuild_env_path).name}`: 按记录的 git commit 重建代码环境
-- `wandb/rebuild-wandb.sh`: 将原始 W&B offline runs 重新导入本地 W&B
-- `matrix-results.jsonl`: 每个 case 的矩阵/调参结果
-- `rows/`: 每个 case 的 Verl 日志、验证输出、NPU telemetry 和 result 文件
-- `report.html`: 本地渲染报告
+- `0-report/report.html`: 客户阅读入口
+- `1-wandb/rebuild-wandb.sh`: 将原始 W&B offline runs 重新导入本地 W&B
+- `2-prometheus/`: telemetry JSON/OpenMetrics 与 Prometheus evidence
+- `3-raw-logs/`: 编排日志与可审计原始日志入口
+- `4-config/`: 不可变配置快照
+- `5-provenance/provenance.json`: 代码仓和依赖仓 git commit 锁定信息
+- `6-rows/matrix-results.jsonl`: 每个 case 的矩阵/调参结果
+- `6-rows/stage-timings.jsonl`: Verl GRPO 各阶段耗时归一化结果
+- `6-rows/cases/`: 每个 case 的 Verl 日志、验证输出、NPU telemetry 和 result 文件
+- `restore/{Path(rebuild_env_path).name}`: 按记录的 git commit 重建代码环境
 """
-    path = run_dir / "README.md"
+    path = run_dir / "RUN.md"
     path.write_text(text, encoding="utf-8")
+    (run_dir / "README.md").write_text(
+        "# AutoResearch Verl Case 数据包\n\n主入口见 `RUN.md`；客户报告见 `0-report/report.html`。\n",
+        encoding="utf-8",
+    )
     return path
 
 
