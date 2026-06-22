@@ -782,7 +782,7 @@ def test_resume_via_parallel_curl_appends_parts_in_order(tmp_path, monkeypatch):
         range_value = command[command.index("--range") + 1]
         output_path = Path(command[command.index("--output") + 1])
         start, end = [int(part) for part in range_value.split("-", 1)]
-        part_index = len(calls) - 1
+        part_index = int(output_path.name.split("part-", 1)[1].split(".", 1)[0])
         output_path.write_bytes(bytes([65 + part_index]) * (end - start + 1))
         return _Proc()
 
@@ -1352,6 +1352,10 @@ def test_row_command_builds_formal_verl_script():
     assert "actor_rollout_ref.actor.strategy=fsdp2" in command
     assert "trainer.balance_batch=True" in command
     assert "trainer.device=npu" in command
+    assert "wandb_project" in command
+    assert "trainer.project_name={wandb_project}" in command
+    assert "trainer.experiment_name={wandb_run_name}" in command
+    assert "wandb_run_name = _wandb_run_name(case, row)" in command
     assert "data.return_raw_chat=True" in command
     assert "ray_tmp_root = Path(" in command
     assert "/tmp" in command

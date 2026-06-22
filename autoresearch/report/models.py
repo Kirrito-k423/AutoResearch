@@ -25,6 +25,15 @@ class ArtifactLink:
     note: str = ""
 
 
+@dataclass(frozen=True)
+class SkillUsage:
+    """A repository skill involved in producing or reading this run."""
+
+    name: str
+    path: str
+    purpose: str
+
+
 @dataclass
 class LogView:
     """Renderable summary of a local run log."""
@@ -47,6 +56,7 @@ class WandbView:
     summary: dict[str, Any] = field(default_factory=dict)
     charts: dict[str, list[MetricPoint]] = field(default_factory=dict)
     links: list[ArtifactLink] = field(default_factory=list)
+    run_links: list[ArtifactLink] = field(default_factory=list)
     warning: str | None = None
 
 
@@ -61,6 +71,8 @@ class PrometheusView:
     service_url: str
     current_value: float | None = None
     series: list[MetricPoint] = field(default_factory=list)
+    evidence_path: Path | None = None
+    notes: list[str] = field(default_factory=list)
     warning: str | None = None
 
 
@@ -72,6 +84,7 @@ class ArtifactStatus:
     path: Path | None
     ok: bool
     warning: str | None = None
+    key: str | None = None
 
 
 @dataclass(frozen=True)
@@ -102,6 +115,9 @@ class VerlCaseView:
     async_comparison: list[dict[str, Any]] = field(default_factory=list)
     accuracy_overall: float | None = None
     consistency_overall: float | None = None
+    trainer_val_only: bool | None = None
+    training_mode: str = ""
+    score_diagnostics: list[str] = field(default_factory=list)
     artifacts: list[ArtifactStatus] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
@@ -128,3 +144,4 @@ class ReportBundle:
     wandb: WandbView
     prometheus: PrometheusView
     formal_case: VerlCaseView | None = None
+    skills_used: list[SkillUsage] = field(default_factory=list)

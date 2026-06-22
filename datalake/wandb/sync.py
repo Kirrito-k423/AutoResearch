@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import shutil
 import subprocess
 import time
@@ -267,9 +268,12 @@ def sync_all_runs(
         shutil.rmtree(local_root)
     local_root.mkdir(parents=True, exist_ok=True)
 
+    source_runs: list[dict[str, str]] = []
+    source_root = local_root / "source-runs"
+    source_root.mkdir(parents=True, exist_ok=True)
     for remote_run in sorted(remote_runs):
         remote_dir = f"{workdir}/wandb/wandb/{remote_run}"
-        local_dir = local_root / remote_run
+        local_dir = source_root / remote_run
         _sftp_fetch_dir(spec, remote_dir, local_dir)
         ec, so, se = _wandb_sync_subprocess(local_dir)
         if ec != 0:
@@ -282,5 +286,65 @@ def sync_all_runs(
                 f"wandb sync 失败 exit={ec}; "
                 f"stdout={so.strip()[:200]}; stderr={se.strip()[:200]}"
             )
+        source_runs.append(
+            {
+                "offline_run": remote_run,
+                "remote_dir": remote_dir,
+                "local_dir": str(local_dir),
+            }
+        )
+
+    _write_restore_artifacts(local_root, local_run_id=local_run_id, source_runs=source_runs)
 
     return local_root
+
+
+def _write_restore_artifacts(
+    wandb_root: Path,
+    *,
+    local_run_id: str,
+    source_runs: list[dict[str, str]],
+) -> None:
+    """Write portable restore metadata for re-creating local W&B views."""
+    index = {
+        "schema_version": 1,
+        "run_id": local_run_id,
+        "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "default_wandb_base_url": "http://localhost:8080",
+        "restore_command": "WANDB_BASE_URL=http://localhost:8080 ./rebuild-wandb.sh",
+        "source_runs": source_runs,
+    }
+    (wandb_root / "source-runs.json").write_text(
+        json.dumps(index, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    script = """#!/usr/bin/env bash
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+: "${WANDB_BASE_URL:=http://localhost:8080}"
+found=0
+while IFS= read -r run_dir; do
+  found=1
+  WANDB_BASE_URL="$WANDB_BASE_URL" wandb sync "$run_dir"
+done < <(find "$SCRIPT_DIR/source-runs" -type d \\( -name 'offline-run-*' -o -name 'run-*' \\) | sort)
+if [ "$found" -eq 0 ]; then
+  echo "No W&B offline runs found under $SCRIPT_DIR/source-runs" >&2
+  exit 1
+fi
+"""
+    script_path = wandb_root / "rebuild-wandb.sh"
+    script_path.write_text(script, encoding="utf-8")
+    script_path.chmod(0o755)
+    readme = """# W&B Restore
+
+This directory contains the raw W&B offline run files for this AutoResearch experiment.
+
+To rebuild the local W&B UI after copying the data repository:
+
+```bash
+autoresearch services start
+cd "$(dirname "$0")"
+WANDB_BASE_URL=http://localhost:8080 ./rebuild-wandb.sh
+```
+"""
+    (wandb_root / "README-WANDB-RESTORE.md").write_text(readme, encoding="utf-8")

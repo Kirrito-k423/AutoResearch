@@ -73,6 +73,8 @@ def _seed_formal_run(tmp_path: Path, *, missing_async_16k: bool = False) -> Path
                     "input_tokens": 1024,
                     "output_tokens": [2048, 4096, 8192, 16384],
                     "inference_modes": ["sync", "async"],
+                    "trainer_val_only": True,
+                    "val_max_samples": 2,
                 },
             }
         ),
@@ -129,6 +131,9 @@ def test_load_verl_case_view_reports_complete_matrix(tmp_path):
     assert {item["output_tokens"] for item in view.length_summary} == {2048, 4096, 8192, 16384}
     assert isinstance(view.accuracy_overall, float)
     assert isinstance(view.consistency_overall, float)
+    assert view.trainer_val_only is True
+    assert "验证矩阵" in view.training_mode
+    assert any("val_max_samples=2" in item for item in view.score_diagnostics)
 
 
 def test_load_verl_case_view_warns_when_async_16k_missing(tmp_path):
@@ -151,14 +156,17 @@ def test_render_formal_case_sections(tmp_path, monkeypatch):
     render_report(bundle, output)
 
     html = output.read_text(encoding="utf-8")
-    assert "Verl Formal Case Matrix" in html
-    assert "Sequence Length Impact" in html
-    assert "Sync vs Async Impact" in html
-    assert "Accuracy" in html
-    assert "Consistency" in html
-    assert "Provenance" in html
-    assert "config snapshot" in html
-    assert "matrix results" in html
+    assert "Verl 正式 Case 矩阵" in html
+    assert "序列长度影响" in html
+    assert "同步/异步影响" in html
+    assert "准确率" in html
+    assert "一致性与诊断" in html
+    assert "交付件完整性" in html
+    assert "不可变配置" in html
+    assert "矩阵结果" in html
+    assert "本次使用的仓库 Skill" in html
+    assert ".agents/skills/01-customer-config/SKILL.md" in html
+    assert "workspace-adapter/verl/SKILL.md" in html
 
 
 def test_formal_report_completeness_fails_when_matrix_row_missing(tmp_path, monkeypatch):

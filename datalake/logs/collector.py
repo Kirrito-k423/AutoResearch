@@ -1,6 +1,7 @@
 """Collect remote 1-step logs into the local AutoResearch run directory."""
 from __future__ import annotations
 
+import stat
 from pathlib import Path
 
 from workspace_core.config import ServerSpec
@@ -114,3 +115,60 @@ def tail_remote_log(
         local_runs_root=local_runs_root,
         remote_log_path=remote_log_path,
     )
+
+
+def collect_tree(
+    server: ServerSpec,
+    remote_dir: str,
+    local_dir: Path,
+    *,
+    skip_names: set[str] | None = None,
+) -> Path:
+    """Fetch a bounded remote artifact directory into the local data repository."""
+    skip_names = skip_names or {".wandb", "ckpt", "hf_cache", "model", "tmp"}
+    local_dir = Path(local_dir).expanduser()
+    local_dir.mkdir(parents=True, exist_ok=True)
+
+    password = (
+        resolve_secret(server.bootstrap_password_secret)
+        if server.bootstrap_password_secret
+        else None
+    )
+    client = SSHClient(_host_spec(server), bootstrap_password=password)
+    try:
+        client.connect(connect_timeout=5.0)
+        _sftp_walk(client.sftp(), remote_dir, local_dir, skip_names=skip_names)
+    except SSHError as exc:
+        raise LogFetchError(f"SSH 拉取目录失败: {exc}") from exc
+    except OSError as exc:
+        raise LogFetchError(f"SFTP 拉取目录失败: {exc}") from exc
+    finally:
+        client.close()
+    return local_dir
+
+
+def _sftp_walk(sftp, remote_dir: str, local_dir: Path, *, skip_names: set[str]) -> None:
+    try:
+        items = sftp.listdir_attr(remote_dir)
+    except FileNotFoundError as exc:
+        raise LogFetchError(f"远程目录不存在: {remote_dir}") from exc
+    except PermissionError as exc:
+        raise LogFetchError(f"无权限读取远程目录: {remote_dir}") from exc
+    except OSError as exc:
+        raise LogFetchError(f"无法打开远程目录 {remote_dir}: {exc}") from exc
+
+    local_dir.mkdir(parents=True, exist_ok=True)
+    for item in items:
+        name = item.filename
+        if name.startswith(".") or name in skip_names or name.endswith((".tmp", ".partial", ".lock")):
+            continue
+        remote_path = f"{remote_dir}/{name}"
+        local_path = local_dir / name
+        mode = int(item.st_mode or 0)
+        if stat.S_ISDIR(mode):
+            _sftp_walk(sftp, remote_path, local_path, skip_names=skip_names)
+            continue
+        try:
+            sftp.get(remote_path, str(local_path))
+        except OSError:
+            continue

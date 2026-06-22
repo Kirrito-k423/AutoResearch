@@ -56,6 +56,20 @@ def test_run_render_can_open_report(tmp_path):
     assert Path(payload["report"]).exists()
 
 
+def test_run_render_accepts_manifest_path(tmp_path):
+    bundle = _bundle(tmp_path)
+    with patch("autoresearch.report.cli.load_report_bundle_from_manifest", return_value=bundle):
+        exit_code, payload = run_render(
+            run_id="",
+            manifest_path=bundle.manifest_path,
+            open_report=False,
+        )
+
+    assert exit_code == 0
+    assert payload["run_id"] == "run123"
+    assert Path(payload["report"]).exists()
+
+
 def test_report_render_cli_outputs_single_json_object():
     runner = CliRunner()
     with patch(

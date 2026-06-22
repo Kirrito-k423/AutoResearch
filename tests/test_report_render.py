@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
-from autoresearch.report.models import ArtifactLink, LogView, MetricPoint, PrometheusView, ReportBundle, WandbView
+from autoresearch.report.models import ArtifactLink, LogView, MetricPoint, PrometheusView, ReportBundle, SkillUsage, WandbView
 from autoresearch.report.render import render_report
 
 
@@ -47,7 +47,15 @@ def _bundle(tmp_path: Path) -> ReportBundle:
             service_url="http://localhost:9090",
             current_value=8.0,
             series=[MetricPoint(x=1, y=8.0, label="instant")],
+            notes=["当前 evidence 只证明 NPU 数量。"],
         ),
+        skills_used=[
+            SkillUsage(
+                name="08 experiment-report",
+                path=".agents/skills/08-experiment-report/SKILL.md",
+                purpose="渲染报告。",
+            )
+        ],
     )
 
 
@@ -57,8 +65,9 @@ def test_render_report_writes_html(tmp_path):
 
     assert output.exists()
     html = output.read_text(encoding="utf-8")
-    assert "AutoResearch Experiment Report" in html
+    assert "AutoResearch 实验报告" in html
     assert "run123" in html
-    assert "Log View" in html
-    assert "W&B View" in html
-    assert "Prometheus View" in html
+    assert "日志视图" in html
+    assert "W&B 视图" in html
+    assert "Prometheus 视图" in html
+    assert "本次使用的仓库 Skill" in html

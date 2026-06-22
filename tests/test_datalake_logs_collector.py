@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from workspace_core.config import ServerSpec
 
-from datalake.logs.collector import LogFetchError, collect_log, tail_remote_log
+from datalake.logs.collector import LogFetchError, collect_log, collect_tree, tail_remote_log
 
 
 def _spec() -> ServerSpec:
@@ -80,3 +80,31 @@ def test_tail_remote_log_uses_remote_path_stem(tmp_path):
 
     assert path == tmp_path / "custom" / "log.txt"
     instance.sftp.return_value.open.assert_called_once_with("/tmp/custom.log", "rb")
+
+
+def test_collect_tree_fetches_files_and_skips_heavy_dirs(tmp_path):
+    fake_sftp = MagicMock()
+    row_dir = MagicMock(filename="row", st_mode=0o040000)
+    ckpt_dir = MagicMock(filename="ckpt", st_mode=0o040000)
+    log_file = MagicMock(filename="run.log", st_mode=0o100000)
+    result_file = MagicMock(filename="result.json", st_mode=0o100000)
+
+    def listdir_attr(remote_dir):
+        if remote_dir == "/remote/rows":
+            return [row_dir, ckpt_dir, log_file]
+        if remote_dir == "/remote/rows/row":
+            return [result_file]
+        raise AssertionError(remote_dir)
+
+    fake_sftp.listdir_attr.side_effect = listdir_attr
+
+    with _patch_client(None) as MockClient:
+        instance = MockClient.return_value
+        instance.sftp.return_value = fake_sftp
+        path = collect_tree(_spec(), "/remote/rows", tmp_path / "rows")
+
+    assert path == tmp_path / "rows"
+    fetched = [call.args[0] for call in fake_sftp.get.call_args_list]
+    assert "/remote/rows/run.log" in fetched
+    assert "/remote/rows/row/result.json" in fetched
+    assert all("/ckpt" not in item for item in fetched)

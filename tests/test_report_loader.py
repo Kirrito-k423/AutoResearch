@@ -78,6 +78,7 @@ def test_load_report_bundle_happy_path(tmp_path):
     assert bundle.prometheus.available is True
     assert bundle.prometheus.current_value == 8.0
     assert bundle.warnings == []
+    assert [skill.name for skill in bundle.skills_used] == ["07 data-collection", "08 experiment-report"]
 
 
 def test_load_report_bundle_partial_when_artifacts_missing(tmp_path):

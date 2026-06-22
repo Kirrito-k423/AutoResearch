@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 from click.testing import CliRunner
 from workspace_core.config import ServerSpec
 
@@ -18,12 +19,23 @@ case_runner = importlib.import_module("workspace-adapter.verl.case_runner")
 data_prep = importlib.import_module("workspace-adapter.verl.data_prep")
 
 
+@pytest.fixture(autouse=True)
+def _mock_remote_tree_fetch(monkeypatch):
+    def fake_collect_tree(_spec, _remote_dir, local_dir, **_kwargs):
+        path = Path(local_dir)
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    monkeypatch.setattr("autoresearch.orchestrator.verl_case.collect_tree", fake_collect_tree)
+
+
 def _config_file(
     tmp_path: Path,
     *,
     dependency_path: Path | None = None,
     server_workdir: str = "/root",
     extra_servers: str = "",
+    artifact_root: Path | None = None,
 ) -> Path:
     dep_yaml = ""
     if dependency_path is not None:
@@ -44,6 +56,7 @@ servers:
 {extra_servers}
 verl_case:
   cache_root: {tmp_path / "cache"}
+  artifact_root: {artifact_root or (tmp_path / "data-runs")}
   output_tokens: [2048, 4096]
   inference_modes: [sync, async]
 {dep_yaml}
@@ -221,10 +234,46 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path):
     assert manifest["config_snapshot"] == payload["config_snapshot"]
     assert manifest["provenance"][0]["commit_sha"] == "abc123"
     assert manifest["prom_pushed"] is True
+    prom_evidence = json.loads((runs_root / "run123" / "prom" / "formal-case-prometheus.json").read_text(encoding="utf-8"))
+    assert prom_evidence["metrics_pushed"] == ["autoresearch_npu_count"]
+    assert "autoresearch_npu_hbm_used_mib" in prom_evidence["missing_resource_metrics"]
     assert manifest["wandb_path"] == str(wandb_dir)
+    assert manifest["formal_case"]["rows_dir"] == str(runs_root / "run123" / "rows")
+    assert manifest["formal_case"]["rebuild_environment_script"] == str(runs_root / "run123" / "rebuild-environment.sh")
+    assert Path(runs_root / "run123" / "README.md").exists()
+    assert Path(runs_root / "run123" / "rebuild-environment.sh").exists()
     assert ensured
     assert ensured[0][0][0] == "A2-AK-225"
     assert ensured[0][1]["remote_proxy_port"] == 17892
+
+
+def test_verl_case_defaults_to_configured_artifact_root_and_readable_run_id(tmp_path):
+    artifact_root = tmp_path / "warehouse-runs"
+    config = _config_file(tmp_path, artifact_root=artifact_root)
+
+    def sync_all(_run_id, _spec, **_kwargs):
+        wandb_dir = artifact_root / _run_id / "wandb"
+        (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
+        return wandb_dir
+
+    with patch("autoresearch.orchestrator.verl_case._qualify_formal_case_host", return_value=(True, "ok")), \
+         patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
+         patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance), \
+         patch("autoresearch.orchestrator.verl_case.prepare_model_cache", return_value=_fake_model_cache(tmp_path)), \
+         patch("autoresearch.orchestrator.verl_case.stage_model_cache", return_value="/home/t00906153/autoresearch/model-cache/Qwen__Qwen3.5-2B"), \
+         patch("autoresearch.orchestrator.verl_case.run_verl_case", side_effect=lambda _spec, run_config, **_kwargs: _remote_result(run_config)), \
+         patch("autoresearch.orchestrator.verl_case.sync_all_runs", side_effect=sync_all), \
+         patch("autoresearch.orchestrator.verl_case.push_metrics", return_value=True), \
+         patch("autoresearch.orchestrator.verl_case.run_render", side_effect=_fake_report):
+        exit_code, payload = run_verl_case_orchestration(
+            server="A2-AK-225",
+            config=str(config),
+        )
+
+    assert exit_code == 0
+    assert payload["run_id"].startswith("Qwen35-2B-GRPO-1Kto4K-")
+    assert "-valonly-modes-sync-async-noignoreeos" in payload["run_id"]
+    assert Path(payload["manifest"]).is_relative_to(artifact_root)
 
 
 def test_verl_case_orchestration_stages_cached_geometry3k_parquet(tmp_path):
@@ -379,6 +428,8 @@ def test_verl_case_cli_outputs_single_json_object():
                 "config/config.yaml",
                 "--timeout",
                 "12",
+                "--artifact-root",
+                "/tmp/ar-data",
                 "--skip-readiness",
             ],
         )
@@ -387,6 +438,7 @@ def test_verl_case_cli_outputs_single_json_object():
     assert json.loads(result.output) == payload
     assert mock.call_args.kwargs["server"] == "A2-AK-225"
     assert mock.call_args.kwargs["timeout"] == 12.0
+    assert mock.call_args.kwargs["artifact_root"] == "/tmp/ar-data"
     assert mock.call_args.kwargs["skip_readiness"] is True
 
 

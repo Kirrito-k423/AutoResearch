@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import subprocess
+import json
 from pathlib import Path
 from unittest.mock import patch, MagicMock, call
 
@@ -242,6 +243,13 @@ def test_sync_all_runs_happy_path(tmp_path):
     assert mock_sync.call_count == 2
     assert mock_fetch.call_args_list[0][0][1] == "/remote/formal/wandb/wandb/offline-run-20260615_050749-abc123"
     assert mock_fetch.call_args_list[1][0][1] == "/remote/formal/wandb/wandb/offline-run-20260615_050800-xyz789"
+    assert (result / "source-runs.json").exists()
+    assert (result / "rebuild-wandb.sh").exists()
+    assert (result / "README-WANDB-RESTORE.md").exists()
+    index = json.loads((result / "source-runs.json").read_text(encoding="utf-8"))
+    assert index["run_id"] == "run123"
+    assert len(index["source_runs"]) == 2
+    assert "source-runs/offline-run-20260615_050749-abc123" in index["source_runs"][0]["local_dir"]
 
 
 def test_sync_all_runs_no_remote_run_raises(tmp_path):

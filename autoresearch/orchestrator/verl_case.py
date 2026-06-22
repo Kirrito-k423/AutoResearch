@@ -9,6 +9,7 @@ from typing import Any
 
 from datalake.manifest import RunManifest
 from datalake.manifest import write as write_manifest
+from datalake.logs.collector import LogFetchError, collect_tree
 from datalake.prometheus import PushError, push_metrics
 from datalake.wandb.sync import WandbSyncError, sync_all_runs
 from workspace_core.config import ConfigError, ServerSpec, from_path
@@ -35,6 +36,7 @@ conda_utils_mod = importlib.import_module("workspace-adapter.common.conda_utils"
 VerlCaseConfig = case_config_mod.VerlCaseConfig
 VerlCaseRunConfig = case_config_mod.VerlCaseRunConfig
 build_length_matrix = case_config_mod.build_length_matrix
+build_readable_run_id = case_config_mod.build_readable_run_id
 now_utc = case_config_mod.now_utc
 write_immutable_config = case_config_mod.write_immutable_config
 build_docker_pull_command = docker_mod.build_docker_pull_command
@@ -79,24 +81,31 @@ def run_verl_case_orchestration(
     skip_readiness: bool = False,
     open_report: bool = False,
     runs_root: Path | None = None,
+    artifact_root: str | Path | None = None,
     repo_root: Path | None = None,
 ) -> tuple[int, dict[str, Any]]:
     """Run the formal Verl case and persist local-first artifacts."""
-    rid = run_id or generate_run_id()
     cfg_path = config or DEFAULT_CONFIG_PATH
-    root = Path(runs_root).expanduser() if runs_root else Path("~/.autoresearch/runs").expanduser()
-    run_dir = root / rid
-    run_dir.mkdir(parents=True, exist_ok=True)
-    for subdir in ("wandb", "prom"):
-        (run_dir / subdir).mkdir(parents=True, exist_ok=True)
-
-    emit_progress("orch.verl_case.start", server=server, run_id=rid, config=cfg_path)
     steps: list[StepResult] = []
     warnings: list[str] = []
     started_at = datetime.now(timezone.utc)
 
     try:
         cfg = from_path(cfg_path)
+        preliminary_config = _adapter_config(
+            cfg,
+            cache_root=cache_root,
+            artifact_root=artifact_root,
+            workdir=workdir or cfg.verl_case.remote_workdir,
+        )
+        root = Path(runs_root).expanduser() if runs_root else Path(preliminary_config.artifact_root).expanduser()
+        rid = run_id or _unique_run_id(root, build_readable_run_id(preliminary_config, started_at))
+        run_dir = root / rid
+        run_dir.mkdir(parents=True, exist_ok=True)
+        for subdir in ("wandb", "prom", "rows"):
+            (run_dir / subdir).mkdir(parents=True, exist_ok=True)
+
+        emit_progress("orch.verl_case.start", server=server, run_id=rid, config=cfg_path)
         spec, selection_warnings = _resolve_spec(
             cfg,
             server,
@@ -109,7 +118,12 @@ def run_verl_case_orchestration(
         server_name = spec.name
         resolved_workdir = workdir or cfg.verl_case.remote_workdir or getattr(spec, "workdir", "")
         spec = spec.model_copy(update={"workdir": resolved_workdir})
-        adapter_config = _adapter_config(cfg, cache_root=cache_root, workdir=resolved_workdir)
+        adapter_config = _adapter_config(
+            cfg,
+            cache_root=cache_root,
+            artifact_root=artifact_root,
+            workdir=resolved_workdir,
+        )
     except Exception as exc:
         step = step_result(
             step_id="prepare",
@@ -119,7 +133,7 @@ def run_verl_case_orchestration(
         )
         steps.append(step)
         return _finish_payload(
-            rid=rid,
+            rid=run_id or generate_run_id(),
             server=server,
             config=cfg_path,
             steps=steps,
@@ -237,6 +251,8 @@ def run_verl_case_orchestration(
             run_dir / "provenance.json",
             [item.model_dump(mode="json") for item in provenance_rows],
         )
+        rebuild_env_path = _write_rebuild_environment_script(run_dir, provenance_rows)
+        _write_artifact_readme(run_dir, run_config, rebuild_env_path)
     except Exception as exc:
         steps.append(
             step_result(
@@ -317,9 +333,18 @@ def run_verl_case_orchestration(
     )
 
     matrix_path: Path | None = None
-    log_path = _write_log(run_dir / "verl-case.log", run_config, remote_result, warnings)
+    remote_rows_dir: Path | None = None
+    log_path = _write_log(run_dir / f"{rid}-orchestration.log", run_config, remote_result, warnings)
     if remote_result is not None and remote_result.rows:
         matrix_path = _write_matrix(run_dir / "matrix-results.jsonl", remote_result.rows)
+        try:
+            remote_rows_dir = collect_tree(
+                spec,
+                f"{resolved_workdir}/autoresearch/runs/{rid}/rows",
+                run_dir / "rows",
+            )
+        except LogFetchError as exc:
+            warnings.append(f"formal row artifact fetch failed: {exc}")
     matrix_ok = bool(remote_result and remote_result.ok and matrix_path and matrix_path.exists())
     matrix_payload = {
         "ok": matrix_ok,
@@ -380,8 +405,14 @@ def run_verl_case_orchestration(
             "prometheus_url": prometheus_url,
             "prom_pushed": prom_pushed,
             "npu_count": npu_count,
+            "metrics_pushed": ["autoresearch_npu_count"] if prom_pushed else [],
+            "missing_resource_metrics": [
+                "autoresearch_npu_hbm_used_mib",
+                "autoresearch_npu_hbm_total_mib",
+                "autoresearch_npu_aicore_utilization_percent",
+            ],
             "row_count": len(remote_result.rows) if remote_result is not None else 0,
-            "note": "formal-case evidence; matrix details remain in matrix-results.jsonl",
+            "note": "当前 evidence 只保存 run 级别 NPU 数量；HBM 显存和 AI Core 利用率尚未接入采集。",
         },
     )
     manifest_path = _write_manifest(
@@ -399,6 +430,8 @@ def run_verl_case_orchestration(
         prom_pushed=prom_pushed,
         remote_result=remote_result,
         wandb_path=wandb_path,
+        remote_rows_dir=remote_rows_dir,
+        rebuild_env_path=rebuild_env_path,
     )
     collect_payload = {
         "ok": (
@@ -473,11 +506,19 @@ def run_verl_case_orchestration(
     )
 
 
-def _adapter_config(cfg: Any, *, cache_root: str | Path | None, workdir: str) -> Any:
+def _adapter_config(
+    cfg: Any,
+    *,
+    cache_root: str | Path | None,
+    artifact_root: str | Path | None = None,
+    workdir: str,
+) -> Any:
     payload = cfg.verl_case.model_dump(mode="json")
     payload["remote_workdir"] = workdir
     if cache_root is not None:
         payload["cache_root"] = str(cache_root)
+    if artifact_root is not None:
+        payload["artifact_root"] = str(artifact_root)
     return VerlCaseConfig.model_validate(payload)
 
 
@@ -850,15 +891,20 @@ def _write_manifest(
     prom_pushed: bool,
     remote_result: Any,
     wandb_path: Path | None,
+    remote_rows_dir: Path | None = None,
+    rebuild_env_path: Path | None = None,
 ) -> Path:
     formal_case = {
         "kind": "verl-case",
         "matrix_results": str(matrix_path) if matrix_path else None,
         "log_path": str(log_path),
+        "rows_dir": str(remote_rows_dir) if remote_rows_dir else str(run_dir / "rows"),
         "remote_matrix_path": remote_result.remote_matrix_path if remote_result is not None else None,
         "remote_log_path": remote_result.remote_log_path if remote_result is not None else None,
         "row_count": len(remote_result.rows) if remote_result is not None else 0,
         "ok": bool(remote_result and remote_result.ok and matrix_path and matrix_path.exists()),
+        "wandb_restore_script": str(wandb_path / "rebuild-wandb.sh") if wandb_path else None,
+        "rebuild_environment_script": str(rebuild_env_path) if rebuild_env_path else None,
     }
     manifest = RunManifest(
         run_id=run_id,
@@ -881,6 +927,74 @@ def _write_manifest(
         prom_metrics_file=prom_metrics,
     )
     return write_manifest(manifest, root=root)
+
+
+def _unique_run_id(root: Path, base: str) -> str:
+    """Return a readable run id that will not overwrite an existing data bundle."""
+    candidate = base
+    suffix = 2
+    while (Path(root).expanduser() / candidate).exists():
+        candidate = f"{base}-r{suffix}"
+        suffix += 1
+    return candidate
+
+
+def _write_rebuild_environment_script(run_dir: Path, provenance_rows: list[Any]) -> Path:
+    """Write a portable helper that checks out every recorded code commit."""
+    lines = [
+        "#!/usr/bin/env bash",
+        "set -euo pipefail",
+        'TARGET_ROOT="${1:-$PWD/rebuilt-code}"',
+        'mkdir -p "$TARGET_ROOT"',
+        "",
+    ]
+    for row in provenance_rows:
+        payload = row.model_dump(mode="json") if hasattr(row, "model_dump") else dict(row)
+        repo = str(payload.get("repo") or "repo")
+        commit = payload.get("commit_sha")
+        url = payload.get("fork_url") or payload.get("upstream_url")
+        if not commit or not url:
+            continue
+        safe_repo = _sanitize_name(repo)
+        lines.extend(
+            [
+                f'if [ ! -d "$TARGET_ROOT/{safe_repo}/.git" ]; then',
+                f"  git clone {json.dumps(str(url))} \"$TARGET_ROOT/{safe_repo}\"",
+                "fi",
+                f'git -C "$TARGET_ROOT/{safe_repo}" fetch --all --tags',
+                f'git -C "$TARGET_ROOT/{safe_repo}" checkout {json.dumps(str(commit))}',
+                "",
+            ]
+        )
+    path = run_dir / "rebuild-environment.sh"
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    path.chmod(0o755)
+    return path
+
+
+def _write_artifact_readme(run_dir: Path, run_config: Any, rebuild_env_path: Path) -> Path:
+    """Write the human entry point for a copied formal-case data bundle."""
+    mode = "验证矩阵" if getattr(run_config.config, "trainer_val_only", True) else "GRPO 训练矩阵"
+    text = f"""# AutoResearch Verl Case 数据包
+
+运行 ID: `{run_config.run_id}`
+模型: `{run_config.config.model_id}`
+数据集: `{run_config.config.dataset_id}`
+算法: `GRPO`
+模式: `{mode}`
+
+重要入口:
+
+- `manifest.json`: 交付件索引和来源真相
+- `{Path(rebuild_env_path).name}`: 按记录的 git commit 重建代码环境
+- `wandb/rebuild-wandb.sh`: 将原始 W&B offline runs 重新导入本地 W&B
+- `matrix-results.jsonl`: 严格序列长度矩阵结果
+- `rows/`: 每个矩阵行的 Verl 日志、验证输出和 result 文件
+- `report.html`: 本地渲染报告
+"""
+    path = run_dir / "README.md"
+    path.write_text(text, encoding="utf-8")
+    return path
 
 
 def _write_formal_wandb_summary(

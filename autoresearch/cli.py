@@ -483,6 +483,7 @@ def run_smoke_cmd(
 @click.option("--timeout", default=3600.0, type=float, help="formal case timeout 秒数。")
 @click.option("--run-id", default=None, help="指定 run id；默认自动生成。")
 @click.option("--cache-root", default=None, help="覆盖 verl_case.cache_root。")
+@click.option("--artifact-root", default=None, help="覆盖 verl_case.artifact_root 数据仓 runs 根目录。")
 @click.option(
     "--pushgateway-url",
     default="http://127.0.0.1:17891",
@@ -510,6 +511,7 @@ def run_verl_case_cmd(
     timeout: float,
     run_id: str | None,
     cache_root: str | None,
+    artifact_root: str | None,
     pushgateway_url: str,
     prometheus_url: str,
     local_proxy_url: str,
@@ -529,6 +531,7 @@ def run_verl_case_cmd(
             timeout=timeout,
             run_id=run_id,
             cache_root=cache_root,
+            artifact_root=artifact_root,
             pushgateway_url=pushgateway_url,
             prometheus_url=prometheus_url,
             local_proxy_url=local_proxy_url or None,

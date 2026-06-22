@@ -25,7 +25,7 @@ class _Response:
         return json.dumps(self.payload).encode("utf-8")
 
 
-def _manifest():
+def _manifest(prom_file: Path | None = None):
     return RunManifest(
         run_id="run123",
         started_at=datetime(2026, 6, 15, 12, 0, tzinfo=timezone.utc),
@@ -36,6 +36,7 @@ def _manifest():
         workdir_remote="/root",
         workdir_local=Path("/tmp/run123"),
         prom_pushed=True,
+        prom_metrics_file=prom_file,
     )
 
 
@@ -63,3 +64,26 @@ def test_load_prometheus_view_falls_back_to_warning(tmp_path):
 
     assert view.available is False
     assert "Prometheus 不可达" in (view.warning or "")
+
+
+def test_load_prometheus_view_includes_evidence_notes(tmp_path):
+    prom_file = tmp_path / "prom" / "formal-case-prometheus.json"
+    prom_file.parent.mkdir()
+    prom_file.write_text(
+        json.dumps(
+            {
+                "run_id": "run123",
+                "npu_count": 8,
+                "metrics_pushed": ["autoresearch_npu_count"],
+                "missing_resource_metrics": ["autoresearch_npu_hbm_used_mib"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    payload = {"status": "success", "data": {"result": []}}
+    with patch("autoresearch.report.prometheus.urlopen", return_value=_Response(payload)):
+        view = load_prometheus_view(_manifest(prom_file), base_dir=tmp_path)
+
+    assert view.evidence_path == prom_file
+    assert any("NPU 数量" in note for note in view.notes)
+    assert any("尚未采集资源指标" in note for note in view.notes)

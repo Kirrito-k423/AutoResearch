@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
@@ -16,6 +17,7 @@ class VerlCaseConfig(BaseModel):
     """Serializable formal-case defaults used by the Verl adapter."""
 
     cache_root: str = "/Users/Zhuanz/autoResearchData"
+    artifact_root: str = "/Users/Zhuanz/autoResearchData/runs"
     docker_image: str = "quay.io/ascend/verl:verl-8.5.2-910b-ubuntu22.04-py3.11-qwen3-5"
     model_id: str = "Qwen/Qwen3.5-2B"
     dataset_id: str = "hiyouga/geometry3k"
@@ -24,6 +26,7 @@ class VerlCaseConfig(BaseModel):
     output_tokens: list[int] = Field(default_factory=lambda: [2048, 4096, 8192, 16384])
     ignore_eos: bool = False
     inference_modes: list[InferenceMode] = Field(default_factory=lambda: ["sync", "async"])
+    wandb_project: str = "verl"
     github_owner: str = "Kirrito-k423"
     remote_workdir: str = "/home/t00906153"
     dependency_repo_paths: dict[str, str] = Field(default_factory=dict)
@@ -120,6 +123,56 @@ def snapshot_timestamp(value: datetime | None = None) -> str:
     """Format a second-level timestamp for immutable config filenames."""
     value = value or now_utc()
     return value.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%S")
+
+
+def build_readable_run_id(config: VerlCaseConfig, created_at: datetime | None = None) -> str:
+    """Build a human-readable artifact id for formal Verl experiment data."""
+    created_at = created_at or now_utc()
+    model = _model_slug(config.model_id)
+    algorithm = "GRPO"
+    sequence = f"{_token_slug(config.input_tokens)}to{_token_slug(max(config.output_tokens))}"
+    timestamp = created_at.astimezone().strftime("%y%m%dd-%H%M%Ss")
+    mode = "modes-" + "-".join(config.inference_modes)
+    val_mode = "valonly" if config.trainer_val_only else "train"
+    eos = "ignoreeos" if config.ignore_eos else "noignoreeos"
+    return _safe_slug(f"{model}-{algorithm}-{sequence}-{timestamp}-{val_mode}-{mode}-{eos}")
+
+
+def build_wandb_run_name(
+    config: VerlCaseConfig,
+    row: VerlCaseMatrixRow,
+    created_at: datetime | None = None,
+) -> str:
+    """Build the per-matrix-row W&B run name shown in the web UI."""
+    created_at = created_at or now_utc()
+    model = _model_slug(config.model_id)
+    algorithm = "GRPO"
+    sequence = f"{_token_slug(row.input_tokens)}to{_token_slug(row.output_tokens)}"
+    timestamp = created_at.astimezone().strftime("%y%m%dd-%H%M%Ss")
+    val_mode = "valonly" if config.trainer_val_only else "train"
+    eos = "ignoreeos" if row.ignore_eos else "noignoreeos"
+    return _safe_slug(
+        f"{model}-{algorithm}-{sequence}-{timestamp}-{val_mode}-{row.inference_mode}-{eos}"
+    )
+
+
+def _model_slug(model_id: str) -> str:
+    name = model_id.rsplit("/", 1)[-1]
+    name = name.replace("Qwen3.5", "Qwen35")
+    name = re.sub(r"[^A-Za-z0-9]+", "-", name)
+    return name.strip("-") or "model"
+
+
+def _token_slug(tokens: int) -> str:
+    if tokens % 1024 == 0:
+        return f"{tokens // 1024}K"
+    return str(tokens)
+
+
+def _safe_slug(value: str) -> str:
+    value = re.sub(r"[^A-Za-z0-9._-]+", "-", value)
+    value = re.sub(r"-{2,}", "-", value)
+    return value.strip("-")
 
 
 def write_immutable_config(run_config: VerlCaseRunConfig, run_dir: Path) -> Path:

@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import importlib
-from datetime import datetime, timezone
+import re
+from datetime import datetime, timedelta, timezone
 
 
 case_config = importlib.import_module("workspace-adapter.verl.case_config")
@@ -50,6 +51,44 @@ def test_immutable_config_snapshot_has_second_timestamp(tmp_path):
     assert '"run_id": "run123"' in text
     assert '"ignore_eos": false' in text
     assert "secret" not in text.lower()
+
+
+def test_readable_run_id_names_model_algorithm_lengths_and_time():
+    created_at = datetime(2026, 6, 22, 14, 50, 1, tzinfo=timezone.utc)
+    config = case_config.VerlCaseConfig(
+        input_tokens=1024,
+        output_tokens=[2048, 16384],
+        inference_modes=["sync", "async"],
+        trainer_val_only=True,
+        ignore_eos=False,
+    )
+
+    run_id = case_config.build_readable_run_id(config, created_at)
+
+    assert run_id.startswith("Qwen35-2B-GRPO-1Kto16K-")
+    assert re.search(r"-\d{6}d-\d{6}s-", run_id)
+    assert run_id.endswith("-valonly-modes-sync-async-noignoreeos")
+
+
+def test_wandb_run_name_names_single_matrix_row():
+    created_at = datetime(2026, 6, 22, 14, 50, 1, tzinfo=timezone(timedelta(hours=8)))
+    config = case_config.VerlCaseConfig(
+        input_tokens=1024,
+        output_tokens=[4096],
+        inference_modes=["async"],
+        trainer_val_only=True,
+        ignore_eos=False,
+    )
+    row = case_config.VerlCaseMatrixRow(
+        input_tokens=1024,
+        output_tokens=4096,
+        inference_mode="async",
+        ignore_eos=False,
+    )
+
+    run_name = case_config.build_wandb_run_name(config, row, created_at)
+
+    assert run_name == "Qwen35-2B-GRPO-1Kto4K-260622d-145001s-valonly-async-noignoreeos"
 
 
 def test_accuracy_answer_extraction_and_consistency():

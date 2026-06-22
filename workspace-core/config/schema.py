@@ -106,6 +106,11 @@ class VerlCaseConfig(BaseModel):
         min_length=1,
         description="Local cache root for <=5GB model, data, and image metadata.",
     )
+    artifact_root: str = Field(
+        default="/Users/Zhuanz/autoResearchData/runs",
+        min_length=1,
+        description="Local data-repository root for formal run artifacts.",
+    )
     docker_image: str = Field(
         default="quay.io/ascend/verl:verl-8.5.2-910b-ubuntu22.04-py3.11-qwen3-5",
         min_length=1,
@@ -120,6 +125,11 @@ class VerlCaseConfig(BaseModel):
     ignore_eos: bool = False
     inference_modes: list[Literal["sync", "async"]] = Field(
         default_factory=lambda: ["sync", "async"]
+    )
+    wandb_project: str = Field(
+        default="verl",
+        min_length=1,
+        description="W&B project for formal Verl case rows; use code-stack names such as 'verl'.",
     )
     github_owner: str = Field(default="Kirrito-k423", min_length=1)
     remote_workdir: str = Field(default="/home/t00906153", min_length=1)

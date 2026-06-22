@@ -10,6 +10,7 @@ def test_from_yaml_minimal():
     assert cfg.version == 1
     assert cfg.servers == []
     assert cfg.verl_case.cache_root == "/Users/Zhuanz/autoResearchData"
+    assert cfg.verl_case.artifact_root == "/Users/Zhuanz/autoResearchData/runs"
     assert cfg.verl_case.model_id == "Qwen/Qwen3.5-2B"
     assert cfg.verl_case.dataset_id == "hiyouga/geometry3k"
     assert cfg.verl_case.ignore_eos is False
@@ -43,6 +44,7 @@ def test_from_yaml_verl_case_override():
 version: 1
 verl_case:
   cache_root: /tmp/ar-cache
+  artifact_root: /tmp/ar-data-runs
   output_tokens: [2048]
   inference_modes: [sync]
   row_timeout_seconds: 60
@@ -51,6 +53,7 @@ verl_case:
 """
     cfg = from_yaml(yaml_text)
     assert cfg.verl_case.cache_root == "/tmp/ar-cache"
+    assert cfg.verl_case.artifact_root == "/tmp/ar-data-runs"
     assert cfg.verl_case.output_tokens == [2048]
     assert cfg.verl_case.inference_modes == ["sync"]
     assert cfg.verl_case.row_timeout_seconds == 60

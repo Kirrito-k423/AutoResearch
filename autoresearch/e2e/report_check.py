@@ -69,7 +69,7 @@ def check_report_completeness(
                 "warning": None if view.complete_matrix else "; ".join(view.warnings[:5]),
             }
             for artifact in view.artifacts:
-                key = "formal_" + artifact.name.replace(" ", "_")
+                key = "formal_artifact_" + (artifact.key or artifact.name.replace(" ", "_"))
                 checks[key] = {
                     "ok": artifact.ok,
                     "path": str(artifact.path) if artifact.path else None,
