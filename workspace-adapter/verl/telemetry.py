@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 
 SOURCE_NPU_SMI_WATCH = "npu-smi-watch"
+SOURCE_HOST_NPU_SMI_WATCH = "host-npu-smi-watch"
 
 
 class NpuTelemetrySample(BaseModel):
@@ -78,6 +79,7 @@ def parse_npu_smi_watch_output(
     run_id: str,
     case_id: str,
     server: str,
+    source: str = SOURCE_NPU_SMI_WATCH,
 ) -> list[NpuTelemetrySample]:
     """Parse known ``npu-smi info watch`` table shapes without raising."""
     samples: list[NpuTelemetrySample] = []
@@ -110,6 +112,7 @@ def parse_npu_smi_watch_output(
                 sample_index=sample_index,
                 observed_at=observed_at,
                 raw_line=stripped,
+                source=source,
             )
             pending_info_device_id = None
             if info_sample is not None:
@@ -129,6 +132,7 @@ def parse_npu_smi_watch_output(
             sample_index=sample_index,
             observed_at=observed_at,
             raw_line=stripped,
+            source=source,
         )
         if sample is not None:
             samples.append(sample)
@@ -225,6 +229,7 @@ def _sample_from_info_detail(
     sample_index: int,
     observed_at: str | None,
     raw_line: str,
+    source: str,
 ) -> NpuTelemetrySample | None:
     if len(cells) < 3 or not re.fullmatch(r"\d+", cells[0]):
         return None
@@ -237,6 +242,7 @@ def _sample_from_info_detail(
         server=server,
         device_id=device_id,
         sample_index=sample_index,
+        source=source,
         observed_at=observed_at,
         hbm_used_mib=values[-2],
         hbm_total_mib=values[-1],
@@ -255,6 +261,7 @@ def _sample_from_cells(
     sample_index: int,
     observed_at: str | None,
     raw_line: str,
+    source: str,
 ) -> NpuTelemetrySample | None:
     if not columns:
         return None
@@ -268,6 +275,7 @@ def _sample_from_cells(
         server=server,
         device_id=device_id,
         sample_index=sample_index,
+        source=source,
         observed_at=observed_at,
         hbm_used_mib=memory_used,
         hbm_total_mib=memory_total,

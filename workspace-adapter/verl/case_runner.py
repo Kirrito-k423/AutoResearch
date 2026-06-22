@@ -945,49 +945,118 @@ def _run_row_with_result_polling(
     pid_path = row_dir / "launcher.pid"
     stdout_path = row_dir / "launcher.stdout"
     stderr_path = row_dir / "launcher.stderr"
-    quoted = {path: shlex.quote(str(path)) for path in (row_dir, result_path, exit_path, pid_path, stdout_path, stderr_path)}
-    launch = (
+    host_telemetry_raw_path = row_dir / "host-npu-smi-watch.raw.log"
+    host_telemetry_pid_path = row_dir / "host-npu-smi-watch.pid"
+    quoted = {
+        path: shlex.quote(str(path))
+        for path in (
+            row_dir,
+            result_path,
+            exit_path,
+            pid_path,
+            stdout_path,
+            stderr_path,
+            host_telemetry_raw_path,
+            host_telemetry_pid_path,
+        )
+    }
+    prepare = (
         f"mkdir -p {quoted[row_dir]} && "
         f"rm -f {quoted[result_path]} {quoted[exit_path]} {quoted[pid_path]} "
-        f"{quoted[stdout_path]} {quoted[stderr_path]} && "
-        f"nohup /bin/bash -lc {shlex.quote(command)} "
+        f"{quoted[stdout_path]} {quoted[stderr_path]} "
+        f"{quoted[host_telemetry_raw_path]} {quoted[host_telemetry_pid_path]}"
+    )
+    prepare_code, prepare_stdout, prepare_stderr = runner(spec, prepare, min(timeout, 60.0))
+    if prepare_code != 0:
+        return prepare_code, prepare_stdout, prepare_stderr
+
+    host_telemetry_command = build_npu_smi_watch_command()
+    start_host_telemetry = (
+        f"nohup /bin/bash -lc {shlex.quote(host_telemetry_command)} "
+        f"> {quoted[host_telemetry_raw_path]} 2>&1 < /dev/null & "
+        f"pid=$!; echo $pid > {quoted[host_telemetry_pid_path]}; "
+        "echo AR_HOST_TELEMETRY_PID=$pid"
+    )
+    _telemetry_code, telemetry_stdout, telemetry_stderr = runner(
+        spec,
+        start_host_telemetry,
+        min(timeout, 30.0),
+    )
+    last_stdout = telemetry_stdout
+    last_stderr = telemetry_stderr
+
+    launcher_shell = f"{command}; ec=$?; echo $ec > {quoted[exit_path]}; exit $ec"
+    launch = (
+        f"nohup /bin/bash -lc {shlex.quote(launcher_shell)} "
         f"> {quoted[stdout_path]} 2> {quoted[stderr_path]} < /dev/null & "
         f"pid=$!; echo $pid > {quoted[pid_path]}; echo AR_ROW_PID=$pid"
     )
-    launch_code, launch_stdout, launch_stderr = runner(spec, launch, min(timeout, 60.0))
-    if launch_code != 0:
-        return launch_code, launch_stdout, launch_stderr
+    try:
+        launch_code, launch_stdout, launch_stderr = runner(spec, launch, min(timeout, 60.0))
+        if launch_code != 0:
+            return launch_code, launch_stdout, launch_stderr
 
-    deadline = time.monotonic() + timeout
-    last_stdout = launch_stdout
-    last_stderr = launch_stderr
-    while time.monotonic() < deadline:
-        code, stdout, stderr = runner(
-            spec,
-            f"test -f {quoted[result_path]} && cat {quoted[result_path]}",
-            min(timeout, 30.0),
-        )
-        if code == 0 and stdout.strip():
-            return 0, "VERL_CASE_RESULT=" + stdout.strip().splitlines()[-1], stderr
-        last_stdout, last_stderr = stdout or last_stdout, stderr or last_stderr
-
-        exit_code, exit_stdout, exit_stderr = runner(
-            spec,
-            f"test -f {quoted[exit_path]} && cat {quoted[exit_path]}",
-            min(timeout, 30.0),
-        )
-        if exit_code == 0 and exit_stdout.strip():
-            tail_cmd = (
-                f"tail -80 {quoted[stderr_path]} 2>/dev/null; "
-                f"tail -80 {quoted[stdout_path]} 2>/dev/null"
+        deadline = time.monotonic() + timeout
+        last_stdout = launch_stdout or last_stdout
+        last_stderr = launch_stderr or last_stderr
+        while time.monotonic() < deadline:
+            code, stdout, stderr = runner(
+                spec,
+                f"test -f {quoted[result_path]} && cat {quoted[result_path]}",
+                min(timeout, 30.0),
             )
-            _tail_code, tail_stdout, tail_stderr = runner(spec, tail_cmd, min(timeout, 30.0))
-            detail = tail_stderr or tail_stdout or exit_stderr or exit_stdout
-            return int(exit_stdout.strip().splitlines()[-1] or "1"), "", detail
+            if code == 0 and stdout.strip():
+                return 0, "VERL_CASE_RESULT=" + stdout.strip().splitlines()[-1], stderr
+            last_stdout, last_stderr = stdout or last_stdout, stderr or last_stderr
 
-        time.sleep(min(poll_interval, max(0.1, deadline - time.monotonic())))
+            exit_code, exit_stdout, exit_stderr = runner(
+                spec,
+                f"test -f {quoted[exit_path]} && cat {quoted[exit_path]}",
+                min(timeout, 30.0),
+            )
+            if exit_code == 0 and exit_stdout.strip():
+                tail_cmd = (
+                    f"tail -80 {quoted[stderr_path]} 2>/dev/null; "
+                    f"tail -80 {quoted[stdout_path]} 2>/dev/null"
+                )
+                _tail_code, tail_stdout, tail_stderr = runner(spec, tail_cmd, min(timeout, 30.0))
+                detail = tail_stderr or tail_stdout or exit_stderr or exit_stdout
+                return int(exit_stdout.strip().splitlines()[-1] or "1"), "", detail
 
-    return 124, last_stdout, last_stderr or f"row polling timeout after {timeout}s"
+            time.sleep(min(poll_interval, max(0.1, deadline - time.monotonic())))
+
+        return 124, last_stdout, last_stderr or f"row polling timeout after {timeout}s"
+    finally:
+        _stop_host_telemetry_sampler(
+            spec,
+            runner,
+            pid_path=host_telemetry_pid_path,
+            timeout=min(timeout, 30.0),
+        )
+
+
+def _stop_host_telemetry_sampler(
+    spec: ServerSpec,
+    runner: RemoteRunner,
+    *,
+    pid_path: Path,
+    timeout: float,
+) -> None:
+    quoted_pid_path = shlex.quote(str(pid_path))
+    command = (
+        f"if test -f {quoted_pid_path}; then "
+        f"pid=$(cat {quoted_pid_path} 2>/dev/null | tail -1); "
+        "if test -n \"$pid\"; then "
+        "kill \"$pid\" 2>/dev/null || true; "
+        "sleep 1; "
+        "kill -9 \"$pid\" 2>/dev/null || true; "
+        "fi; "
+        "fi"
+    )
+    try:
+        runner(spec, command, timeout)
+    except Exception:
+        return
 
 
 def _parse_result(stdout: str) -> dict[str, object] | None:

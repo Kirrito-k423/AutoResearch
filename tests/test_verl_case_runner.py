@@ -1371,7 +1371,11 @@ def test_run_verl_case_default_row_runner_polls_remote_result_file(monkeypatch):
             return 0, "", ""
         if command.startswith("docker ps --filter status=running"):
             return 1, "", ""
-        if command.startswith("mkdir -p ") and "AR_ROW_PID" in command:
+        if command.startswith("mkdir -p "):
+            return 0, "", ""
+        if "AR_HOST_TELEMETRY_PID" in command:
+            return 0, "AR_HOST_TELEMETRY_PID=456", ""
+        if "AR_ROW_PID" in command:
             return 0, "AR_ROW_PID=123", ""
         if command.startswith("test -f ") and command.endswith("result.json"):
             payload = {
@@ -1384,6 +1388,8 @@ def test_run_verl_case_default_row_runner_polls_remote_result_file(monkeypatch):
                 "consistency": 1.0,
             }
             return 0, json.dumps(payload), ""
+        if command.startswith("if test -f ") and "kill \"$pid\"" in command:
+            return 0, "", ""
         raise AssertionError(command)
 
     monkeypatch.setattr(case_runner, "run_in_env", fake_run_in_env)
@@ -1396,7 +1402,10 @@ def test_run_verl_case_default_row_runner_polls_remote_result_file(monkeypatch):
     )
 
     assert result.ok is True
-    assert any(command.startswith("mkdir -p ") and "nohup /bin/bash -lc" in command for command, *_rest in calls)
+    assert any("AR_HOST_TELEMETRY_PID" in command for command, *_rest in calls)
+    assert any("host-npu-smi-watch.raw.log" in command for command, *_rest in calls)
+    assert any("AR_ROW_PID" in command for command, *_rest in calls)
+    assert any("launcher.exit" in command and "echo $ec" in command for command, *_rest in calls)
     assert any(command.startswith("test -f ") and command.endswith("result.json") for command, *_rest in calls)
 
 

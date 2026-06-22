@@ -75,6 +75,21 @@ def test_parse_npu_smi_info_table_extracts_hbm_and_aicore():
     assert samples[0].ai_core_utilization_percent == 7
 
 
+def test_parse_watch_output_can_label_host_side_source():
+    samples = telemetry.parse_npu_smi_watch_output(
+        """
+| NPU | AI Core | HBM Usage(MB) | NPU Utilization |
+| 0   | 10      | 100 / 1000    | 20              |
+""",
+        run_id="run-a",
+        case_id="case-1",
+        server="A2-AK-225",
+        source=telemetry.SOURCE_HOST_NPU_SMI_WATCH,
+    )
+
+    assert samples[0].source == "host-npu-smi-watch"
+
+
 def test_summarize_telemetry_tracks_peak_values():
     samples = telemetry.parse_npu_smi_watch_output(
         """

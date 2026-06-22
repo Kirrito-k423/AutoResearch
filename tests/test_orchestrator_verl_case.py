@@ -373,6 +373,66 @@ def test_verl_case_orchestration_saves_telemetry_prometheus_evidence(tmp_path, m
     assert telemetry_calls[0][1][0]["source"] == "npu-smi-watch"
 
 
+def test_verl_case_orchestration_rebuilds_telemetry_from_host_raw_log(tmp_path, monkeypatch):
+    config = _config_file(tmp_path)
+    runs_root = tmp_path / "runs"
+    wandb_dir = runs_root / "run123" / "wandb"
+    telemetry_calls = []
+
+    def sync_all(_run_id, _spec, **_kwargs):
+        (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
+        return wandb_dir
+
+    def collect_with_host_raw(_spec, _remote_dir, local_dir, **_kwargs):
+        row_dir = Path(local_dir) / "train-1npu-bs1-mini1-micro1-1024-2048"
+        row_dir.mkdir(parents=True, exist_ok=True)
+        (row_dir / "host-npu-smi-watch.raw.log").write_text(
+            """
+2026-06-22 21:20:01
+| NPU   Name                | Health        | Power(W)    Temp(C)           Hugepages-Usage(page)|
+| Chip                      | Bus-Id        | AICore(%)   Memory-Usage(MB)  HBM-Usage(MB)        |
+| 0     910B2               | OK            | 108.8       39                0    / 0             |
+| 0                         | 0000:C1:00.0  | 7           0    / 0          49290/ 65536         |
+""",
+            encoding="utf-8",
+        )
+        return Path(local_dir)
+
+    def push_telemetry(_spec, run_id, samples, **kwargs):
+        telemetry_calls.append((run_id, list(samples), kwargs.get("exposition")))
+        return True
+
+    monkeypatch.setattr("autoresearch.orchestrator.verl_case.collect_tree", collect_with_host_raw)
+    with patch("autoresearch.orchestrator.verl_case._qualify_formal_case_host", return_value=(True, "ok")), \
+         patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
+         patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance), \
+         patch("autoresearch.orchestrator.verl_case.prepare_model_cache", return_value=_fake_model_cache(tmp_path)), \
+         patch("autoresearch.orchestrator.verl_case.stage_model_cache", return_value="/home/t00906153/autoresearch/runs/run123/model"), \
+         patch("autoresearch.orchestrator.verl_case.run_verl_case", side_effect=lambda _spec, run_config, **_kwargs: _remote_result(run_config)), \
+         patch("autoresearch.orchestrator.verl_case.sync_all_runs", side_effect=sync_all), \
+         patch("autoresearch.orchestrator.verl_case.push_metrics", return_value=True), \
+         patch("autoresearch.orchestrator.verl_case.push_telemetry_metrics", side_effect=push_telemetry), \
+         patch("autoresearch.orchestrator.verl_case.run_render", side_effect=_fake_report):
+        exit_code, payload = run_verl_case_orchestration(
+            server="A2-AK-225",
+            config=str(config),
+            run_id="run123",
+            runs_root=runs_root,
+        )
+
+    assert exit_code == 0
+    assert payload["ok"] is True
+    normalized = (
+        runs_root / "run123" / "rows" / "train-1npu-bs1-mini1-micro1-1024-2048" / "host-npu-telemetry.jsonl"
+    )
+    assert normalized.exists()
+    prom_evidence = json.loads((runs_root / "run123" / "prom" / "formal-case-prometheus.json").read_text(encoding="utf-8"))
+    assert prom_evidence["telemetry_samples"] == 1
+    assert prom_evidence["missing_resource_metrics"] == []
+    assert telemetry_calls[0][1][0]["source"] == "host-npu-smi-watch"
+    assert telemetry_calls[0][1][0]["hbm_used_mib"] == 49290
+
+
 def test_verl_case_defaults_to_configured_artifact_root_and_readable_run_id(tmp_path):
     artifact_root = tmp_path / "warehouse-runs"
     config = _config_file(tmp_path, artifact_root=artifact_root)

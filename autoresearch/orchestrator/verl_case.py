@@ -37,6 +37,7 @@ docker_mod = importlib.import_module("workspace-adapter.verl.docker")
 model_sync_mod = importlib.import_module("workspace-adapter.verl.model_sync")
 provenance_mod = importlib.import_module("workspace-adapter.verl.provenance")
 source_sync_mod = importlib.import_module("workspace-adapter.verl.source_sync")
+telemetry_mod = importlib.import_module("workspace-adapter.verl.telemetry")
 conda_utils_mod = importlib.import_module("workspace-adapter.common.conda_utils")
 
 VerlCaseConfig = case_config_mod.VerlCaseConfig
@@ -59,6 +60,9 @@ stage_model_cache = model_sync_mod.stage_model_cache
 capture_repo_provenance = provenance_mod.capture_repo_provenance
 run_in_env = conda_utils_mod.run_in_env
 filter_dependency_repo_paths = source_sync_mod.filter_dependency_repo_paths
+parse_npu_smi_watch_output = telemetry_mod.parse_npu_smi_watch_output
+SOURCE_HOST_NPU_SMI_WATCH = telemetry_mod.SOURCE_HOST_NPU_SMI_WATCH
+SOURCE_NPU_SMI_WATCH = telemetry_mod.SOURCE_NPU_SMI_WATCH
 
 
 DEFAULT_PUSHGATEWAY_URL = "http://127.0.0.1:17891"
@@ -355,7 +359,7 @@ def run_verl_case_orchestration(
             )
         except LogFetchError as exc:
             warnings.append(f"formal row artifact fetch failed: {exc}")
-    telemetry_rows = _read_telemetry_rows(run_dir / "rows")
+    telemetry_rows = _read_telemetry_rows(run_dir / "rows", run_id=rid, server=server_name)
     telemetry_exposition = build_telemetry_exposition(telemetry_rows)
     telemetry_exposition_path = None
     if telemetry_exposition.strip():
@@ -1010,24 +1014,63 @@ def _write_matrix(path: Path, rows: list[Any]) -> Path:
     return path
 
 
-def _read_telemetry_rows(rows_dir: Path) -> list[dict[str, Any]]:
+def _read_telemetry_rows(rows_dir: Path, *, run_id: str, server: str) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     if not rows_dir.exists():
         return rows
-    for path in sorted(rows_dir.glob("**/npu-telemetry.jsonl")):
+    row_dirs_with_jsonl = set()
+    for path in sorted(rows_dir.glob("**/*npu-telemetry.jsonl")):
+        loaded = _read_telemetry_jsonl(path)
+        if loaded:
+            rows.extend(loaded)
+            row_dirs_with_jsonl.add(path.parent)
+
+    for path in sorted(rows_dir.glob("**/*npu-smi-watch.raw.log")):
+        source = SOURCE_HOST_NPU_SMI_WATCH if path.name.startswith("host-") else SOURCE_NPU_SMI_WATCH
+        if source == SOURCE_NPU_SMI_WATCH and path.parent in row_dirs_with_jsonl:
+            continue
         try:
-            lines = path.read_text(encoding="utf-8").splitlines()
+            text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        for line in lines:
-            if not line.strip():
-                continue
-            try:
-                row = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if isinstance(row, dict):
-                rows.append(row)
+        parsed = parse_npu_smi_watch_output(
+            text,
+            run_id=run_id,
+            case_id=path.parent.name,
+            server=server,
+            source=source,
+        )
+        if not parsed:
+            continue
+        normalized_path = (
+            path.parent / "host-npu-telemetry.jsonl"
+            if source == SOURCE_HOST_NPU_SMI_WATCH
+            else path.parent / "npu-telemetry.from-raw.jsonl"
+        )
+        normalized_rows = [sample.model_dump(mode="json") for sample in parsed]
+        normalized_path.write_text(
+            "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in normalized_rows),
+            encoding="utf-8",
+        )
+        rows.extend(normalized_rows)
+    return rows
+
+
+def _read_telemetry_jsonl(path: Path) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return rows
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(row, dict):
+            rows.append(row)
     return rows
 
 
