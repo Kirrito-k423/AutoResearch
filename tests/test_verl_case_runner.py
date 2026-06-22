@@ -442,6 +442,7 @@ def test_source_sync_filters_local_vllm_for_veomni_profile():
         },
         server="A3-AX-180",
         model_id="Qwen/Qwen3.5-2B",
+        execution_profile="veomni",
     )
 
     assert filtered == {
@@ -461,7 +462,8 @@ def test_default_source_syncer_skips_local_vllm_for_veomni(monkeypatch):
                 "verl": "/tmp/verl",
                 "vllm": "/tmp/vllm",
                 "veomni": "/tmp/veomni",
-            }
+            },
+            execution_profile="veomni",
         ),
         matrix=case_config.build_length_matrix(case_config.VerlCaseConfig()),
     )
@@ -1537,8 +1539,27 @@ def test_row_command_uses_custom_exec_paths():
     assert "WANDB_DIR" in command
 
 
-def test_row_command_uses_veomni_profile_for_a3_qwen35():
+def test_row_command_defaults_to_fsdp2_profile_for_a3_qwen35():
     config = case_config.VerlCaseConfig()
+    run_config = case_config.VerlCaseRunConfig(
+        run_id="run123",
+        created_at=datetime(2026, 6, 16, 8, 0, tzinfo=timezone.utc),
+        server="A3-AX-180",
+        config=config,
+        matrix=case_config.build_length_matrix(config),
+    )
+
+    command = case_runner._row_command(run_config, "sync-1024-2048")
+
+    assert case_runner._execution_profile(run_config) == "fsdp2"
+    assert "actor_rollout_ref.actor.strategy=fsdp2" in command
+    assert "trainer.logger=[console,wandb]" in command
+    assert "row_timeout_seconds" in command
+    assert "VERL_CASE_RESULT=" in command
+
+
+def test_row_command_uses_explicit_veomni_profile_for_a3_qwen35():
+    config = case_config.VerlCaseConfig(execution_profile="veomni")
     run_config = case_config.VerlCaseRunConfig(
         run_id="run123",
         created_at=datetime(2026, 6, 16, 8, 0, tzinfo=timezone.utc),
@@ -1570,7 +1591,11 @@ def test_row_command_uses_veomni_profile_for_a3_qwen35():
 
 
 def test_row_command_uses_npu_init_device_for_single_gpu_veomni():
-    config = case_config.VerlCaseConfig(n_gpus_per_node=1, tensor_model_parallel_size=1)
+    config = case_config.VerlCaseConfig(
+        n_gpus_per_node=1,
+        tensor_model_parallel_size=1,
+        execution_profile="veomni",
+    )
     run_config = case_config.VerlCaseRunConfig(
         run_id="run123",
         created_at=datetime(2026, 6, 16, 8, 0, tzinfo=timezone.utc),

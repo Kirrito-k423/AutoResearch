@@ -139,6 +139,9 @@ verl_case:
   n_gpus_per_node: 8
   tensor_model_parallel_size: 2
   row_timeout_seconds: 7200
+  # fsdp2 is the portable default for the official Verl image. Use veomni only
+  # after the staged Verl repo/image confirms model_engine=veomni support.
+  execution_profile: fsdp2
   # Optional dependency checkouts for provenance / optional commit+push.
   # Missing paths become warnings, not hard failures.
   dependency_repo_paths:

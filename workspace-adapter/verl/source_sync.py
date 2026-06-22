@@ -45,8 +45,8 @@ def filter_dependency_repo_paths(
 ) -> dict[str, str]:
     """Return the dependency repos that should be mounted for this execution profile."""
     configured = dict(dependency_repo_paths or {})
-    profile = (execution_profile or "").strip().lower()
-    if not profile and server.startswith("A3-") and "Qwen3.5" in model_id:
+    profile = (execution_profile or "fsdp2").strip().lower()
+    if profile == "auto" and server.startswith("A3-") and "Qwen3.5" in model_id:
         profile = "veomni"
     if profile == "veomni":
         configured.pop("vllm", None)

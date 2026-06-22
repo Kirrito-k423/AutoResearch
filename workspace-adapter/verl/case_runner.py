@@ -1068,8 +1068,12 @@ def _parse_result(stdout: str) -> dict[str, object] | None:
 
 
 def _execution_profile(run_config: VerlCaseRunConfig) -> str:
-    profile = str((run_config.extra or {}).get("execution_profile") or "").strip().lower()
-    if profile:
+    profile = str(
+        (run_config.extra or {}).get("execution_profile")
+        or getattr(run_config.config, "execution_profile", "fsdp2")
+        or "fsdp2"
+    ).strip().lower()
+    if profile and profile != "auto":
         return profile
     if run_config.server.startswith("A3-") and "Qwen3.5" in run_config.config.model_id:
         return "veomni"

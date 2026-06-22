@@ -597,6 +597,7 @@ def test_capture_provenance_skips_local_vllm_for_veomni(tmp_path):
     veomni_repo.mkdir()
 
     config = case_config.VerlCaseConfig(
+        execution_profile="veomni",
         dependency_repo_paths={
             "verl": str(verl_repo),
             "vllm": str(vllm_repo),
