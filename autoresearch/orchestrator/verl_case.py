@@ -41,6 +41,7 @@ conda_utils_mod = importlib.import_module("workspace-adapter.common.conda_utils"
 
 VerlCaseConfig = case_config_mod.VerlCaseConfig
 VerlCaseRunConfig = case_config_mod.VerlCaseRunConfig
+VerlTrainingTuningRow = case_config_mod.VerlTrainingTuningRow
 build_length_matrix = case_config_mod.build_length_matrix
 build_training_tuning_matrix = case_config_mod.build_training_tuning_matrix
 build_readable_run_id = case_config_mod.build_readable_run_id
@@ -316,7 +317,7 @@ def run_verl_case_orchestration(
                 local_proxy_url=local_proxy_url,
                 remote_proxy_port=remote_proxy_port,
             )
-        remote_result = run_verl_case(
+        remote_result = _run_verl_case_sequence(
             spec,
             run_config,
             timeout=timeout,
@@ -576,6 +577,96 @@ def _build_case_matrix(adapter_config: Any) -> list[Any]:
     if _case_matrix_kind(adapter_config) == "training_tuning":
         return build_training_tuning_matrix(adapter_config)
     return build_length_matrix(adapter_config)
+
+
+def _run_verl_case_sequence(
+    spec: ServerSpec,
+    run_config: Any,
+    **kwargs: Any,
+) -> Any:
+    if _case_matrix_kind(run_config.config) != "training_tuning":
+        return run_verl_case(spec, run_config, **kwargs)
+
+    single_card_result = run_verl_case(spec, run_config, **kwargs)
+    promotion_rows = _build_single_node_promotion_rows(run_config.config, single_card_result.rows)
+    if not promotion_rows:
+        return _with_training_tuning_status(single_card_result)
+
+    promotion_config = run_config.model_copy(
+        update={
+            "matrix": promotion_rows,
+            "extra": {
+                **(run_config.extra or {}),
+                "case_matrix_kind": "training_tuning",
+                "training_tuning_stage": "single_node_promotion",
+            },
+        }
+    )
+    promotion_result = run_verl_case(spec, promotion_config, **kwargs)
+    combined_rows = [*single_card_result.rows, *promotion_result.rows]
+    combined_commands = [*single_card_result.commands, *promotion_result.commands]
+    ok = _training_tuning_has_pass(combined_rows)
+    return case_runner_mod.VerlCaseRunResult(
+        ok=ok,
+        run_id=run_config.run_id,
+        rows=combined_rows,
+        commands=combined_commands,
+        remote_matrix_path=promotion_result.remote_matrix_path or single_card_result.remote_matrix_path,
+        remote_log_path=promotion_result.remote_log_path or single_card_result.remote_log_path,
+        error=None if ok else "no training tuning case completed",
+    )
+
+
+def _with_training_tuning_status(result: Any) -> Any:
+    ok = _training_tuning_has_pass(result.rows)
+    return case_runner_mod.VerlCaseRunResult(
+        ok=ok,
+        run_id=result.run_id,
+        rows=result.rows,
+        commands=result.commands,
+        remote_matrix_path=result.remote_matrix_path,
+        remote_log_path=result.remote_log_path,
+        error=None if ok else "no training tuning case completed",
+    )
+
+
+def _training_tuning_has_pass(rows: list[Any]) -> bool:
+    return any(getattr(row, "status", None) == "passed" for row in rows)
+
+
+def _build_single_node_promotion_rows(adapter_config: Any, rows: list[Any]) -> list[Any]:
+    devices = [int(device) for device in getattr(adapter_config, "single_node_devices", [])]
+    single_card_devices = [int(device) for device in getattr(adapter_config, "single_card_devices", [])]
+    if len(devices) <= max(1, len(single_card_devices)):
+        return []
+    stable_rows = [
+        row for row in rows
+        if getattr(row, "status", None) == "passed" and getattr(row, "train_batch_size", None)
+    ]
+    if not stable_rows:
+        return []
+    best = max(stable_rows, key=lambda row: int(getattr(row, "train_batch_size", 0) or 0))
+    train_batch_size = max(int(best.train_batch_size) * len(devices), len(devices))
+    return [
+        VerlTrainingTuningRow(
+            case_id=(
+                f"train-{len(devices)}npu-bs{train_batch_size}"
+                f"-mini{int(best.ppo_mini_batch_size or 1)}"
+                f"-micro{int(best.ppo_micro_batch_size_per_gpu or 1)}"
+                f"-{int(best.input_tokens)}-{int(best.output_tokens)}"
+            ),
+            input_tokens=int(best.input_tokens),
+            output_tokens=int(best.output_tokens),
+            inference_mode=best.inference_mode,
+            ignore_eos=bool(best.ignore_eos),
+            device_count=len(devices),
+            visible_devices=devices,
+            train_batch_size=train_batch_size,
+            ppo_mini_batch_size=int(best.ppo_mini_batch_size or 1),
+            ppo_micro_batch_size_per_gpu=int(best.ppo_micro_batch_size_per_gpu or 1),
+            rollout_n=int(getattr(adapter_config, "rollout_n", 1) or 1),
+        )
+    ]
 
 
 def _resolve_spec(

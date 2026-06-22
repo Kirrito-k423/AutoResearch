@@ -114,6 +114,7 @@ class VerlCaseResultRow(BaseModel):
     """One observed result row from remote Verl execution."""
 
     run_id: str
+    case_id: str | None = None
     input_tokens: int
     output_tokens: int
     inference_mode: InferenceMode

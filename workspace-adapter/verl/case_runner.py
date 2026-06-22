@@ -273,7 +273,10 @@ def _row_command(
 
 
 def _matrix_row_result_metadata(matrix_row: object, target_training_steps: int) -> dict[str, object]:
-    metadata: dict[str, object] = {"target_training_steps": target_training_steps}
+    metadata: dict[str, object] = {
+        "case_id": getattr(matrix_row, "key", None),
+        "target_training_steps": target_training_steps,
+    }
     for name in (
         "device_count",
         "visible_devices",

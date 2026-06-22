@@ -73,6 +73,7 @@ def _rows(run_config, *, failed_key: str | None = None):
         rows.append(
             case_config.VerlCaseResultRow(
                 run_id=run_config.run_id,
+                case_id=matrix_row.key,
                 input_tokens=matrix_row.input_tokens,
                 output_tokens=matrix_row.output_tokens,
                 inference_mode=matrix_row.inference_mode,
@@ -82,6 +83,14 @@ def _rows(run_config, *, failed_key: str | None = None):
                 tokens_per_second=2.0,
                 latency_ms=500.0,
                 sample_count=2,
+                completed_training_steps=2 if failed else 3,
+                target_training_steps=run_config.config.training_steps,
+                device_count=getattr(matrix_row, "device_count", None),
+                visible_devices=getattr(matrix_row, "visible_devices", None),
+                train_batch_size=getattr(matrix_row, "train_batch_size", None),
+                ppo_mini_batch_size=getattr(matrix_row, "ppo_mini_batch_size", None),
+                ppo_micro_batch_size_per_gpu=getattr(matrix_row, "ppo_micro_batch_size_per_gpu", None),
+                failure_class="oom" if failed else None,
                 accuracy=0.5,
                 consistency=1.0,
                 error="oom" if failed else None,
@@ -187,22 +196,30 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path):
     runs_root = tmp_path / "runs"
     wandb_dir = runs_root / "run123" / "wandb"
     ensured = []
+    run_configs = []
 
     def sync_all(_run_id, _spec, **_kwargs):
         (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
         return wandb_dir
 
     def remote(spec, run_config, **kwargs):
+        run_configs.append(run_config)
         assert spec.name == "A2-AK-225"
         assert spec.workdir == "/home/t00906153"
         assert kwargs["proxy_url"] == "http://127.0.0.1:17892"
         assert kwargs["remote_output_path"] == "/home/t00906153/autoresearch/runs/run123"
         assert run_config.config.trainer_val_only is False
         assert run_config.extra["case_matrix_kind"] == "training_tuning"
-        assert run_config.matrix[0].case_id.startswith("train-1npu-bs1-")
-        assert run_config.matrix[0].device_count == 1
-        assert run_config.matrix[0].visible_devices == [0]
-        assert run_config.matrix[0].train_batch_size == 1
+        if len(run_configs) == 1:
+            assert run_config.matrix[0].case_id.startswith("train-1npu-bs1-")
+            assert run_config.matrix[0].device_count == 1
+            assert run_config.matrix[0].visible_devices == [0]
+            assert run_config.matrix[0].train_batch_size == 1
+        else:
+            assert run_config.extra["training_tuning_stage"] == "single_node_promotion"
+            assert run_config.matrix[0].case_id.startswith("train-8npu-bs")
+            assert run_config.matrix[0].device_count == 8
+            assert run_config.matrix[0].visible_devices == list(range(8))
         return _remote_result(run_config)
 
     with patch("autoresearch.orchestrator.verl_case._qualify_formal_case_host", return_value=(True, "ok")), \
@@ -234,7 +251,8 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path):
     assert Path(payload["report"]).exists()
     assert Path(runs_root / "run123" / "wandb" / "files" / "wandb-summary.json").exists()
     matrix_lines = Path(payload["matrix_results"]).read_text(encoding="utf-8").splitlines()
-    assert len(matrix_lines) == 4
+    assert len(matrix_lines) == 5
+    assert any("train-8npu-bs" in line for line in matrix_lines)
     manifest = json.loads(Path(payload["manifest"]).read_text(encoding="utf-8"))
     assert manifest["formal_case"]["matrix_results"] == payload["matrix_results"]
     assert manifest["config_snapshot"] == payload["config_snapshot"]
@@ -393,7 +411,14 @@ def test_verl_case_matrix_failure_sets_failed_step_matrix(tmp_path):
     wandb_dir = tmp_path / "runs" / "run123" / "wandb"
 
     def remote(_spec, run_config, **_kwargs):
-        return _remote_result(run_config, failed_key=run_config.matrix[-1].key)
+        result = _remote_result(run_config)
+        for row in result.rows:
+            row.status = "failed"
+            row.failure_class = "oom"
+            row.error = "oom"
+        result.ok = False
+        result.error = "no training tuning case completed"
+        return result
 
     def sync_all(_run_id, _spec, **_kwargs):
         (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
