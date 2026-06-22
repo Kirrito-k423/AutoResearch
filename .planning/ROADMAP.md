@@ -71,4 +71,4 @@ Plans:
 
 **Verification:** partial. See `.planning/phases/15-verl-npu-hbm-core-qwen3-5-grpo/15-UAT.md` and `15-VERIFICATION.md`.
 
-**Operational blocker:** no successful Qwen3.5-2B GRPO row has yet completed `completed_training_steps=3`. A2-AK-225 remains occupied by an existing `Qwen3.5-2B-GRPO-video` Ray/Verl workload; A3 hosts fail the exact image NPU smoke with `OnesLike ADD_TO_LAUNCHER_LIST_AICORE failed`.
+**Operational blocker:** no successful Qwen3.5-2B GRPO row has yet completed `completed_training_steps=3`. On the 2026-06-23 02:20-02:24 CST recheck, A2-AK-225 still had a `Qwen3.5-2B-GRPO-video` Ray/Verl `main_ppo` process and failed the exact target-image smoke with `rtGetDevMsg execution failed`; A3 hosts failed with `OnesLike ADD_TO_LAUNCHER_LIST_AICORE failed`; A2-AK-102 lacked the target image and was occupied by vLLM services.
