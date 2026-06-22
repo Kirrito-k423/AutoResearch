@@ -797,7 +797,10 @@ def _capture_provenance(
 ) -> tuple[list[Any], list[str]]:
     rows: list[Any] = []
     warnings: list[str] = []
-    branch_prefix = f"codex/verl-case-{run_id}-"
+    # Keep provenance on the caller's current branch by default. Earlier
+    # versions created one branch per experiment run, which made Git history
+    # hard to read and left many long-lived provenance branches behind.
+    branch_prefix = None
     rows.append(
         capture_repo_provenance(
             repo_root,

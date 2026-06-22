@@ -23,10 +23,17 @@
 1. 读取客户配置和数据仓根目录，确认 `cache_root`、`artifact_root`、`wandb_project` 可配置。
 2. 跑 1-6 readiness，选择满足 Docker/NPU/网络/训练栈要求的远程机器。
 3. 准备 Qwen3.5-2B 和 `hiyouga/geometry3k`，5GB 内允许本地缓存。
-4. 生成不可变 `config.lock.json` 和 `provenance.lock.json`，记录所有参与仓的 commit / branch / GitHub 链接。
+4. 生成不可变 `config.lock.json` 和 `provenance.lock.json`，记录所有参与仓的 commit / branch / GitHub 链接；默认使用当前分支，不按 run 自动创建新分支。
 5. 运行 1K prompt 到 2K/4K/8K/16K response，sync/async 成对矩阵，`ignore_eos=false`。
 6. 采集 `matrix-results.jsonl`、`rows/`、`logs/`、`wandb/`、`prom/`、`reports/`、`restore/`。
 7. 报告必须说明 `trainer_val_only`：`true` 是验证矩阵，`false` 才进入真实 GRPO 训练。
+
+## Git 管理约定
+
+- 默认直接使用调用者当前分支，例如 `master`；不要为每次实验自动生成 `codex/verl-case-*` 分支。
+- `--allow-git-push` 只负责把当前分支的 dirty state commit/push 并记录 commit SHA。
+- 只有需要长期并行开发或 PR 隔离时，才由人显式创建新分支。
+- 历史 `codex/verl-case-*` 分支不要自动删除，因为旧 `provenance.lock.json` 和报告中的 GitHub 链接可能还指向它们。
 
 ## TOP3 排错经验
 

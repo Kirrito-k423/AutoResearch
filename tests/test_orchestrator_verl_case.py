@@ -373,6 +373,7 @@ def test_verl_case_missing_dependency_repo_is_warning_not_failure(tmp_path):
     assert exit_code == 0
     assert any("dependency repo path missing: verl" in item for item in payload["warnings"])
     assert capture.call_args_list[0].kwargs["allow_commit_push"] is True
+    assert capture.call_args_list[0].kwargs["branch_prefix"] is None
 
 
 def test_capture_provenance_skips_local_vllm_for_veomni(tmp_path):
