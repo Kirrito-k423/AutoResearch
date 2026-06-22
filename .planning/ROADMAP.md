@@ -54,12 +54,17 @@ No active milestone is defined. Start the next milestone with `$gsd-new-mileston
 
 **Goal:** 让 Verl 正式 case 从可跑通升级为可观测、可复盘的真实 GRPO 实验：运行期间采集 NPU HBM/Core 曲线，并从 Qwen3.5 GRPO 真实脚本中沉淀各阶段耗时、吞吐和精度指标。
 **Requirements**:
+
 - Prometheus 接入运行时 NPU HBM/Core 采样指标，报告能按 run 展示显存占用和 core 利用率曲线。
 - `autoresearch run verl-case` 使用 Qwen3.5-2B GRPO 真实脚本路径，不以 demo 或 validation-only 替代正式训练/推理流程。
 - 数据仓保存 Verl 推理、logp、update 等阶段耗时，总吞吐、精度指标、W&B 原始数据和不可变配置快照，能通过 run 命名和 git provenance 对应到具体代码版本。
+
 **Depends on:** Phase 14
-**Plans:** 0 plans
+**Plans:** 0/4 plans executed
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 15 to break down)
+- [ ] 15-01 Runtime NPU HBM/Core Telemetry And Prometheus Evidence
+- [ ] 15-02 Real Qwen3.5-2B GRPO Training Tuning Matrix
+- [ ] 15-03 Verl Stage Timing Extraction From W&B And Raw Logs
+- [ ] 15-04 Numbered Data Repository Bundle And Rebuildable Visualizations

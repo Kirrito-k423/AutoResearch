@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.1
-milestone_name: Formal Verl
-status: v1.1 archived; Phase 15 follow-up context gathered
-stopped_at: Phase 15 context gathered
-last_updated: "2026-06-22T11:55:27.569Z"
+milestone_name: v1.1 Formal Verl follow-up
+status: Phase 15 planned
+stopped_at: Phase 15 plan complete
+last_updated: "2026-06-22T12:05:00.000Z"
 last_activity: 2026-06-22
 progress:
   total_phases: 2
   completed_phases: 1
-  total_plans: 5
+  total_plans: 9
   completed_plans: 5
-  percent: 50
+  percent: 56
 ---
 
 # State: AutoResearch v1.1
@@ -22,22 +22,22 @@ See: .planning/PROJECT.md (updated 2026-06-18 after v1.1 milestone)
 
 **Core value:** "常实践，详记录，知得失，会设计，有整理"——每个 skill 跑一次都留下可被复盘、可被二次开发的产物。
 
-**Current focus:** v1.1 is archived. Phase 15 is a follow-up hardening phase with context captured; next route is `$gsd-plan-phase 15`.
+**Current focus:** v1.1 is archived. Phase 15 is a follow-up hardening phase with plans written; next route is `$gsd-execute-phase 15`.
 
 ## Position
 
 - **Milestone:** v1.1 Formal Verl shipped
-- **Phase:** context gathered — Phase 15 NPU HBM/Core telemetry and real GRPO timing
-- **Plan:** pending — next run `$gsd-plan-phase 15`
+- **Phase:** planned — Phase 15 NPU HBM/Core telemetry and real GRPO timing
+- **Plan:** complete — 4 plans written; next run `$gsd-execute-phase 15`
 - **Last activity:** 2026-06-22
 
 ## Session Continuity
 
-**Resume file:** .planning/phases/15-verl-npu-hbm-core-qwen3-5-grpo/15-CONTEXT.md
+**Resume file:** .planning/phases/15-verl-npu-hbm-core-qwen3-5-grpo/15-01-PLAN.md
 
-- **Last session:** 2026-06-22T11:55:27.566Z
-- **Stopped At:** Phase 15 context gathered
-- **Resume File:** .planning/phases/15-verl-npu-hbm-core-qwen3-5-grpo/15-CONTEXT.md
+- **Last session:** 2026-06-22T12:05:00.000Z
+- **Stopped At:** Phase 15 plan complete
+- **Resume File:** .planning/phases/15-verl-npu-hbm-core-qwen3-5-grpo/15-01-PLAN.md
 
 ### Decisions Made This Session (2026-06-15)
 
