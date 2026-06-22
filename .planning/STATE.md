@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: v1.1 Formal Verl follow-up
 status: executing
-stopped_at: Phase 15 implementation complete; real 3-step GRPO UAT blocked by occupied A2 NPUs
-last_updated: "2026-06-22T14:22:30Z"
+stopped_at: Phase 15 implementation complete; 2026-06-22 22:26 real 3-step GRPO UAT blocked by existing Verl/Ray/VLLM workload on A2
+last_updated: "2026-06-22T14:34:30Z"
 last_activity: 2026-06-22
 progress:
   total_phases: 1
@@ -35,8 +35,8 @@ See: .planning/PROJECT.md (updated 2026-06-18 after v1.1 milestone)
 
 **Resume file:** .planning/phases/15-verl-npu-hbm-core-qwen3-5-grpo/15-02-SUMMARY.md
 
-- **Last session:** 2026-06-22T14:22:30Z
-- **Stopped At:** Implementation complete; real 3-step GRPO UAT blocked by occupied A2 NPUs
+- **Last session:** 2026-06-22T14:34:30Z
+- **Stopped At:** Implementation complete; real 3-step GRPO UAT attempt failed at prepare because an existing Verl/Ray/VLLM workload occupied A2 NPUs
 - **Resume File:** .planning/phases/15-verl-npu-hbm-core-qwen3-5-grpo/15-02-SUMMARY.md
 
 ### Decisions Made This Session (2026-06-15)

@@ -6,7 +6,7 @@ tags: [verl, grpo, qwen35, geometry3k, tuning, three-steps]
 status: implementation-complete-uat-blocked
 completed: 2026-06-22
 blocking_uat:
-  reason: A2-AK-225 NPU devices were occupied by existing python/ray workers, so a successful real 3-step formal training case could not be honestly produced in this pass.
+  reason: A2-AK-225 NPU devices were occupied by existing Verl/Ray/VLLM workers, so a successful real 3-step formal training case could not be honestly produced in this pass.
   required_next_action: rerun autoresearch run verl-case on a free A2 host and require at least one single-card case with completed_training_steps=3.
 provides:
   - True GRPO training config defaults with trainer_val_only=false and training_steps=3
@@ -29,6 +29,8 @@ commits:
   - 676ff93 fix(15-02): let skip readiness bypass host smoke
   - ea35488 fix(15-02): classify resource busy and use npu-smi fallback
   - 63e6e15 fix(15-02): sample hbm telemetry with npu-smi info
+data_commits:
+  - e574359 data: add verl qualification failure 20260622
 ---
 
 # Phase 15 Plan 02 Summary: Real GRPO Training Tuning Matrix
@@ -61,3 +63,25 @@ Result: `467 passed, 6 warnings`.
 
 The real remote training UAT is still pending because A2-AK-225 was resource-busy during the execution window. This is not counted as a successful training result. The next valid UAT must produce a bundle where at least one single-card case has `completed_training_steps=3` and `target_training_steps=3`.
 
+### Attempt on 2026-06-22 22:26:19 Asia/Shanghai
+
+Command:
+
+```bash
+uv run autoresearch run verl-case --server A2-AK-225 --config config/config.yaml --timeout 7200
+```
+
+Result: failed at `prepare` before matrix execution. The exact Verl container smoke could not acquire NPU devices. Follow-up probes showed the container saw `torch_npu.device_count=0` and `npu-smi` returned `dcmi model initialized failed, because the device is used. ret is -8020`.
+
+Blocking workload observed on A2-AK-225:
+
+- `python3 -m verl.trainer.main_ppo ... Qwen3-VL-8B-Instruct ... trainer.total_training_steps=3`, PID `243179`, started around 2026-06-22 22:25 Asia/Shanghai.
+- `VLLMWorker_TP` workers on all 8 NPUs, about 25.5GB per NPU.
+- `rayWorkerDict` workers on all 8 NPUs.
+
+Evidence bundle:
+
+- `/Users/Zhuanz/autoResearchData/autoresearch-log/experiments/verl/Qwen35-2B/GRPO/20260622/Qwen35-2B-GRPO-1Kto16K-260622d-222619s-train-modes-sync-async-noignoreeos/RUN.md`
+- `/Users/Zhuanz/autoResearchData/autoresearch-log/experiments/verl/Qwen35-2B/GRPO/20260622/Qwen35-2B-GRPO-1Kto16K-260622d-222619s-train-modes-sync-async-noignoreeos/3-raw-logs/qualification-failure.json`
+
+Data repo commit: `e574359`.
