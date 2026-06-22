@@ -98,6 +98,9 @@ class VerlCaseResultRow(BaseModel):
     consistency: float | None = None
     error: str | None = None
     log_path: str | None = None
+    telemetry_raw_path: str | None = None
+    telemetry_jsonl_path: str | None = None
+    telemetry_summary: dict[str, Any] | None = None
 
 
 def build_length_matrix(config: VerlCaseConfig) -> list[VerlCaseMatrixRow]:

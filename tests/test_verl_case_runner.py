@@ -1051,6 +1051,41 @@ def test_run_verl_case_fails_if_one_matrix_row_fails():
     assert any(row.status == "failed" and row.output_tokens == 16384 for row in result.rows)
 
 
+def test_run_verl_case_retains_telemetry_paths_on_failed_row():
+    run_config = _run_config()
+
+    def runner(spec, command, timeout):
+        if command.startswith("docker image inspect"):
+            return 0, "", ""
+        payload = {
+            "status": "failed",
+            "elapsed_seconds": 1.0,
+            "sample_count": 0,
+            "telemetry_raw_path": "/app/output/rows/sync-1024-2048/npu-smi-watch.raw.log",
+            "telemetry_jsonl_path": "/app/output/rows/sync-1024-2048/npu-telemetry.jsonl",
+            "telemetry_summary": {
+                "sample_count": 1,
+                "device_count": 1,
+                "source": "npu-smi-watch",
+            },
+            "error": "verl exit=1; samples=0",
+        }
+        return 0, "VERL_CASE_RESULT=" + json.dumps(payload), ""
+
+    result = case_runner.run_verl_case(
+        ServerSpec(name="A2-AK-225", host="h", user="root"),
+        run_config,
+        timeout=1.0,
+        runner=runner,
+    )
+
+    row = result.rows[0]
+    assert row.status == "failed"
+    assert row.telemetry_raw_path.endswith("npu-smi-watch.raw.log")
+    assert row.telemetry_jsonl_path.endswith("npu-telemetry.jsonl")
+    assert row.telemetry_summary["source"] == "npu-smi-watch"
+
+
 def test_run_verl_case_passes_all_rows_and_script_contains_ignore_eos_false():
     run_config = _run_config()
 
@@ -1363,6 +1398,11 @@ def test_row_command_builds_formal_verl_script():
     assert "rollout_max_num_batched_tokens = rollout_max_model_len" in async_command
     assert "result_path = row_dir" in command
     assert "result.json" in command
+    assert "npu-smi info watch -d 1 -s amn" in command
+    assert "npu-smi-watch.raw.log" in command
+    assert "npu-telemetry.jsonl" in command
+    assert "telemetry_summary" in command
+    assert command.index("_start_telemetry_sampler") < command.index("proc = _run(cmd")
     assert async_command.index("is_async =") < async_command.index(
         "rollout_max_model_len = max_tokens if is_async else max(max_tokens, 24576)"
     )
