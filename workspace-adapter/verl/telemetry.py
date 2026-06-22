@@ -59,13 +59,16 @@ def build_npu_smi_watch_command(
     selector = metric_selector.strip()
     if not selector or not re.fullmatch(r"[A-Za-z]+", selector):
         raise ValueError("npu-smi watch metric selector must contain only letters")
+    _ = shlex.quote(selector)
     return (
         "NPU_SMI_BIN=$(command -v npu-smi"
+        " || { test -x /usr/local/sbin/npu-smi && echo /usr/local/sbin/npu-smi; }"
         " || { test -x /usr/local/Ascend/driver/tools/npu-smi"
         " && echo /usr/local/Ascend/driver/tools/npu-smi; }"
         " || { test -x /usr/local/Ascend/ascend-toolkit/latest/tools/npu-smi"
         " && echo /usr/local/Ascend/ascend-toolkit/latest/tools/npu-smi; }); "
-        f'test -n "$NPU_SMI_BIN" && "$NPU_SMI_BIN" info watch -d {interval} -s {shlex.quote(selector)}'
+        'test -n "$NPU_SMI_BIN" || exit 127; '
+        f'while true; do date "+%Y-%m-%d %H:%M:%S"; "$NPU_SMI_BIN" info; sleep {interval}; done'
     )
 
 
@@ -81,6 +84,7 @@ def parse_npu_smi_watch_output(
     columns: dict[str, int] = {}
     sample_index = 0
     observed_at: str | None = None
+    pending_info_device_id: int | None = None
 
     for line in text.splitlines():
         stripped = line.strip()
@@ -92,6 +96,26 @@ def parse_npu_smi_watch_output(
         cells = _cells(stripped)
         if not cells:
             continue
+        info_device_id = _info_device_id(cells)
+        if info_device_id is not None:
+            pending_info_device_id = info_device_id
+            continue
+        if pending_info_device_id is not None:
+            info_sample = _sample_from_info_detail(
+                cells,
+                run_id=run_id,
+                case_id=case_id,
+                server=server,
+                device_id=pending_info_device_id,
+                sample_index=sample_index,
+                observed_at=observed_at,
+                raw_line=stripped,
+            )
+            pending_info_device_id = None
+            if info_sample is not None:
+                samples.append(info_sample)
+                sample_index += 1
+                continue
         maybe_columns = _column_map(cells)
         if maybe_columns:
             columns = maybe_columns
@@ -178,6 +202,47 @@ def _column_map(cells: list[str]) -> dict[str, int]:
     if "device_id" not in columns:
         return {}
     return columns
+
+
+def _info_device_id(cells: list[str]) -> int | None:
+    if len(cells) < 3:
+        return None
+    if not re.fullmatch(r"\d+\s+\S+", cells[0]):
+        return None
+    if not re.search(r"\bOK\b|FAIL|WARN", cells[1], flags=re.IGNORECASE):
+        return None
+    match = re.match(r"(\d+)", cells[0])
+    return int(match.group(1)) if match else None
+
+
+def _sample_from_info_detail(
+    cells: list[str],
+    *,
+    run_id: str,
+    case_id: str,
+    server: str,
+    device_id: int,
+    sample_index: int,
+    observed_at: str | None,
+    raw_line: str,
+) -> NpuTelemetrySample | None:
+    if len(cells) < 3 or not re.fullmatch(r"\d+", cells[0]):
+        return None
+    values = [float(item) for item in re.findall(r"\d+(?:\.\d+)?", cells[2])]
+    if len(values) < 5:
+        return None
+    return NpuTelemetrySample(
+        run_id=run_id,
+        case_id=case_id,
+        server=server,
+        device_id=device_id,
+        sample_index=sample_index,
+        observed_at=observed_at,
+        hbm_used_mib=values[-2],
+        hbm_total_mib=values[-1],
+        ai_core_utilization_percent=values[0],
+        raw_line=raw_line,
+    )
 
 
 def _sample_from_cells(

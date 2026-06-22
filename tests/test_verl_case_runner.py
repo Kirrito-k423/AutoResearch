@@ -71,6 +71,7 @@ def test_docker_run_command_contains_ascend_mounts_and_proxy():
     assert "--device=/dev/hisi_hdc" in command
     assert "--network=host" in command
     assert "--shm-size=64G" in command
+    assert "/usr/local/sbin:/usr/local/sbin:ro" in command
     assert "http_proxy=http://127.0.0.1:7890" in command
     assert "https_proxy=http://127.0.0.1:7890" in command
     assert "HTTP_PROXY=http://127.0.0.1:7890" in command
@@ -1466,7 +1467,8 @@ def test_row_command_builds_formal_verl_script():
     assert "result_path = row_dir" in command
     assert "result.json" in command
     assert "NPU_SMI_BIN=$(command -v npu-smi" in command
-    assert "/usr/local/Ascend/driver/tools/npu-smi" in command
+    assert "/usr/local/sbin/npu-smi" in command
+    assert '"$NPU_SMI_BIN" info' in command
     assert "npu-smi-watch.raw.log" in command
     assert "npu-telemetry.jsonl" in command
     assert "telemetry_summary" in command
@@ -1494,7 +1496,10 @@ def test_row_command_builds_real_training_three_step_script():
     assert "completed_training_steps" in command
     assert "__AR_COMMAND__=" in command
     assert "total_training_steps" in command
+    assert "total training steps" in command
     assert "resource_busy" in command
+    assert "_telemetry_info_device_id" in command
+    assert "_telemetry_info_sample" in command
     assert "incomplete_training_steps" in command
     assert "{int(row['device_count'])}npu" in command
     assert "bs{int(row['train_batch_size'])}" in command

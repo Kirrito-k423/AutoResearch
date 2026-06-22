@@ -12,6 +12,7 @@ ASCEND_CONTROL_DEVICES = (
 )
 
 ASCEND_DRIVER_MOUNTS = (
+    ("/usr/local/sbin", "/usr/local/sbin"),
     ("/usr/local/Ascend/driver/lib64", "/usr/local/Ascend/driver/lib64"),
     ("/usr/local/Ascend/driver/tools", "/usr/local/Ascend/driver/tools"),
     ("/usr/local/Ascend/add-ons", "/usr/local/Ascend/add-ons"),

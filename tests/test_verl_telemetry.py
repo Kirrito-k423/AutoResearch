@@ -13,8 +13,9 @@ def test_npu_smi_watch_command_uses_native_one_second_sampling():
     command = telemetry.build_npu_smi_watch_command()
 
     assert "command -v npu-smi" in command
-    assert "/usr/local/Ascend/driver/tools/npu-smi" in command
-    assert '"$NPU_SMI_BIN" info watch -d 1 -s amn' in command
+    assert "/usr/local/sbin/npu-smi" in command
+    assert '"$NPU_SMI_BIN" info' in command
+    assert "sleep 1" in command
 
 
 def test_npu_smi_watch_command_rejects_half_second_sampling():
@@ -49,6 +50,29 @@ def test_parse_watch_table_preserves_correlation_labels():
     assert first.hbm_total_mib == 65536
     assert first.ai_core_utilization_percent == 71
     assert first.npu_utilization_percent == 44
+
+
+def test_parse_npu_smi_info_table_extracts_hbm_and_aicore():
+    text = """
+2026-06-22 21:20:01
+| NPU   Name                | Health        | Power(W)    Temp(C)           Hugepages-Usage(page)|
+| Chip                      | Bus-Id        | AICore(%)   Memory-Usage(MB)  HBM-Usage(MB)        |
+| 0     910B2               | OK            | 108.8       39                0    / 0             |
+| 0                         | 0000:C1:00.0  | 7           0    / 0          49290/ 65536         |
+"""
+
+    samples = telemetry.parse_npu_smi_watch_output(
+        text,
+        run_id="run-a",
+        case_id="case-1",
+        server="A2-AK-225",
+    )
+
+    assert len(samples) == 1
+    assert samples[0].device_id == 0
+    assert samples[0].hbm_used_mib == 49290
+    assert samples[0].hbm_total_mib == 65536
+    assert samples[0].ai_core_utilization_percent == 7
 
 
 def test_summarize_telemetry_tracks_peak_values():
