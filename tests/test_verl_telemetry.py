@@ -12,7 +12,9 @@ telemetry = importlib.import_module("workspace-adapter.verl.telemetry")
 def test_npu_smi_watch_command_uses_native_one_second_sampling():
     command = telemetry.build_npu_smi_watch_command()
 
-    assert command == "npu-smi info watch -d 1 -s amn"
+    assert "command -v npu-smi" in command
+    assert "/usr/local/Ascend/driver/tools/npu-smi" in command
+    assert '"$NPU_SMI_BIN" info watch -d 1 -s amn' in command
 
 
 def test_npu_smi_watch_command_rejects_half_second_sampling():

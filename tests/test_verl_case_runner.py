@@ -1465,7 +1465,8 @@ def test_row_command_builds_formal_verl_script():
     assert "rollout_max_num_batched_tokens = rollout_max_model_len" in async_command
     assert "result_path = row_dir" in command
     assert "result.json" in command
-    assert "npu-smi info watch -d 1 -s amn" in command
+    assert "NPU_SMI_BIN=$(command -v npu-smi" in command
+    assert "/usr/local/Ascend/driver/tools/npu-smi" in command
     assert "npu-smi-watch.raw.log" in command
     assert "npu-telemetry.jsonl" in command
     assert "telemetry_summary" in command
@@ -1491,6 +1492,9 @@ def test_row_command_builds_real_training_three_step_script():
     assert "actor_rollout_ref.actor.ppo_mini_batch_size={ppo_mini_batch_size}" in command
     assert "actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu={ppo_micro_batch_size_per_gpu}" in command
     assert "completed_training_steps" in command
+    assert "__AR_COMMAND__=" in command
+    assert "total_training_steps" in command
+    assert "resource_busy" in command
     assert "incomplete_training_steps" in command
     assert "{int(row['device_count'])}npu" in command
     assert "bs{int(row['train_batch_size'])}" in command

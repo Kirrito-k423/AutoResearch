@@ -59,7 +59,14 @@ def build_npu_smi_watch_command(
     selector = metric_selector.strip()
     if not selector or not re.fullmatch(r"[A-Za-z]+", selector):
         raise ValueError("npu-smi watch metric selector must contain only letters")
-    return f"npu-smi info watch -d {interval} -s {shlex.quote(selector)}"
+    return (
+        "NPU_SMI_BIN=$(command -v npu-smi"
+        " || { test -x /usr/local/Ascend/driver/tools/npu-smi"
+        " && echo /usr/local/Ascend/driver/tools/npu-smi; }"
+        " || { test -x /usr/local/Ascend/ascend-toolkit/latest/tools/npu-smi"
+        " && echo /usr/local/Ascend/ascend-toolkit/latest/tools/npu-smi; }); "
+        f'test -n "$NPU_SMI_BIN" && "$NPU_SMI_BIN" info watch -d {interval} -s {shlex.quote(selector)}'
+    )
 
 
 def parse_npu_smi_watch_output(
