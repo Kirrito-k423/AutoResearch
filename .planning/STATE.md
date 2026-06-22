@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: v1.1 Formal Verl follow-up
 status: executing
-stopped_at: Completed 15-01-PLAN.md
-last_updated: "2026-06-22T12:25:14.850Z"
+stopped_at: Phase 15 implementation complete; real 3-step GRPO UAT blocked by occupied A2 NPUs
+last_updated: "2026-06-22T14:22:30Z"
 last_activity: 2026-06-22
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
-  percent: 25
+  completed_plans: 4
+  percent: 100
 ---
 
 # State: AutoResearch v1.1
@@ -27,17 +27,17 @@ See: .planning/PROJECT.md (updated 2026-06-18 after v1.1 milestone)
 ## Position
 
 - **Milestone:** v1.1 Formal Verl shipped
-- **Phase:** executing — Phase 15 NPU HBM/Core telemetry and real GRPO timing
-- **Plan:** 1/4 complete — next run `$gsd-execute-phase 15` continues with `15-02`
+- **Phase:** executing — Phase 15 implementation complete, real GRPO UAT pending a free A2 host
+- **Plan:** 4/4 implementation plans summarized — next run should execute the real 3-step `autoresearch run verl-case` UAT when NPU resources are free
 - **Last activity:** 2026-06-22
 
 ## Session Continuity
 
-**Resume file:** .planning/phases/15-verl-npu-hbm-core-qwen3-5-grpo/15-02-PLAN.md
+**Resume file:** .planning/phases/15-verl-npu-hbm-core-qwen3-5-grpo/15-02-SUMMARY.md
 
-- **Last session:** 2026-06-22T12:25:14.847Z
-- **Stopped At:** Completed 15-01-PLAN.md
-- **Resume File:** .planning/phases/15-verl-npu-hbm-core-qwen3-5-grpo/15-02-PLAN.md
+- **Last session:** 2026-06-22T14:22:30Z
+- **Stopped At:** Implementation complete; real 3-step GRPO UAT blocked by occupied A2 NPUs
+- **Resume File:** .planning/phases/15-verl-npu-hbm-core-qwen3-5-grpo/15-02-SUMMARY.md
 
 ### Decisions Made This Session (2026-06-15)
 
