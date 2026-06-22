@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Formal Verl
-status: v1.1 Formal Verl archived; awaiting next milestone definition
-stopped_at: Milestone v1.1 completed and archived; next route is gsd-new-milestone
-last_updated: "2026-06-18T11:45:00Z"
-last_activity: 2026-06-18
+status: v1.1 archived; Phase 15 follow-up context gathered
+stopped_at: Phase 15 context gathered
+last_updated: "2026-06-22T11:55:27.569Z"
+last_activity: 2026-06-22
 progress:
-  total_phases: 1
+  total_phases: 2
   completed_phases: 1
   total_plans: 5
   completed_plans: 5
-  percent: 100
+  percent: 50
 ---
 
 # State: AutoResearch v1.1
@@ -22,22 +22,22 @@ See: .planning/PROJECT.md (updated 2026-06-18 after v1.1 milestone)
 
 **Core value:** "常实践，详记录，知得失，会设计，有整理"——每个 skill 跑一次都留下可被复盘、可被二次开发的产物。
 
-**Current focus:** v1.1 is archived. The next milestone has not been defined yet.
+**Current focus:** v1.1 is archived. Phase 15 is a follow-up hardening phase with context captured; next route is `$gsd-plan-phase 15`.
 
 ## Position
 
 - **Milestone:** v1.1 Formal Verl shipped
-- **Phase:** complete — Phase 14 formal Verl case
-- **Plan:** complete — final run `formal-20260618-a2ak225-combined-r1` has 8/8 passed rows
-- **Last activity:** 2026-06-18
+- **Phase:** context gathered — Phase 15 NPU HBM/Core telemetry and real GRPO timing
+- **Plan:** pending — next run `$gsd-plan-phase 15`
+- **Last activity:** 2026-06-22
 
 ## Session Continuity
 
-**Resume file:** `.planning/phases/14-verl-workspace-adapter-verl/14-CONTEXT.md`
+**Resume file:** .planning/phases/15-verl-npu-hbm-core-qwen3-5-grpo/15-CONTEXT.md
 
-- **Last session:** 2026-06-15T10:28:47Z
-- **Stopped At:** v1.0 archive created and living requirements removed after snapshot
-- **Resume File:** .planning/MILESTONES.md
+- **Last session:** 2026-06-22T11:55:27.566Z
+- **Stopped At:** Phase 15 context gathered
+- **Resume File:** .planning/phases/15-verl-npu-hbm-core-qwen3-5-grpo/15-CONTEXT.md
 
 ### Decisions Made This Session (2026-06-15)
 
@@ -202,6 +202,7 @@ Items acknowledged and deferred at milestone close on 2026-06-18:
 ### Roadmap Evolution
 
 - Phase 14 added: 跑通 Verl 正式案例并沉淀 workspace-adapter/verl 实验闭环
+- Phase 15 added: 补齐 Verl 正式实验 NPU HBM/Core 指标与 Qwen3.5 GRPO 真实脚本阶段耗时
 
 ## Next Steps
 
