@@ -271,7 +271,7 @@ def run_verl_case_orchestration(
             provenance=provenance_rows,
             extra={
                 "case_matrix_kind": _case_matrix_kind(adapter_config),
-                "execution_profile": getattr(adapter_config, "execution_profile", "fsdp2"),
+                "execution_profile": getattr(adapter_config, "execution_profile", "fsdp"),
                 "cache": {
                     **prepared.model_dump(mode="json"),
                     "local_model_cache": prepared_model.model_dump(mode="json"),
@@ -1010,7 +1010,7 @@ def _capture_provenance(
         dependency_repo_paths=dict(getattr(case_config, "dependency_repo_paths", {}) or {}),
         server=server_name,
         model_id=str(getattr(case_config, "model_id", "")),
-        execution_profile=str(getattr(case_config, "execution_profile", "fsdp2")),
+        execution_profile=str(getattr(case_config, "execution_profile", "fsdp")),
     )
     for repo, upstream_url in DEPENDENCY_REPOS.items():
         raw_path = configured_paths.get(repo)

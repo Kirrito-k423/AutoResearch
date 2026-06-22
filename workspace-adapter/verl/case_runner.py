@@ -839,8 +839,9 @@ def _formal_row_script(
         "        'actor_rollout_ref.rollout.expert_parallel_size=1',\n"
         "    ])\n"
         "else:\n"
+        "    fsdp_strategy = 'fsdp2' if PROFILE == 'fsdp2' else 'fsdp'\n"
         "    args.extend([\n"
-        "        'actor_rollout_ref.actor.strategy=fsdp2',\n"
+        "        f'actor_rollout_ref.actor.strategy={fsdp_strategy}',\n"
         "        'actor_rollout_ref.actor.fsdp_config.param_offload=True',\n"
         "        'actor_rollout_ref.actor.fsdp_config.optimizer_offload=True',\n"
         "        'actor_rollout_ref.ref.fsdp_config.param_offload=True',\n"
@@ -1070,11 +1071,9 @@ def _parse_result(stdout: str) -> dict[str, object] | None:
 def _execution_profile(run_config: VerlCaseRunConfig) -> str:
     profile = str(
         (run_config.extra or {}).get("execution_profile")
-        or getattr(run_config.config, "execution_profile", "fsdp2")
-        or "fsdp2"
+        or getattr(run_config.config, "execution_profile", "fsdp")
+        or "fsdp"
     ).strip().lower()
     if profile and profile != "auto":
         return profile
-    if run_config.server.startswith("A3-") and "Qwen3.5" in run_config.config.model_id:
-        return "veomni"
-    return "fsdp2"
+    return "fsdp"

@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 InferenceMode = Literal["sync", "async"]
 CaseMode = Literal["validation", "training"]
-ExecutionProfile = Literal["auto", "fsdp2", "veomni"]
+ExecutionProfile = Literal["auto", "fsdp", "fsdp2", "veomni"]
 
 
 class VerlCaseConfig(BaseModel):
@@ -49,7 +49,7 @@ class VerlCaseConfig(BaseModel):
     n_gpus_per_node: int = 8
     tensor_model_parallel_size: int = 2
     row_timeout_seconds: int = 1800
-    execution_profile: ExecutionProfile = "fsdp2"
+    execution_profile: ExecutionProfile = "fsdp"
 
 
 class VerlCaseMatrixRow(BaseModel):

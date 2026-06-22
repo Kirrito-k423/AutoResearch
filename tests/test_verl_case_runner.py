@@ -1456,6 +1456,7 @@ def test_run_verl_case_custom_row_runner_uses_marker_exec(monkeypatch):
 def test_row_command_builds_formal_verl_script():
     command = case_runner._row_command(_run_config(), "sync-1024-2048")
     async_command = case_runner._row_command(_run_config(), "async-1024-2048")
+    script = shlex.split(command)[2]
 
     assert "verl.trainer.main_ppo" in command
     assert "examples/data_preprocess/geo3k.py" in command
@@ -1463,7 +1464,8 @@ def test_row_command_builds_formal_verl_script():
     assert "actor_rollout_ref.rollout.mode=sync" not in command
     assert "actor_rollout_ref.rollout.mode=async" in async_command
     assert "actor_rollout_ref.rollout.ignore_eos=False" in command
-    assert "actor_rollout_ref.actor.strategy=fsdp2" in command
+    assert "fsdp_strategy = 'fsdp2' if PROFILE == 'fsdp2' else 'fsdp'" in script
+    assert "actor_rollout_ref.actor.strategy={fsdp_strategy}" in script
     assert "trainer.balance_batch=True" in command
     assert "trainer.device=npu" in command
     assert "wandb_project" in command
@@ -1539,7 +1541,7 @@ def test_row_command_uses_custom_exec_paths():
     assert "WANDB_DIR" in command
 
 
-def test_row_command_defaults_to_fsdp2_profile_for_a3_qwen35():
+def test_row_command_defaults_to_fsdp_profile_for_a3_qwen35():
     config = case_config.VerlCaseConfig()
     run_config = case_config.VerlCaseRunConfig(
         run_id="run123",
@@ -1550,9 +1552,32 @@ def test_row_command_defaults_to_fsdp2_profile_for_a3_qwen35():
     )
 
     command = case_runner._row_command(run_config, "sync-1024-2048")
+    script = shlex.split(command)[2]
+
+    assert case_runner._execution_profile(run_config) == "fsdp"
+    assert "PROFILE = 'fsdp'" in script
+    assert "actor_rollout_ref.actor.strategy={fsdp_strategy}" in script
+    assert "trainer.logger=[console,wandb]" in command
+    assert "row_timeout_seconds" in command
+    assert "VERL_CASE_RESULT=" in command
+
+
+def test_row_command_uses_explicit_fsdp2_profile_for_a3_qwen35():
+    config = case_config.VerlCaseConfig(execution_profile="fsdp2")
+    run_config = case_config.VerlCaseRunConfig(
+        run_id="run123",
+        created_at=datetime(2026, 6, 16, 8, 0, tzinfo=timezone.utc),
+        server="A3-AX-180",
+        config=config,
+        matrix=case_config.build_length_matrix(config),
+    )
+
+    command = case_runner._row_command(run_config, "sync-1024-2048")
+    script = shlex.split(command)[2]
 
     assert case_runner._execution_profile(run_config) == "fsdp2"
-    assert "actor_rollout_ref.actor.strategy=fsdp2" in command
+    assert "PROFILE = 'fsdp2'" in script
+    assert "actor_rollout_ref.actor.strategy={fsdp_strategy}" in script
     assert "trainer.logger=[console,wandb]" in command
     assert "row_timeout_seconds" in command
     assert "VERL_CASE_RESULT=" in command
