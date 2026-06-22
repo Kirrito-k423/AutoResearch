@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import shlex
 import sys
 import types
 from datetime import datetime, timezone
@@ -28,6 +29,26 @@ def _run_config():
         server="A2-AK-225",
         config=config,
         matrix=case_config.build_length_matrix(config),
+    )
+
+
+def _training_run_config():
+    config = case_config.VerlCaseConfig(
+        output_tokens=[2048],
+        inference_modes=["sync"],
+        training_steps=3,
+        single_card_devices=[0],
+        single_card_start_batch_size=1,
+        tuning_train_batch_sizes=[1],
+        tuning_ppo_mini_batch_sizes=[1],
+        tuning_ppo_micro_batch_sizes_per_gpu=[1],
+    )
+    return case_config.VerlCaseRunConfig(
+        run_id="run123",
+        created_at=datetime(2026, 6, 16, 8, 0, tzinfo=timezone.utc),
+        server="A2-AK-225",
+        config=config,
+        matrix=case_config.build_training_tuning_matrix(config),
     )
 
 
@@ -1117,6 +1138,52 @@ def test_run_verl_case_passes_all_rows_and_script_contains_ignore_eos_false():
     assert '"ignore_eos": false' in case_runner.build_remote_case_script(run_config)
 
 
+def test_run_verl_case_training_tuning_uses_single_card_and_three_steps():
+    run_config = _training_run_config()
+    calls = []
+
+    def runner(spec, command, timeout):
+        calls.append(command)
+        if command.startswith("docker image inspect"):
+            return 0, "", ""
+        if command.startswith("docker ps --filter status=running"):
+            return 0, "", ""
+        payload = {
+            "status": "passed",
+            "elapsed_seconds": 1.0,
+            "sample_count": 0,
+            "completed_training_steps": 3,
+            "target_training_steps": 3,
+            "device_count": 1,
+            "visible_devices": [0],
+            "train_batch_size": 1,
+            "ppo_mini_batch_size": 1,
+            "ppo_micro_batch_size_per_gpu": 1,
+            "failure_class": None,
+        }
+        return 0, "VERL_CASE_RESULT=" + json.dumps(payload), ""
+
+    result = case_runner.run_verl_case(
+        ServerSpec(name="A2-AK-225", host="h", user="root"),
+        run_config,
+        timeout=1.0,
+        runner=runner,
+        source_syncer=lambda *_args, **_kwargs: {},
+    )
+
+    row = result.rows[0]
+    assert result.ok is True
+    assert row.completed_training_steps == 3
+    assert row.target_training_steps == 3
+    assert row.device_count == 1
+    assert row.visible_devices == [0]
+    assert row.train_batch_size == 1
+    docker_runs = [command for command in calls if command.startswith("docker run")]
+    assert len(docker_runs) == 1
+    assert "--device=/dev/davinci0" in docker_runs[0]
+    assert "--device=/dev/davinci1" not in docker_runs[0]
+
+
 def test_run_verl_case_recovers_row_result_from_remote_file_when_marker_missing():
     run_config = _run_config()
     calls = []
@@ -1406,6 +1473,27 @@ def test_row_command_builds_formal_verl_script():
     assert async_command.index("is_async =") < async_command.index(
         "rollout_max_model_len = max_tokens if is_async else max(max_tokens, 24576)"
     )
+
+
+def test_row_command_builds_real_training_three_step_script():
+    run_config = _training_run_config()
+    row = run_config.matrix[0]
+    command = shlex.split(case_runner._row_command(run_config, row.key))[2]
+
+    assert "key = row.get('case_id')" in command
+    assert "trainer_val_only = bool(case.get('trainer_val_only', False))" in command
+    assert "target_training_steps = 0 if trainer_val_only else int(case.get('training_steps', 3))" in command
+    assert "trainer.total_training_steps={effective_training_steps}" in command
+    assert "trainer.val_only={str(trainer_val_only)}" in command
+    assert "trainer.val_before_train={str(trainer_val_only)}" in command
+    assert "visible_devices = row.get('visible_devices')" in command
+    assert "train_batch_size = int(row['train_batch_size'])" in command
+    assert "actor_rollout_ref.actor.ppo_mini_batch_size={ppo_mini_batch_size}" in command
+    assert "actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu={ppo_micro_batch_size_per_gpu}" in command
+    assert "completed_training_steps" in command
+    assert "incomplete_training_steps" in command
+    assert "{int(row['device_count'])}npu" in command
+    assert "bs{int(row['train_batch_size'])}" in command
 
 
 def test_row_command_uses_custom_exec_paths():

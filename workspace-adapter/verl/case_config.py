@@ -105,7 +105,7 @@ class VerlCaseRunConfig(BaseModel):
     created_at: datetime
     server: str
     config: VerlCaseConfig
-    matrix: list[VerlCaseMatrixRow]
+    matrix: list[VerlCaseMatrixRow | VerlTrainingTuningRow]
     provenance: list[RepoProvenance] = Field(default_factory=list)
     extra: dict[str, Any] = Field(default_factory=dict)
 
@@ -123,6 +123,14 @@ class VerlCaseResultRow(BaseModel):
     tokens_per_second: float | None = None
     latency_ms: float | None = None
     sample_count: int = 0
+    completed_training_steps: int | None = None
+    target_training_steps: int | None = None
+    device_count: int | None = None
+    visible_devices: list[int] | None = None
+    train_batch_size: int | None = None
+    ppo_mini_batch_size: int | None = None
+    ppo_micro_batch_size_per_gpu: int | None = None
+    failure_class: str | None = None
     accuracy: float | None = None
     consistency: float | None = None
     error: str | None = None

@@ -149,6 +149,7 @@ def run_verl_case(
         effective_row_runner = _default_row_runner if runner is _default_runner else runner
     for matrix_row in run_config.matrix:
         row_command = _row_command(run_config, matrix_row.key, paths=execution_paths)
+        row_device_count = int(getattr(matrix_row, "device_count", 0) or run_config.config.n_gpus_per_node)
         if reusable_container_name:
             command = build_docker_exec_command(
                 container_name=reusable_container_name,
@@ -163,6 +164,7 @@ def run_verl_case(
                 output_mount=output_path,
                 source_mounts=source_mounts,
                 proxy_url=proxy_url,
+                device_count=row_device_count,
                 command=row_command,
             )
         commands.append(command)
@@ -197,6 +199,7 @@ def run_verl_case(
                     "output_tokens": matrix_row.output_tokens,
                     "inference_mode": matrix_row.inference_mode,
                     "ignore_eos": matrix_row.ignore_eos,
+                    **_matrix_row_result_metadata(matrix_row, run_config.config.training_steps),
                     **parsed,
                 }
             )
@@ -207,6 +210,7 @@ def run_verl_case(
                 output_tokens=matrix_row.output_tokens,
                 inference_mode=matrix_row.inference_mode,
                 ignore_eos=matrix_row.ignore_eos,
+                **_matrix_row_result_metadata(matrix_row, run_config.config.training_steps),
                 status="failed",
                 error=stderr or stdout or f"exit_code={code}",
                 log_path=remote_log_path,
@@ -268,6 +272,21 @@ def _row_command(
     return "/bin/bash -lc " + shlex.quote(script)
 
 
+def _matrix_row_result_metadata(matrix_row: object, target_training_steps: int) -> dict[str, object]:
+    metadata: dict[str, object] = {"target_training_steps": target_training_steps}
+    for name in (
+        "device_count",
+        "visible_devices",
+        "train_batch_size",
+        "ppo_mini_batch_size",
+        "ppo_micro_batch_size_per_gpu",
+    ):
+        value = getattr(matrix_row, name, None)
+        if value is not None:
+            metadata[name] = value
+    return metadata
+
+
 def _formal_row_script(
     *,
     config_json: str,
@@ -300,7 +319,7 @@ def _formal_row_script(
         "\n"
         "def _find_row():\n"
         "    for row in RUN_CONFIG['matrix']:\n"
-        "        key = f\"{row['inference_mode']}-{row['input_tokens']}-{row['output_tokens']}\"\n"
+        "        key = row.get('case_id') or f\"{row['inference_mode']}-{row['input_tokens']}-{row['output_tokens']}\"\n"
         "        if key == ROW_KEY:\n"
         "            return row\n"
         "    raise ValueError(f'unknown row key: {ROW_KEY}')\n"
@@ -332,9 +351,19 @@ def _formal_row_script(
         "def _wandb_run_name(case, row):\n"
         "    model = _model_slug(case.get('model_id', 'model'))\n"
         "    sequence = f\"{_token_slug(row['input_tokens'])}to{_token_slug(row['output_tokens'])}\"\n"
-        "    val_mode = 'valonly' if bool(case.get('trainer_val_only', True)) else 'train'\n"
+        "    val_mode = 'valonly' if bool(case.get('trainer_val_only', False)) else 'train'\n"
         "    eos = 'ignoreeos' if bool(row.get('ignore_eos', False)) else 'noignoreeos'\n"
-        "    return _safe_slug(f\"{model}-GRPO-{sequence}-{_timestamp_slug()}-{val_mode}-{row['inference_mode']}-{eos}\")\n"
+        "    extras = []\n"
+        "    if row.get('device_count'):\n"
+        "        extras.append(f\"{int(row['device_count'])}npu\")\n"
+        "    if row.get('train_batch_size'):\n"
+        "        extras.append(f\"bs{int(row['train_batch_size'])}\")\n"
+        "    if row.get('ppo_mini_batch_size'):\n"
+        "        extras.append(f\"mini{int(row['ppo_mini_batch_size'])}\")\n"
+        "    if row.get('ppo_micro_batch_size_per_gpu'):\n"
+        "        extras.append(f\"micro{int(row['ppo_micro_batch_size_per_gpu'])}\")\n"
+        "    suffix = '-' + '-'.join(extras) if extras else ''\n"
+        "    return _safe_slug(f\"{model}-GRPO-{sequence}-{_timestamp_slug()}-{val_mode}-{row['inference_mode']}-{eos}{suffix}\")\n"
         "\n"
         "def _run(command, *, cwd=None, env=None, log_path=None, timeout_seconds=None):\n"
         "    if cwd is None:\n"
@@ -422,6 +451,33 @@ def _formal_row_script(
         "        matches = re.findall(pattern, text)\n"
         "        if matches:\n"
         "            return float(matches[-1])\n"
+        "    return None\n"
+        "\n"
+        "def _completed_training_steps_from_log(text):\n"
+        "    numbers = []\n"
+        "    patterns = [\n"
+        "        r'global[_ -]?step[^0-9]{0,20}(\\d+)',\n"
+        "        r'training[_ -]?step[^0-9]{0,20}(\\d+)',\n"
+        "        r'\\bstep\\s*[:=]\\s*(\\d+)\\b',\n"
+        "        r'\\bstep\\s+(\\d+)\\s*/\\s*\\d+\\b',\n"
+        "    ]\n"
+        "    for pattern in patterns:\n"
+        "        for match in re.findall(pattern, text, flags=re.IGNORECASE):\n"
+        "            try:\n"
+        "                numbers.append(int(match))\n"
+        "            except (TypeError, ValueError):\n"
+        "                pass\n"
+        "    return max(numbers) if numbers else 0\n"
+        "\n"
+        "def _failure_class(returncode, sample_count, completed_steps, target_steps, trainer_val_only):\n"
+        "    if returncode == 124:\n"
+        "        return 'timeout'\n"
+        "    if returncode != 0:\n"
+        "        return 'verl_exit'\n"
+        "    if trainer_val_only and sample_count <= 0:\n"
+        "        return 'no_validation_samples'\n"
+        "    if not trainer_val_only and completed_steps < target_steps:\n"
+        "        return 'incomplete_training_steps'\n"
         "    return None\n"
         "\n"
         "def _consistency(rows, baseline_path):\n"
@@ -618,10 +674,22 @@ def _formal_row_script(
         "        prep = _run(prep_cmd, env=env, log_path=log_path)\n"
         "        if prep.returncode != 0:\n"
         "            raise RuntimeError('geo3k preprocess failed')\n"
-        "n_gpus = int(case.get('n_gpus_per_node', 8))\n"
-        "ascend_visible_devices = ','.join(str(index) for index in range(n_gpus))\n"
-        "train_batch_size = max(int(case.get('train_batch_size', 8)), n_gpus)\n"
-        "train_max_samples = max(int(case.get('train_max_samples', 8)), train_batch_size)\n"
+        "configured_n_gpus = int(case.get('n_gpus_per_node', 8))\n"
+        "visible_devices = row.get('visible_devices') or list(range(int(row.get('device_count') or configured_n_gpus)))\n"
+        "visible_devices = [int(device) for device in visible_devices]\n"
+        "n_gpus = max(1, len(visible_devices))\n"
+        "ascend_visible_devices = ','.join(str(index) for index in visible_devices)\n"
+        "if row.get('train_batch_size') is not None:\n"
+        "    train_batch_size = int(row['train_batch_size'])\n"
+        "else:\n"
+        "    train_batch_size = max(int(case.get('train_batch_size', 8)), n_gpus)\n"
+        "train_max_samples = max(int(case.get('train_max_samples', train_batch_size)), train_batch_size)\n"
+        "ppo_mini_batch_size = int(row.get('ppo_mini_batch_size') or 1)\n"
+        "ppo_micro_batch_size_per_gpu = int(row.get('ppo_micro_batch_size_per_gpu') or 1)\n"
+        "rollout_n = int(row.get('rollout_n') or case.get('rollout_n', 1))\n"
+        "trainer_val_only = bool(case.get('trainer_val_only', False))\n"
+        "target_training_steps = 0 if trainer_val_only else int(case.get('training_steps', 3))\n"
+        "effective_training_steps = max(1, target_training_steps)\n"
         "val_batch_size = int(case.get('val_batch_size', 1))\n"
         "row_timeout_seconds = int(case.get('row_timeout_seconds', 1800))\n"
         "is_async = row['inference_mode'] == 'async'\n"
@@ -629,7 +697,7 @@ def _formal_row_script(
         "ppo_max_token_len_per_gpu = max(max_tokens, 24576)\n"
         "rollout_max_model_len = max_tokens if is_async else max(max_tokens, 24576)\n"
         "rollout_max_num_batched_tokens = rollout_max_model_len\n"
-        "tensor_parallel_size = max(1, int(case.get('tensor_model_parallel_size', 2)))\n"
+        "tensor_parallel_size = min(max(1, int(case.get('tensor_model_parallel_size', 2))), n_gpus)\n"
         "rollout_data_parallel_size = max(1, n_gpus // tensor_parallel_size)\n"
         "use_remove_padding = PROFILE != 'veomni'\n"
         "use_dynamic_bsz = PROFILE != 'veomni'\n"
@@ -655,9 +723,9 @@ def _formal_row_script(
         "    'actor_rollout_ref.model.use_fused_kernels=False',\n"
         "    'actor_rollout_ref.model.enable_gradient_checkpointing=True',\n"
         "    'actor_rollout_ref.actor.optim.lr=1e-6',\n"
-        "    'actor_rollout_ref.actor.ppo_mini_batch_size=1',\n"
+        "    f'actor_rollout_ref.actor.ppo_mini_batch_size={ppo_mini_batch_size}',\n"
         "    f'actor_rollout_ref.actor.ppo_max_token_len_per_gpu={ppo_max_token_len_per_gpu}',\n"
-        "    'actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=1',\n"
+        "    f'actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu={ppo_micro_batch_size_per_gpu}',\n"
         "    f'actor_rollout_ref.actor.use_dynamic_bsz={str(use_dynamic_bsz)}',\n"
         "    'actor_rollout_ref.actor.use_kl_loss=True',\n"
         "    'actor_rollout_ref.actor.kl_loss_coef=0.01',\n"
@@ -677,8 +745,8 @@ def _formal_row_script(
         "    'actor_rollout_ref.rollout.enable_chunked_prefill=False',\n"
         "    'actor_rollout_ref.rollout.enforce_eager=True',\n"
         "    'actor_rollout_ref.rollout.free_cache_engine=True',\n"
-        "    f'actor_rollout_ref.rollout.n={int(case.get(\"rollout_n\", 1))}',\n"
-        "    f'actor_rollout_ref.rollout.val_kwargs.n={int(case.get(\"rollout_n\", 1))}',\n"
+        "    f'actor_rollout_ref.rollout.n={rollout_n}',\n"
+        "    f'actor_rollout_ref.rollout.val_kwargs.n={rollout_n}',\n"
         "    'actor_rollout_ref.rollout.val_kwargs.do_sample=False',\n"
         "    f'actor_rollout_ref.ref.log_prob_use_dynamic_bsz={str(use_dynamic_bsz)}',\n"
         "    f'actor_rollout_ref.ref.log_prob_max_token_len_per_gpu={ppo_max_token_len_per_gpu}',\n"
@@ -691,9 +759,9 @@ def _formal_row_script(
         "    f'trainer.experiment_name={wandb_run_name}',\n"
         "    f'trainer.n_gpus_per_node={n_gpus}',\n"
         "    'trainer.nnodes=1', 'trainer.save_freq=-1', 'trainer.test_freq=-1',\n"
-        "    'trainer.total_epochs=1', 'trainer.total_training_steps=1',\n"
-        "    f'trainer.val_only={str(bool(case.get(\"trainer_val_only\", True)))}',\n"
-        "    'trainer.val_before_train=True', 'trainer.resume_mode=disable',\n"
+        "    'trainer.total_epochs=1', f'trainer.total_training_steps={effective_training_steps}',\n"
+        "    f'trainer.val_only={str(trainer_val_only)}',\n"
+        "    f'trainer.val_before_train={str(trainer_val_only)}', 'trainer.resume_mode=disable',\n"
         "    f'trainer.validation_data_dir={str(validation_dir)}',\n"
         "    f'trainer.default_local_dir={str(row_dir / \"ckpt\")}',\n"
         "]\n"
@@ -752,19 +820,31 @@ def _formal_row_script(
         "consistency = 1.0 if row['inference_mode'] == 'sync' else _consistency(\n"
         "    generations, output_root / 'rows' / f\"sync-{row['input_tokens']}-{row['output_tokens']}\" / 'validation' / '0.jsonl'\n"
         ")\n"
-        "status = 'passed' if proc.returncode == 0 and sample_count > 0 else 'failed'\n"
+        "completed_training_steps = 0 if trainer_val_only else _completed_training_steps_from_log(log_text)\n"
+        "failure_class = _failure_class(proc.returncode, sample_count, completed_training_steps, target_training_steps, trainer_val_only)\n"
+        "status = 'passed' if failure_class is None else 'failed'\n"
         "if status == 'passed':\n"
         "    error = None\n"
         "elif proc.returncode == 124:\n"
-        "    error = f'verl timeout after {row_timeout_seconds}s; samples={sample_count}'\n"
+        "    error = f'verl timeout after {row_timeout_seconds}s; samples={sample_count}; steps={completed_training_steps}/{target_training_steps}'\n"
+        "elif failure_class == 'incomplete_training_steps':\n"
+        "    error = f'verl incomplete training steps={completed_training_steps}/{target_training_steps}'\n"
         "else:\n"
-        "    error = f'verl exit={proc.returncode}; samples={sample_count}'\n"
+        "    error = f'verl exit={proc.returncode}; samples={sample_count}; steps={completed_training_steps}/{target_training_steps}'\n"
         "result = {\n"
         "    'status': status,\n"
         "    'elapsed_seconds': elapsed,\n"
         "    'tokens_per_second': (sample_count * int(row['output_tokens']) / elapsed) if elapsed > 0 and sample_count else None,\n"
         "    'latency_ms': (elapsed * 1000 / sample_count) if sample_count else None,\n"
         "    'sample_count': sample_count,\n"
+        "    'completed_training_steps': completed_training_steps,\n"
+        "    'target_training_steps': target_training_steps,\n"
+        "    'device_count': n_gpus,\n"
+        "    'visible_devices': visible_devices,\n"
+        "    'train_batch_size': train_batch_size,\n"
+        "    'ppo_mini_batch_size': ppo_mini_batch_size,\n"
+        "    'ppo_micro_batch_size_per_gpu': ppo_micro_batch_size_per_gpu,\n"
+        "    'failure_class': failure_class,\n"
         "    'accuracy': accuracy,\n"
         "    'consistency': consistency,\n"
         "    'log_path': str(log_path),\n"
