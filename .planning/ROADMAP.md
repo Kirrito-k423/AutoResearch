@@ -60,11 +60,11 @@ No active milestone is defined. Start the next milestone with `$gsd-new-mileston
 - 数据仓保存 Verl 推理、logp、update 等阶段耗时，总吞吐、精度指标、W&B 原始数据和不可变配置快照，能通过 run 命名和 git provenance 对应到具体代码版本。
 
 **Depends on:** Phase 14
-**Plans:** 0/4 plans executed
+**Plans:** 1/4 plans executed
 
 Plans:
 
-- [ ] 15-01 Runtime NPU HBM/Core Telemetry And Prometheus Evidence
+- [x] 15-01 Runtime NPU HBM/Core Telemetry And Prometheus Evidence
 - [ ] 15-02 Real Qwen3.5-2B GRPO Training Tuning Matrix
 - [ ] 15-03 Verl Stage Timing Extraction From W&B And Raw Logs
 - [ ] 15-04 Numbered Data Repository Bundle And Rebuildable Visualizations
