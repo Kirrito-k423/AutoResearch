@@ -191,6 +191,39 @@ def test_verl_case_readiness_failure_skips_remote_runner(tmp_path):
     remote.assert_not_called()
 
 
+def test_verl_case_skip_readiness_skips_formal_host_qualification(tmp_path):
+    config = _config_file(tmp_path)
+    runs_root = tmp_path / "runs"
+    wandb_dir = runs_root / "run123" / "wandb"
+
+    def sync_all(_run_id, _spec, **_kwargs):
+        (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
+        return wandb_dir
+
+    with patch("autoresearch.orchestrator.verl_case._qualify_formal_case_host") as qualify, \
+         patch("autoresearch.orchestrator.verl_case.run_check_all") as readiness, \
+         patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance), \
+         patch("autoresearch.orchestrator.verl_case.prepare_model_cache", return_value=_fake_model_cache(tmp_path)), \
+         patch("autoresearch.orchestrator.verl_case.stage_model_cache", return_value="/home/t00906153/autoresearch/runs/run123/model"), \
+         patch("autoresearch.orchestrator.verl_case.run_verl_case", side_effect=lambda _spec, run_config, **_kwargs: _remote_result(run_config)), \
+         patch("autoresearch.orchestrator.verl_case.sync_all_runs", side_effect=sync_all), \
+         patch("autoresearch.orchestrator.verl_case.push_metrics", return_value=True), \
+         patch("autoresearch.orchestrator.verl_case.run_render", side_effect=_fake_report):
+        exit_code, payload = run_verl_case_orchestration(
+            server="A2-AK-225",
+            config=str(config),
+            run_id="run123",
+            runs_root=runs_root,
+            skip_readiness=True,
+        )
+
+    assert exit_code == 0
+    assert payload["ok"] is True
+    qualify.assert_not_called()
+    readiness.assert_not_called()
+    assert any("host qualification skipped" in warning for warning in payload["warnings"])
+
+
 def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path):
     config = _config_file(tmp_path)
     runs_root = tmp_path / "runs"

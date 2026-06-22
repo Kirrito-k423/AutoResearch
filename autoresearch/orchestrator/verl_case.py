@@ -121,6 +121,7 @@ def run_verl_case_orchestration(
             config_path=cfg_path,
             local_proxy_url=local_proxy_url,
             remote_proxy_port=remote_proxy_port,
+            skip_host_qualification=skip_readiness,
         )
         warnings.extend(selection_warnings)
         server_name = spec.name
@@ -677,9 +678,18 @@ def _resolve_spec(
     config_path: str,
     local_proxy_url: str | None,
     remote_proxy_port: int,
+    skip_host_qualification: bool = False,
 ) -> tuple[ServerSpec, list[str]]:
     if not cfg.servers:
         raise ConfigError("config.servers 为空，无法选择运行机器")
+    if skip_host_qualification:
+        if server is None:
+            item = cfg.servers[0]
+            return item, [f"formal case host qualification skipped; selected first host: {item.name}"]
+        for item in cfg.servers:
+            if item.name == server:
+                return item, [f"formal case host qualification skipped for explicit host: {item.name}"]
+        raise ConfigError(f"未找到服务器: {server}")
     if server is None:
         failures: list[str] = []
         for item in cfg.servers:
