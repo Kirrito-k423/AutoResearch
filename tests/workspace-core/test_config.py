@@ -17,6 +17,7 @@ def test_from_yaml_minimal():
     assert cfg.verl_case.output_tokens == [2048, 4096, 8192, 16384]
     assert cfg.verl_case.dependency_repo_paths == {}
     assert cfg.verl_case.row_timeout_seconds == 7200
+    assert cfg.verl_case.execution_profile == "fsdp"
 
 
 def test_from_yaml_with_servers():
@@ -48,6 +49,7 @@ verl_case:
   output_tokens: [2048]
   inference_modes: [sync]
   row_timeout_seconds: 60
+  execution_profile: fsdp2
   dependency_repo_paths:
     verl: /home/t00906153/verl
 """
@@ -57,6 +59,7 @@ verl_case:
     assert cfg.verl_case.output_tokens == [2048]
     assert cfg.verl_case.inference_modes == ["sync"]
     assert cfg.verl_case.row_timeout_seconds == 60
+    assert cfg.verl_case.execution_profile == "fsdp2"
     assert cfg.verl_case.dependency_repo_paths["verl"] == "/home/t00906153/verl"
 
 

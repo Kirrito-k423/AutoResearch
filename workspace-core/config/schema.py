@@ -167,6 +167,13 @@ class VerlCaseConfig(BaseModel):
         ge=1,
         description="Per formal matrix row timeout inside the container.",
     )
+    execution_profile: Literal["auto", "fsdp", "fsdp2", "veomni"] = Field(
+        default="fsdp",
+        description=(
+            "Formal Verl backend profile. fsdp is the portable default; fsdp2 "
+            "and veomni must be selected explicitly after backend validation."
+        ),
+    )
 
     @field_validator("output_tokens")
     @classmethod
