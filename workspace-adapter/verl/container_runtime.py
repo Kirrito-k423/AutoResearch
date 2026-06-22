@@ -83,7 +83,10 @@ def smoke_reusable_container(
         + shlex.quote(
             "python3 -c "
             "\"import torch, torch_npu; "
-            "value = torch.tensor([1.0]).npu().tolist(); "
+            "left = torch.ones((2, 3), device='npu'); "
+            "right = torch.zeros((1, 3), device='npu'); "
+            "value = torch.cat([left, right], dim=0).sum().cpu().item(); "
+            "torch.npu.synchronize(); "
             "print('AR_FORMAL_SMOKE_OK=1'); "
             "print('AR_FORMAL_SMOKE_VALUE=' + repr(value))\""
         ),

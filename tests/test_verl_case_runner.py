@@ -1184,7 +1184,9 @@ def test_run_verl_case_training_tuning_uses_single_card_and_three_steps():
     docker_runs = [command for command in calls if command.startswith("docker run")]
     assert len(docker_runs) == 1
     assert "--device=/dev/davinci0" in docker_runs[0]
-    assert "--device=/dev/davinci1" not in docker_runs[0]
+    assert "--device=/dev/davinci7" in docker_runs[0]
+    assert '"visible_devices":[0]' in docker_runs[0] or '"visible_devices": [0]' in docker_runs[0]
+    assert "ASCEND_RT_VISIBLE_DEVICES" in docker_runs[0]
 
 
 def test_run_verl_case_recovers_row_result_from_remote_file_when_marker_missing():

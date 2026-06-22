@@ -948,7 +948,7 @@ def _qualify_formal_case_host(
         output_mount="/tmp",
         command=_formal_host_smoke_command(),
         proxy_url=proxy_url,
-        device_count=1,
+        device_count=8,
         container_name=f"autoresearch-host-smoke-{_sanitize_name(spec.name)}",
     )
     code, stdout, stderr = _runner(spec, smoke, 240.0)
@@ -972,7 +972,10 @@ def _formal_host_smoke_command() -> str:
     command = (
         "python3 -c "
         "\"import torch, torch_npu; "
-        "value = torch.tensor([1.0]).npu().tolist(); "
+        "left = torch.ones((2, 3), device='npu'); "
+        "right = torch.zeros((1, 3), device='npu'); "
+        "value = torch.cat([left, right], dim=0).sum().cpu().item(); "
+        "torch.npu.synchronize(); "
         "print('AR_FORMAL_SMOKE_OK=1'); "
         "print('AR_FORMAL_SMOKE_VALUE=' + repr(value))\""
     )

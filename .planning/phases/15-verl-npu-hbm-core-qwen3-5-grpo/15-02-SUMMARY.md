@@ -63,6 +63,15 @@ Result: `467 passed, 6 warnings`.
 
 The real remote training UAT is still pending because A2-AK-225 was resource-busy during the execution window. This is not counted as a successful training result. The next valid UAT must produce a bundle where at least one single-card case has `completed_training_steps=3` and `target_training_steps=3`.
 
+### Follow-up on 2026-06-23 02:08 Asia/Shanghai
+
+Additional diagnostics found two separate host constraints:
+
+- A3-AK-182 and A3-AX-180 both report `acl.get_soc_name() == Ascend910_9382`; the current `quay.io/ascend/verl:verl-8.5.2-910b-ubuntu22.04-py3.11-qwen3-5` image fails a minimal `torch.ones + torch.cat + torch.npu.synchronize()` smoke with `OnesLike ADD_TO_LAUNCHER_LIST_AICORE failed`. A3 hosts should not be selected for this 910B image unless a compatible A3 image/kernel package is introduced.
+- A2-AK-225 has the correct arm64 image and 910B2 hardware, but NPU resources are currently held by an existing `Qwen3.5-2B-GRPO-video` Ray/Verl run inside the long-lived `verl-8.5.2-a2` container. It must not be counted as available until that workload finishes or is explicitly cleared.
+
+Code was hardened so formal host qualification now runs real NPU ops (`ones`, `zeros`, `cat`, synchronize) instead of only copying a CPU tensor to NPU, and single-card cases mount the configured full-machine NPU device set while preserving `ASCEND_RT_VISIBLE_DEVICES=[0]` for actual training isolation.
+
 ### Attempt on 2026-06-22 22:26:19 Asia/Shanghai
 
 Command:

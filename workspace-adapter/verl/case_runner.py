@@ -150,6 +150,7 @@ def run_verl_case(
     for matrix_row in run_config.matrix:
         row_command = _row_command(run_config, matrix_row.key, paths=execution_paths)
         row_device_count = int(getattr(matrix_row, "device_count", 0) or run_config.config.n_gpus_per_node)
+        mount_device_count = max(row_device_count, int(run_config.config.n_gpus_per_node))
         if reusable_container_name:
             command = build_docker_exec_command(
                 container_name=reusable_container_name,
@@ -164,7 +165,7 @@ def run_verl_case(
                 output_mount=output_path,
                 source_mounts=source_mounts,
                 proxy_url=proxy_url,
-                device_count=row_device_count,
+                device_count=mount_device_count,
                 command=row_command,
             )
         commands.append(command)
