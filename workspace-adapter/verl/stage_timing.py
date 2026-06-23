@@ -117,10 +117,11 @@ def count_completed_training_steps(log_text: str) -> int:
     """Return the largest completed training/global step visible in raw Verl logs."""
     numbers: list[int] = []
     patterns = [
-        r"global[_ -]?step[^0-9]{0,20}(\d+)",
-        r"training[_ -]?step[^0-9]{0,20}(\d+)",
-        r"\bstep\s*[:=]\s*(\d+)\b",
-        r"\bstep\s+(\d+)\s*/\s*\d+\b",
+        r"(?<![\w/-])global[_ -]?step\s*(?:[:=]|\s)\s*(\d+)\b",
+        r"(?<![\w/-])training[_ -]?step\s*[:=]?\s*(\d+)(?:\s*/\s*\d+)?\b",
+        r"(?<![\w/-])step\s*[:=]\s*(\d+)\b",
+        r"(?<![\w/-])step\s+(\d+)\s*/\s*\d+\b",
+        r"training progress:.*?(\d+)\s*/\s*(\d+)",
     ]
     for line in log_text.splitlines():
         lowered_line = line.lower()
@@ -129,6 +130,9 @@ def count_completed_training_steps(log_text: str) -> int:
         for pattern in patterns:
             for match in re.findall(pattern, line, flags=re.IGNORECASE):
                 try:
+                    if isinstance(match, tuple):
+                        numbers.append(int(match[0]))
+                        continue
                     numbers.append(int(match))
                 except (TypeError, ValueError):
                     pass

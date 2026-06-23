@@ -116,3 +116,6 @@ def test_count_completed_training_steps_handles_zero_to_three_steps():
         "step: 1\n"
         "global step 3"
     ) == 3
+    assert stage_timing.count_completed_training_steps("Training Progress: 100%| 3/3 [10:15<00:00]") == 3
+    assert stage_timing.count_completed_training_steps("perf/time-per-step=205.4 - step: 3") == 3
+    assert stage_timing.count_completed_training_steps("perf/time-per-step=205.4") == 0
