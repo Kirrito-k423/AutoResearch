@@ -252,6 +252,7 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path, monke
             assert run_config.matrix[0].train_batch_size == 1
         else:
             assert run_config.extra["training_tuning_stage"] == "single_node_promotion"
+            assert [row.train_batch_size for row in run_config.matrix] == [1, 2, 4, 8]
             assert run_config.matrix[0].case_id.startswith("train-8npu-bs")
             assert run_config.matrix[0].device_count == 8
             assert run_config.matrix[0].visible_devices == list(range(8))
@@ -296,7 +297,7 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path, monke
     assert Path(payload["report"]).exists()
     assert Path(runs_root / "run123" / "1-wandb" / "files" / "wandb-summary.json").exists()
     matrix_lines = Path(payload["matrix_results"]).read_text(encoding="utf-8").splitlines()
-    assert len(matrix_lines) == 5
+    assert len(matrix_lines) == 8
     assert any("train-8npu-bs" in line for line in matrix_lines)
     manifest = json.loads(Path(payload["manifest"]).read_text(encoding="utf-8"))
     assert manifest["formal_case"]["matrix_results"] == payload["matrix_results"]

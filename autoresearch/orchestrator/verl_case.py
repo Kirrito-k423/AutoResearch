@@ -697,27 +697,51 @@ def _build_single_node_promotion_rows(adapter_config: Any, rows: list[Any]) -> l
     if not stable_rows:
         return []
     best = max(stable_rows, key=lambda row: int(getattr(row, "train_batch_size", 0) or 0))
-    train_batch_size = max(int(best.train_batch_size) * len(devices), len(devices))
-    return [
-        VerlTrainingTuningRow(
-            case_id=(
-                f"train-{len(devices)}npu-bs{train_batch_size}"
-                f"-mini{int(best.ppo_mini_batch_size or 1)}"
-                f"-micro{int(best.ppo_micro_batch_size_per_gpu or 1)}"
-                f"-{int(best.input_tokens)}-{int(best.output_tokens)}"
-            ),
-            input_tokens=int(best.input_tokens),
-            output_tokens=int(best.output_tokens),
-            inference_mode=best.inference_mode,
-            ignore_eos=bool(best.ignore_eos),
-            device_count=len(devices),
-            visible_devices=devices,
-            train_batch_size=train_batch_size,
-            ppo_mini_batch_size=int(best.ppo_mini_batch_size or 1),
-            ppo_micro_batch_size_per_gpu=int(best.ppo_micro_batch_size_per_gpu or 1),
-            rollout_n=int(getattr(adapter_config, "rollout_n", 1) or 1),
+    batch_candidates = _unique_positive_ints(
+        [
+            *list(getattr(adapter_config, "tuning_train_batch_sizes", []) or []),
+            int(getattr(best, "train_batch_size", 0) or 0),
+            int(getattr(adapter_config, "train_batch_size", 0) or 0),
+        ]
+    )
+    rows_out: list[Any] = []
+    for train_batch_size in batch_candidates:
+        rows_out.append(
+            VerlTrainingTuningRow(
+                case_id=(
+                    f"train-{len(devices)}npu-bs{train_batch_size}"
+                    f"-mini{int(best.ppo_mini_batch_size or 1)}"
+                    f"-micro{int(best.ppo_micro_batch_size_per_gpu or 1)}"
+                    f"-{int(best.input_tokens)}-{int(best.output_tokens)}"
+                ),
+                input_tokens=int(best.input_tokens),
+                output_tokens=int(best.output_tokens),
+                inference_mode=best.inference_mode,
+                ignore_eos=bool(best.ignore_eos),
+                device_count=len(devices),
+                visible_devices=devices,
+                train_batch_size=train_batch_size,
+                ppo_mini_batch_size=int(best.ppo_mini_batch_size or 1),
+                ppo_micro_batch_size_per_gpu=int(best.ppo_micro_batch_size_per_gpu or 1),
+                rollout_n=int(getattr(adapter_config, "rollout_n", 1) or 1),
+            )
         )
-    ]
+    return rows_out
+
+
+def _unique_positive_ints(values: list[Any]) -> list[int]:
+    seen: set[int] = set()
+    result: list[int] = []
+    for value in values:
+        try:
+            number = int(value)
+        except (TypeError, ValueError):
+            continue
+        if number <= 0 or number in seen:
+            continue
+        seen.add(number)
+        result.append(number)
+    return result
 
 
 def _resolve_spec(
