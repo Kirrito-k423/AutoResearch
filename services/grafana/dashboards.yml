@@ -1,0 +1,15 @@
+# services/grafana/dashboards.yml
+# 用途: Grafana dashboard provisioning for AutoResearch local telemetry.
+
+apiVersion: 1
+
+providers:
+  - name: AutoResearch
+    orgId: 1
+    folder: AutoResearch
+    type: file
+    disableDeletion: false
+    editable: true
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards

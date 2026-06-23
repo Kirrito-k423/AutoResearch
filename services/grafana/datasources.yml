@@ -6,9 +6,12 @@ apiVersion: 1
 
 datasources:
   - name: Prometheus
+    uid: prometheus
     type: prometheus
     access: proxy
-    url: http://prometheus:9090
+    # Grafana and Prometheus are started from separate compose projects, so
+    # the service name `prometheus` is not resolvable from the Grafana network.
+    url: http://host.docker.internal:9090
     isDefault: true
     editable: false
     jsonData:
