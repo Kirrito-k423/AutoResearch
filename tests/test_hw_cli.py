@@ -149,6 +149,52 @@ def test_hw_probe_requires_exactly_one_target_mode():
         assert payload["severity"] == "fail"
 
 
+def test_hw_monitor_help_lists_long_running_options():
+    result = CliRunner().invoke(main, ["hw", "monitor", "--help"])
+
+    assert result.exit_code == 0
+    assert "--server" in result.stdout
+    assert "--all" in result.stdout
+    assert "--interval" in result.stdout
+    assert "--duration" in result.stdout
+    assert "--once" in result.stdout
+    assert "--pushgateway-url" in result.stdout
+
+
+def test_hw_monitor_cli_delegates_to_monitor_module(monkeypatch):
+    from autoresearch.hw import monitor as monitor_module
+
+    calls = []
+
+    def fake_run_monitor(**kwargs):
+        calls.append(kwargs)
+        return 0
+
+    monkeypatch.setattr(monitor_module, "run_monitor", fake_run_monitor)
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "hw",
+            "monitor",
+            "--server",
+            "a2-test",
+            "--once",
+            "--interval",
+            "0.5",
+            "--pushgateway-url",
+            "http://push:9091",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert calls
+    assert calls[0]["server"] == "a2-test"
+    assert calls[0]["once"] is True
+    assert calls[0]["interval_seconds"] == 0.5
+    assert calls[0]["pushgateway_url"] == "http://push:9091"
+
+
 def test_hw_probe_all_happy_path_outputs_one_json_and_progress(monkeypatch):
     from autoresearch.hw import probe as probe_module
 

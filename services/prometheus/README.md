@@ -32,6 +32,23 @@ curl 'http://localhost:9090/api/v1/query?query=up{job="prometheus"}'
 - 容器内 localhost 是容器自己（关键点，**不**是 `prometheus:9090`）
 - 验证：Web UI Status > Targets，`prometheus` job 应显示 UP
 
+## NPU Telemetry
+
+`pushgateway` job 抓取本地 Pushgateway：
+- `honor_labels: true` 保留 run push 时带的 `server`、`run_id`、`case_id` 等标签。
+- `scrape_interval: 500ms` 用于 formal GRPO 运行期资源曲线；采样进程每 0.5s 写 `npu-smi-watch.raw.log` 并 push 最新 gauge。
+- `autoresearch_npu_*` 是实验切片指标，保留 `run_id/case_id/server/device_id`。
+- `autoresearch_machine_npu_*` 是机器长期监控指标，只保留 `server/device_id/chip_id/source`，避免每个实验 case 复制一组设备曲线。
+- `autoresearch_experiment_case_info` 关联 `run_id/case_id/server/wandb_project/wandb_run_name`；新 run 还会带 `case_started_at/case_finished_at` 标签。
+- `autoresearch_experiment_case_start_time_seconds`、`autoresearch_experiment_case_end_time_seconds`、`autoresearch_experiment_case_elapsed_seconds` 提供 case 时间窗口和耗时，用于 Grafana 按实验切片。
+- run 结束后一次性 push 的 latest gauge 只能证明“最终值”；历史曲线必须来自运行期持续 push 后 Prometheus scrape，或从数据仓里的 `telemetry-openmetrics.prom` / `npu-telemetry.jsonl` 离线重建。
+
+机器长期监控入口：
+
+```bash
+uv run autoresearch hw monitor --all --interval 0.5
+```
+
 ## 数据持久化
 
 `prometheus-data` named volume；`docker volume inspect ar-prometheus-data`。

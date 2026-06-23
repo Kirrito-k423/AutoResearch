@@ -128,6 +128,10 @@ class VerlCaseResultRow(BaseModel):
     inference_mode: InferenceMode
     ignore_eos: bool
     status: Literal["passed", "failed", "skipped"]
+    started_at: str | None = None
+    finished_at: str | None = None
+    started_at_unix: float | None = None
+    finished_at_unix: float | None = None
     elapsed_seconds: float | None = None
     tokens_per_second: float | None = None
     latency_ms: float | None = None

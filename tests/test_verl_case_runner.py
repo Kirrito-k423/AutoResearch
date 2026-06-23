@@ -1537,7 +1537,20 @@ def test_row_command_builds_formal_verl_script():
     assert "npu-smi-watch.raw.log" in command
     assert "npu-telemetry.jsonl" in command
     assert "telemetry_summary" in command
+    assert "PUSHGATEWAY_URL" in script
+    assert "autoresearch_machine_npu_hbm_used_mib" in script
+    assert "autoresearch_experiment_case_info" in script
+    assert "import datetime" in script
+    assert "started_wall = datetime.datetime.now(datetime.timezone.utc)" in script
+    assert "'started_at': started_wall.isoformat().replace('+00:00', 'Z')" in script
+    assert "'finished_at': finished_wall.isoformat().replace('+00:00', 'Z')" in script
+    assert "'started_at_unix': started_wall.timestamp()" in script
+    assert "'finished_at_unix': finished_wall.timestamp()" in script
+    assert "telemetry_context = {'raw_path': telemetry_raw_path, 'wandb_run_name': wandb_run_name}" in script
+    assert "telemetry_context=telemetry_context" in script
+    assert "_push_live_telemetry(force=True, **telemetry_context)" in script
     assert command.index("_start_telemetry_sampler") < command.index("proc = _run(cmd")
+    compile(script.split("python3 - <<'PY'\n", 1)[1].rsplit("\nPY", 1)[0], "<verl-row-script>", "exec")
     assert async_command.index("is_async =") < async_command.index(
         "rollout_max_model_len = max_tokens if is_async else max(max_tokens, 24576)"
     )

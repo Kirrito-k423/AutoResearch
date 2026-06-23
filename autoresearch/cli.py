@@ -143,6 +143,83 @@ def hw_probe(
     )
 
 
+@hw.command(name="monitor")
+@click.option(
+    "--server",
+    default=None,
+    help="config 中的服务器名称。",
+)
+@click.option(
+    "--all",
+    "all_servers",
+    is_flag=True,
+    help="监控 config 中的全部服务器。",
+)
+@click.option(
+    "--config",
+    "cfg_path",
+    default=None,
+    help="配置文件路径 (默认 ./config/config.yaml)。",
+)
+@click.option(
+    "--interval",
+    "interval_seconds",
+    default=0.5,
+    type=float,
+    show_default=True,
+    help="采样间隔秒数，最低 0.5。",
+)
+@click.option(
+    "--duration",
+    "duration_seconds",
+    default=None,
+    type=float,
+    help="运行时长秒数；不传且未 --once 时持续运行。",
+)
+@click.option(
+    "--once",
+    is_flag=True,
+    help="只采样并 push 一轮。",
+)
+@click.option(
+    "--pushgateway-url",
+    default="http://localhost:9091",
+    show_default=True,
+    help="本地 Pushgateway URL。",
+)
+@click.option(
+    "--lang",
+    default="zh",
+    type=click.Choice(["zh", "en"]),
+    help="输出语言 (zh/en)。",
+)
+def hw_monitor(
+    server: str | None,
+    all_servers: bool,
+    cfg_path: str | None,
+    interval_seconds: float,
+    duration_seconds: float | None,
+    once: bool,
+    pushgateway_url: str,
+    lang: str,
+) -> None:
+    """按 0.5s+ 间隔采样远程 NPU HBM/Core 并推到本地 Prometheus。"""
+    from autoresearch.hw.monitor import run_monitor
+
+    raise click.exceptions.Exit(
+        run_monitor(
+            server=server,
+            all_servers=all_servers,
+            config=cfg_path,
+            interval_seconds=interval_seconds,
+            duration_seconds=duration_seconds,
+            once=once,
+            pushgateway_url=pushgateway_url,
+            lang=lang,
+        )
+    )
+
+
 # === Phase 5 / Skill 04: network-check ===
 
 @main.group()

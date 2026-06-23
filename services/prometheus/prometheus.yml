@@ -17,6 +17,9 @@ scrape_configs:
   - job_name: pushgateway
     # D-36: honor_labels=true 保留 push 时打的 server/job 标签
     honor_labels: true
+    # Formal GRPO telemetry samples at 0.5s; scrape pushgateway at the same
+    # cadence so Grafana can show real runtime movement instead of flat replay.
+    scrape_interval: 500ms
     static_configs:
       - targets: ["pushgateway:9091"]
         labels:

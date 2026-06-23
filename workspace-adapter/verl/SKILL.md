@@ -39,5 +39,5 @@
 ## TOP3 排错经验
 
 1. **W&B 页面看起来没数据**：先确认 project 是否是 `verl`，run display name 是否按语义命名；再检查 `1-wandb/source-runs.json`、`1-wandb/rebuild-wandb.sh` 和全局 `rebuild-all.sh` 是否能重建历史 Web 视图。
-2. **Prometheus 没有显存/Core 曲线**：确认运行期是否持续采集 `npu-smi info`/watch 原始日志，并写入 `6-rows/cases/*/host-npu-smi-watch.raw.log`；报告应能从 `2-prometheus/telemetry-openmetrics.prom` 回放 `autoresearch_npu_hbm_used_mib`、`autoresearch_npu_hbm_total_mib`、`autoresearch_npu_aicore_utilization_percent`。
+2. **Prometheus 没有显存/Core 曲线或只是一条直线**：确认运行期是否持续采集 `npu-smi info`/watch 原始日志，并写入 `6-rows/cases/*/npu-smi-watch.raw.log`；同时确认训练进程运行时是否持续 push `autoresearch_npu_*` 与 `autoresearch_machine_npu_*` 到 Pushgateway。Pushgateway 只保存 latest gauge，run 后一次性 push 会让 Grafana 显示平线；报告应能从 `2-prometheus/telemetry-openmetrics.prom` 回放 0.5s 原始曲线。
 3. **geo3k acc 为 0**：检查 `rows/*/validation/0.jsonl` 的 `output/gts/acc`。模型即使算出正确数值，若未按 reward 要求输出 `\\boxed{}`，严格 acc 仍可能为 0；val-only 不会更新模型参数。

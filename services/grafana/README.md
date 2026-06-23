@@ -21,8 +21,11 @@ curl http://localhost:3000/api/health
 open http://localhost:3000
 # 本地 dashboard 允许匿名只读访问；管理登录默认 admin / admin
 
-# AutoResearch NPU dashboard
-open http://localhost:3000/d/autoresearch-npu/autoresearch-npu-telemetry?orgId=1
+# 实验切片 dashboard
+open http://localhost:3000/d/autoresearch-npu/autoresearch-experiment-telemetry?orgId=1
+
+# 机器长期监控 dashboard
+open http://localhost:3000/d/autoresearch-machine-telemetry/autoresearch-machine-telemetry?orgId=1
 
 # Datasource 验证
 open http://localhost:3000/datasources
@@ -33,14 +36,23 @@ open http://localhost:3000/datasources
 
 - `http://localhost:3000` 是 Grafana 首页，只是可视化入口；没有进入 dashboard 时不会直接显示曲线。
 - `http://localhost:9090` 才是 Prometheus 原生查询页，可以直接输入 PromQL。
-- AutoResearch NPU 曲线在 Grafana dashboard：
-  `http://localhost:3000/d/autoresearch-npu/autoresearch-npu-telemetry?orgId=1`
+- 实验切片视图：
+  `http://localhost:3000/d/autoresearch-npu/autoresearch-experiment-telemetry?orgId=1`
+- 机器长期监控视图：
+  `http://localhost:3000/d/autoresearch-machine-telemetry/autoresearch-machine-telemetry?orgId=1`
+- 四台机器可通过 `var-server` 参数直达，例如：
+  `http://localhost:3000/d/autoresearch-machine-telemetry/autoresearch-machine-telemetry?orgId=1&var-server=A2-AK-225`
 
 常用 PromQL：
 
 ```promql
 autoresearch_npu_hbm_used_mib
 autoresearch_npu_aicore_utilization_percent
+autoresearch_machine_npu_hbm_used_mib
+autoresearch_machine_npu_aicore_utilization_percent
+autoresearch_experiment_case_info
+autoresearch_experiment_case_start_time_seconds
+autoresearch_experiment_case_end_time_seconds
 autoresearch_npu_count
 ```
 
@@ -48,6 +60,40 @@ autoresearch_npu_count
 
 ```promql
 autoresearch_npu_hbm_used_mib{run_id="Qwen35-2B-GRPO-1Kto16K-260623d-130014s-train-modes-sync-async-noignoreeos"}
+```
+
+按机器长期监控过滤：
+
+```promql
+autoresearch_machine_npu_hbm_used_mib{server="A2-AK-225",chip_id=~".+"}
+autoresearch_machine_npu_aicore_utilization_percent{server="A2-AK-225",chip_id=~".+"}
+```
+
+按实验 case 查看 W&B 名称和时间窗口：
+
+```promql
+present_over_time(autoresearch_experiment_case_info{run_id="Qwen35-2B-GRPO-1Kto16K-260623d-130014s-train-modes-sync-async-noignoreeos"}[5s])
+autoresearch_experiment_case_start_time_seconds{run_id="Qwen35-2B-GRPO-1Kto16K-260623d-130014s-train-modes-sync-async-noignoreeos"}
+autoresearch_experiment_case_end_time_seconds{run_id="Qwen35-2B-GRPO-1Kto16K-260623d-130014s-train-modes-sync-async-noignoreeos"}
+```
+
+## 为什么会看到直线
+
+Pushgateway 只保存每个 label set 的当前 gauge 值，不是历史样本导入器。
+如果 run 结束后才把 `telemetry-latest-openmetrics.prom` 推一次，Prometheus 会在后续 scrape 中反复看到同一个最新值，Grafana 就是一条直线。
+
+正式 GRPO case 的运行期采样仍是 0.5s：row 脚本会持续写 `npu-smi-watch.raw.log`，并在训练进程运行期间把最新 `autoresearch_npu_*` 与 `autoresearch_machine_npu_*` 推到 Pushgateway。Prometheus 的 pushgateway job 以 500ms scrape，这样新 run 的 Grafana 曲线来自运行期真实 scrape。历史数据包里的完整 0.5s 原始曲线仍以 `2-prometheus/telemetry-openmetrics.prom` 和 `6-rows/cases/*/npu-telemetry.jsonl` 为准。
+
+不跑训练但要长期看四台机器资源时，另开终端运行：
+
+```bash
+uv run autoresearch hw monitor --all --interval 0.5
+```
+
+只验证一次采样与 push：
+
+```bash
+uv run autoresearch hw monitor --all --once
 ```
 
 ## Datasources

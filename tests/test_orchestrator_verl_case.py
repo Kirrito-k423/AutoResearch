@@ -81,6 +81,10 @@ def _rows(run_config, *, failed_key: str | None = None):
                 inference_mode=matrix_row.inference_mode,
                 ignore_eos=matrix_row.ignore_eos,
                 status="failed" if failed else "passed",
+                started_at="2026-06-23T01:00:00Z",
+                finished_at="2026-06-23T01:00:01Z",
+                started_at_unix=1782176400.0,
+                finished_at_unix=1782176401.0,
                 elapsed_seconds=1.0,
                 tokens_per_second=2.0,
                 latency_ms=500.0,
@@ -329,19 +333,21 @@ def test_verl_case_orchestration_saves_telemetry_prometheus_evidence(tmp_path, m
     runs_root = tmp_path / "runs"
     wandb_dir = runs_root / "run123" / "wandb"
     telemetry_calls = []
+    machine_calls = []
+    case_calls = []
 
     def sync_all(_run_id, _spec, **_kwargs):
         (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
         return wandb_dir
 
     def collect_with_telemetry(_spec, _remote_dir, local_dir, **_kwargs):
-        row_dir = Path(local_dir) / "sync-1024-2048"
+        row_dir = Path(local_dir) / "train-1npu-bs1-mini1-micro1-1024-2048"
         row_dir.mkdir(parents=True, exist_ok=True)
         (row_dir / "npu-telemetry.jsonl").write_text(
             json.dumps(
                 {
                     "run_id": "run123",
-                    "case_id": "sync-1024-2048",
+                    "case_id": "train-1npu-bs1-mini1-micro1-1024-2048",
                     "server": "A2-AK-225",
                     "device_id": 0,
                     "source": "npu-smi-watch",
@@ -360,6 +366,14 @@ def test_verl_case_orchestration_saves_telemetry_prometheus_evidence(tmp_path, m
         telemetry_calls.append((run_id, list(samples), kwargs.get("exposition")))
         return True
 
+    def push_machine(_spec, samples, **kwargs):
+        machine_calls.append((list(samples), kwargs.get("exposition")))
+        return True
+
+    def push_cases(_spec, run_id, samples, **kwargs):
+        case_calls.append((run_id, list(samples), kwargs.get("exposition")))
+        return True
+
     monkeypatch.setattr("autoresearch.orchestrator.verl_case.collect_tree", collect_with_telemetry)
     with patch("autoresearch.orchestrator.verl_case._qualify_formal_case_host", return_value=(True, "ok")), \
          patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
@@ -370,6 +384,8 @@ def test_verl_case_orchestration_saves_telemetry_prometheus_evidence(tmp_path, m
          patch("autoresearch.orchestrator.verl_case.sync_all_runs", side_effect=sync_all), \
          patch("autoresearch.orchestrator.verl_case.push_metrics", return_value=True), \
          patch("autoresearch.orchestrator.verl_case.push_telemetry_metrics", side_effect=push_telemetry), \
+         patch("autoresearch.orchestrator.verl_case.push_machine_telemetry_metrics", side_effect=push_machine), \
+         patch("autoresearch.orchestrator.verl_case.push_experiment_case_metrics", side_effect=push_cases), \
          patch("autoresearch.orchestrator.verl_case.run_render", side_effect=_fake_report):
         exit_code, payload = run_verl_case_orchestration(
             server="A2-AK-225",
@@ -384,16 +400,31 @@ def test_verl_case_orchestration_saves_telemetry_prometheus_evidence(tmp_path, m
     assert prom_evidence["telemetry_samples"] == 1
     assert prom_evidence["missing_resource_metrics"] == []
     assert "autoresearch_npu_hbm_used_mib" in prom_evidence["metrics_pushed"]
+    assert "autoresearch_machine_npu_hbm_used_mib" in prom_evidence["metrics_pushed"]
+    assert "autoresearch_experiment_case_info" in prom_evidence["metrics_pushed"]
     exposition_path = Path(prom_evidence["telemetry_openmetrics_file"])
     latest_exposition_path = Path(prom_evidence["telemetry_latest_openmetrics_file"])
+    machine_exposition_path = Path(prom_evidence["telemetry_machine_openmetrics_file"])
+    cases_exposition_path = Path(prom_evidence["experiment_case_openmetrics_file"])
     assert exposition_path.exists()
     assert latest_exposition_path.exists()
+    assert machine_exposition_path.exists()
+    assert cases_exposition_path.exists()
     exposition = exposition_path.read_text(encoding="utf-8")
-    assert 'case_id="sync-1024-2048"' in exposition
+    assert 'case_id="train-1npu-bs1-mini1-micro1-1024-2048"' in exposition
     assert telemetry_calls
+    assert machine_calls
+    assert case_calls
     assert telemetry_calls[0][0] == "run123"
     assert telemetry_calls[0][1][0]["source"] == "npu-smi-watch"
     assert telemetry_calls[0][2] == latest_exposition_path.read_text(encoding="utf-8")
+    assert "autoresearch_machine_npu_hbm_used_mib" in machine_calls[0][1]
+    assert "autoresearch_experiment_case_info" in case_calls[0][2]
+    assert "autoresearch_experiment_case_start_time_seconds" in case_calls[0][2]
+    assert "autoresearch_experiment_case_end_time_seconds" in case_calls[0][2]
+    assert "autoresearch_experiment_case_elapsed_seconds" in case_calls[0][2]
+    assert 'case_started_at="2026-06-23T01:00:00Z"' in case_calls[0][2]
+    assert 'case_finished_at="2026-06-23T01:00:01Z"' in case_calls[0][2]
 
 
 def test_verl_case_orchestration_rebuilds_telemetry_from_host_raw_log(tmp_path, monkeypatch):
@@ -401,6 +432,8 @@ def test_verl_case_orchestration_rebuilds_telemetry_from_host_raw_log(tmp_path, 
     runs_root = tmp_path / "runs"
     wandb_dir = runs_root / "run123" / "wandb"
     telemetry_calls = []
+    machine_calls = []
+    case_calls = []
 
     def sync_all(_run_id, _spec, **_kwargs):
         (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
@@ -425,6 +458,14 @@ def test_verl_case_orchestration_rebuilds_telemetry_from_host_raw_log(tmp_path, 
         telemetry_calls.append((run_id, list(samples), kwargs.get("exposition")))
         return True
 
+    def push_machine(_spec, samples, **kwargs):
+        machine_calls.append((list(samples), kwargs.get("exposition")))
+        return True
+
+    def push_cases(_spec, run_id, samples, **kwargs):
+        case_calls.append((run_id, list(samples), kwargs.get("exposition")))
+        return True
+
     monkeypatch.setattr("autoresearch.orchestrator.verl_case.collect_tree", collect_with_host_raw)
     with patch("autoresearch.orchestrator.verl_case._qualify_formal_case_host", return_value=(True, "ok")), \
          patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
@@ -435,6 +476,8 @@ def test_verl_case_orchestration_rebuilds_telemetry_from_host_raw_log(tmp_path, 
          patch("autoresearch.orchestrator.verl_case.sync_all_runs", side_effect=sync_all), \
          patch("autoresearch.orchestrator.verl_case.push_metrics", return_value=True), \
          patch("autoresearch.orchestrator.verl_case.push_telemetry_metrics", side_effect=push_telemetry), \
+         patch("autoresearch.orchestrator.verl_case.push_machine_telemetry_metrics", side_effect=push_machine), \
+         patch("autoresearch.orchestrator.verl_case.push_experiment_case_metrics", side_effect=push_cases), \
          patch("autoresearch.orchestrator.verl_case.run_render", side_effect=_fake_report):
         exit_code, payload = run_verl_case_orchestration(
             server="A2-AK-225",
@@ -454,6 +497,8 @@ def test_verl_case_orchestration_rebuilds_telemetry_from_host_raw_log(tmp_path, 
     assert prom_evidence["missing_resource_metrics"] == []
     assert telemetry_calls[0][1][0]["source"] == "host-npu-smi-watch"
     assert telemetry_calls[0][1][0]["hbm_used_mib"] == 49290
+    assert machine_calls
+    assert case_calls
 
 
 def test_verl_case_defaults_to_configured_artifact_root_and_readable_run_id(tmp_path):

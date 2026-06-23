@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -11,10 +12,16 @@ from datalake.manifest import RunManifest
 from datalake.manifest import write as write_manifest
 from datalake.logs.collector import LogFetchError, collect_tree
 from datalake.prometheus import (
+    EXPERIMENT_CASE_METRIC_NAMES,
+    MACHINE_RESOURCE_METRIC_NAMES,
     RESOURCE_METRIC_NAMES,
     PushError,
+    build_experiment_case_exposition,
     build_latest_telemetry_exposition,
+    build_machine_latest_telemetry_exposition,
     build_telemetry_exposition,
+    push_experiment_case_metrics,
+    push_machine_telemetry_metrics,
     push_metrics,
     push_telemetry_metrics,
 )
@@ -398,8 +405,10 @@ def run_verl_case_orchestration(
     telemetry_rows = _read_telemetry_rows(artifact_layout["paths"]["rows"], run_id=rid, server=server_name)
     telemetry_exposition = build_telemetry_exposition(telemetry_rows)
     telemetry_latest_exposition = build_latest_telemetry_exposition(telemetry_rows)
+    telemetry_machine_exposition = build_machine_latest_telemetry_exposition(telemetry_rows)
     telemetry_exposition_path = None
     telemetry_latest_exposition_path = None
+    telemetry_machine_exposition_path = None
     if telemetry_exposition.strip():
         telemetry_exposition_path = _write_text(
             artifact_layout["paths"]["prometheus"] / "telemetry-openmetrics.prom",
@@ -409,6 +418,11 @@ def run_verl_case_orchestration(
         telemetry_latest_exposition_path = _write_text(
             artifact_layout["paths"]["prometheus"] / "telemetry-latest-openmetrics.prom",
             telemetry_latest_exposition,
+        )
+    if telemetry_machine_exposition.strip():
+        telemetry_machine_exposition_path = _write_text(
+            artifact_layout["paths"]["prometheus"] / "machine-latest-openmetrics.prom",
+            telemetry_machine_exposition,
         )
     matrix_ok = bool(remote_result and remote_result.ok and matrix_path and matrix_path.exists())
     matrix_payload = {
@@ -433,6 +447,14 @@ def run_verl_case_orchestration(
 
     emit_progress("orch.verl_case.collect", run_id=rid)
     wandb_path: Path | None = None
+    wandb_run_names: dict[str, str] = _build_wandb_run_names_by_case(
+        adapter_config,
+        remote_result.rows if remote_result is not None else [],
+        created_at=run_config.created_at,
+    )
+    case_metadata = _build_case_metadata_by_case(
+        remote_result.rows if remote_result is not None else []
+    )
     if remote_result is not None and remote_result.rows:
         try:
             sync_all_runs(
@@ -448,12 +470,28 @@ def run_verl_case_orchestration(
                 remote_result,
                 npu_count=int(getattr(adapter_config, "n_gpus_per_node", 0) or 0),
             )
+            wandb_run_names.update(_read_wandb_run_names_from_source_runs(wandb_path))
         except WandbSyncError as exc:
             warnings.append(f"formal wandb sync failed: {exc}")
+
+    experiment_case_exposition = build_experiment_case_exposition(
+        telemetry_rows,
+        wandb_run_names=wandb_run_names,
+        wandb_project=str(getattr(adapter_config, "wandb_project", "verl") or "verl"),
+        case_metadata=case_metadata,
+    )
+    experiment_case_exposition_path = None
+    if experiment_case_exposition.strip():
+        experiment_case_exposition_path = _write_text(
+            artifact_layout["paths"]["prometheus"] / "experiment-cases-openmetrics.prom",
+            experiment_case_exposition,
+        )
 
     prom_pushed = False
     count_prom_pushed = False
     telemetry_prom_pushed = False
+    machine_prom_pushed = False
+    experiment_case_prom_pushed = False
     npu_count = int(getattr(adapter_config, "n_gpus_per_node", 0) or 0)
     if npu_count > 0:
         try:
@@ -476,7 +514,33 @@ def run_verl_case_orchestration(
             )
         except PushError as exc:
             warnings.append(f"formal telemetry prom push failed: {exc}")
-    prom_pushed = count_prom_pushed or telemetry_prom_pushed
+    if telemetry_machine_exposition.strip():
+        try:
+            machine_prom_pushed = push_machine_telemetry_metrics(
+                spec,
+                telemetry_rows,
+                pushgateway_url=pushgateway_url,
+                exposition=telemetry_machine_exposition,
+            )
+        except PushError as exc:
+            warnings.append(f"formal machine telemetry prom push failed: {exc}")
+    if experiment_case_exposition.strip():
+        try:
+            experiment_case_prom_pushed = push_experiment_case_metrics(
+                spec,
+                rid,
+                telemetry_rows,
+                pushgateway_url=pushgateway_url,
+                exposition=experiment_case_exposition,
+            )
+        except PushError as exc:
+            warnings.append(f"formal experiment case prom push failed: {exc}")
+    prom_pushed = (
+        count_prom_pushed
+        or telemetry_prom_pushed
+        or machine_prom_pushed
+        or experiment_case_prom_pushed
+    )
 
     prom_metrics = _write_json(
         artifact_layout["paths"]["prometheus"] / "formal-case-prometheus.json",
@@ -487,14 +551,20 @@ def run_verl_case_orchestration(
             "prom_pushed": prom_pushed,
             "count_prom_pushed": count_prom_pushed,
             "telemetry_prom_pushed": telemetry_prom_pushed,
+            "machine_prom_pushed": machine_prom_pushed,
+            "experiment_case_prom_pushed": experiment_case_prom_pushed,
             "npu_count": npu_count,
             "metrics_pushed": (
                 (["autoresearch_npu_count"] if count_prom_pushed else [])
                 + (list(RESOURCE_METRIC_NAMES) if telemetry_prom_pushed else [])
+                + (list(MACHINE_RESOURCE_METRIC_NAMES) if machine_prom_pushed else [])
+                + (list(EXPERIMENT_CASE_METRIC_NAMES) if experiment_case_prom_pushed else [])
             ),
             "metrics_available": (
                 ["autoresearch_npu_count"]
                 + (list(RESOURCE_METRIC_NAMES) if telemetry_rows else [])
+                + (list(MACHINE_RESOURCE_METRIC_NAMES) if telemetry_rows else [])
+                + (list(EXPERIMENT_CASE_METRIC_NAMES) if telemetry_rows else [])
             ),
             "missing_resource_metrics": [] if telemetry_rows else list(RESOURCE_METRIC_NAMES),
             "telemetry_samples": len(telemetry_rows),
@@ -507,9 +577,20 @@ def run_verl_case_orchestration(
                 if telemetry_latest_exposition_path
                 else None
             ),
+            "telemetry_machine_openmetrics_file": (
+                str(telemetry_machine_exposition_path)
+                if telemetry_machine_exposition_path
+                else None
+            ),
+            "experiment_case_openmetrics_file": (
+                str(experiment_case_exposition_path)
+                if experiment_case_exposition_path
+                else None
+            ),
+            "wandb_run_names": wandb_run_names,
             "row_count": len(remote_result.rows) if remote_result is not None else 0,
             "note": (
-                "已保存 npu-smi watch HBM/Core/NPU telemetry，可从本地 evidence 重建资源曲线。"
+                "已保存 npu-smi watch HBM/Core/NPU telemetry；Pushgateway 只保存 latest gauge，历史曲线来自运行期持续 push + Prometheus scrape，本地 evidence 可离线重建 0.5s 原始曲线。"
                 if telemetry_rows
                 else "当前 evidence 未找到 npu-smi watch 采样行；资源曲线需要检查 rows/*/npu-telemetry.jsonl。"
             ),
@@ -1437,6 +1518,144 @@ def _write_formal_wandb_summary(
     summary_path.parent.mkdir(parents=True, exist_ok=True)
     summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return summary_path
+
+
+def _build_wandb_run_names_by_case(
+    adapter_config: Any,
+    rows: list[Any],
+    *,
+    created_at: datetime,
+) -> dict[str, str]:
+    names: dict[str, str] = {}
+    for row in rows:
+        case_id = _case_id_for_row(row)
+        if not case_id:
+            continue
+        names[case_id] = _wandb_run_name_for_row(adapter_config, row, created_at=created_at)
+    return names
+
+
+def _build_case_metadata_by_case(rows: list[Any]) -> dict[str, dict[str, Any]]:
+    metadata: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        case_id = _case_id_for_row(row)
+        if not case_id:
+            continue
+        values: dict[str, Any] = {}
+        for field in ("started_at", "finished_at"):
+            value = getattr(row, field, None)
+            if value is not None:
+                values[field] = str(value)
+        for field in ("started_at_unix", "finished_at_unix", "elapsed_seconds"):
+            value = getattr(row, field, None)
+            if value is None:
+                continue
+            values[field] = float(value)
+        if values:
+            metadata[case_id] = values
+    return metadata
+
+
+def _read_wandb_run_names_from_source_runs(wandb_root: Path) -> dict[str, str]:
+    names: dict[str, str] = {}
+    source_root = wandb_root / "source-runs"
+    if not source_root.exists():
+        return names
+    for path in sorted(source_root.glob("*/files/config.yaml")):
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        match = re.search(r"(?m)^\s*experiment_name:\s*(?P<name>[^\s#]+)", text)
+        if not match:
+            continue
+        wandb_name = match.group("name").strip().strip("'\"")
+        case_id = _case_id_from_wandb_run_name(wandb_name)
+        if case_id:
+            names[case_id] = wandb_name
+    return names
+
+
+def _case_id_for_row(row: Any) -> str:
+    case_id = getattr(row, "case_id", None)
+    if case_id:
+        return str(case_id)
+    return (
+        f"{getattr(row, 'inference_mode', 'sync')}"
+        f"-{int(getattr(row, 'input_tokens', 0) or 0)}"
+        f"-{int(getattr(row, 'output_tokens', 0) or 0)}"
+    )
+
+
+def _wandb_run_name_for_row(adapter_config: Any, row: Any, *, created_at: datetime) -> str:
+    model = _wandb_model_slug(str(getattr(adapter_config, "model_id", "model") or "model"))
+    sequence = (
+        f"{_wandb_token_slug(int(getattr(row, 'input_tokens', 0) or 0))}"
+        f"to{_wandb_token_slug(int(getattr(row, 'output_tokens', 0) or 0))}"
+    )
+    val_mode = "valonly" if bool(getattr(adapter_config, "trainer_val_only", False)) else "train"
+    eos = "ignoreeos" if bool(getattr(row, "ignore_eos", False)) else "noignoreeos"
+    mode = str(getattr(row, "inference_mode", "sync") or "sync")
+    extras: list[str] = []
+    device_count = getattr(row, "device_count", None)
+    if device_count:
+        extras.append(f"{int(device_count)}npu")
+    train_batch_size = getattr(row, "train_batch_size", None)
+    if train_batch_size:
+        extras.append(f"bs{int(train_batch_size)}")
+    mini_batch_size = getattr(row, "ppo_mini_batch_size", None)
+    if mini_batch_size:
+        extras.append(f"mini{int(mini_batch_size)}")
+    micro_batch_size = getattr(row, "ppo_micro_batch_size_per_gpu", None)
+    if micro_batch_size:
+        extras.append(f"micro{int(micro_batch_size)}")
+    suffix = "-" + "-".join(extras) if extras else ""
+    return _safe_wandb_slug(
+        f"{model}-GRPO-{sequence}-{_wandb_timestamp_slug(created_at)}-{val_mode}-{mode}-{eos}{suffix}"
+    )
+
+
+def _case_id_from_wandb_run_name(wandb_name: str) -> str | None:
+    sequence = re.search(r"-(?P<input>\d+)Kto(?P<output>\d+)K-", wandb_name)
+    mode = re.search(r"-(?P<mode>sync|async)-", wandb_name)
+    if not sequence or not mode:
+        return None
+    input_tokens = int(sequence.group("input")) * 1024
+    output_tokens = int(sequence.group("output")) * 1024
+    tuning = re.search(
+        r"-(?P<devices>\d+)npu-bs(?P<bs>\d+)-mini(?P<mini>\d+)-micro(?P<micro>\d+)$",
+        wandb_name,
+    )
+    if tuning:
+        return (
+            f"train-{int(tuning.group('devices'))}npu"
+            f"-bs{int(tuning.group('bs'))}"
+            f"-mini{int(tuning.group('mini'))}"
+            f"-micro{int(tuning.group('micro'))}"
+            f"-{input_tokens}-{output_tokens}"
+        )
+    return f"{mode.group('mode')}-{input_tokens}-{output_tokens}"
+
+
+def _wandb_model_slug(model_id: str) -> str:
+    name = model_id.rsplit("/", 1)[-1].replace("Qwen3.5", "Qwen35")
+    return _safe_wandb_slug(name) or "model"
+
+
+def _wandb_token_slug(tokens: int) -> str:
+    if tokens > 0 and tokens % 1024 == 0:
+        return f"{tokens // 1024}K"
+    return str(tokens)
+
+
+def _wandb_timestamp_slug(value: datetime) -> str:
+    return value.astimezone(timezone.utc).strftime("%y%m%dd-%H%M%Ss")
+
+
+def _safe_wandb_slug(value: str) -> str:
+    value = re.sub(r"[^A-Za-z0-9._-]+", "-", value)
+    value = re.sub(r"-{2,}", "-", value)
+    return value.strip("-")
 
 
 def _finish_payload(

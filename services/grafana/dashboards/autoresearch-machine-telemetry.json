@@ -27,96 +27,53 @@
   "id": null,
   "links": [
     {
-      "asDropdown": false,
+      "asDropdown": true,
       "icon": "dashboard",
-      "includeVars": true,
+      "includeVars": false,
       "keepTime": true,
+      "links": [
+        {
+          "targetBlank": false,
+          "title": "A2-AK-225",
+          "type": "link",
+          "url": "/d/autoresearch-machine-telemetry/autoresearch-machine-telemetry?var-server=A2-AK-225"
+        },
+        {
+          "targetBlank": false,
+          "title": "A3-AK-182",
+          "type": "link",
+          "url": "/d/autoresearch-machine-telemetry/autoresearch-machine-telemetry?var-server=A3-AK-182"
+        },
+        {
+          "targetBlank": false,
+          "title": "A3-AX-180",
+          "type": "link",
+          "url": "/d/autoresearch-machine-telemetry/autoresearch-machine-telemetry?var-server=A3-AX-180"
+        },
+        {
+          "targetBlank": false,
+          "title": "A2-AK-102",
+          "type": "link",
+          "url": "/d/autoresearch-machine-telemetry/autoresearch-machine-telemetry?var-server=A2-AK-102"
+        }
+      ],
       "targetBlank": false,
-      "title": "Machine Telemetry",
-      "type": "link",
-      "url": "/d/autoresearch-machine-telemetry/autoresearch-machine-telemetry"
+      "title": "Machines",
+      "type": "dashboards"
     },
     {
       "asDropdown": false,
-      "icon": "external link",
-      "includeVars": true,
+      "icon": "dashboard",
+      "includeVars": false,
       "keepTime": true,
-      "targetBlank": true,
-      "title": "Prometheus",
+      "targetBlank": false,
+      "title": "Experiment Telemetry",
       "type": "link",
-      "url": "http://localhost:9090/graph"
+      "url": "/d/autoresearch-npu/autoresearch-experiment-telemetry"
     }
   ],
   "liveNow": false,
   "panels": [
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "inspect": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      },
-      "id": 1,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": true
-      },
-      "pluginVersion": "10.4.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "present_over_time(autoresearch_experiment_case_info{run_id=\"$run_id\",case_id=~\"$case_id\",server=~\"$server\"}[5s])",
-          "format": "table",
-          "instant": true,
-          "legendFormat": "__auto",
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Experiment Cases",
-      "type": "table"
-    },
     {
       "datasource": {
         "type": "prometheus",
@@ -145,9 +102,9 @@
         "h": 5,
         "w": 6,
         "x": 0,
-        "y": 6
+        "y": 0
       },
-      "id": 2,
+      "id": 1,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -170,14 +127,14 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "count(count by (case_id) (present_over_time(autoresearch_experiment_case_info{run_id=\"$run_id\",case_id=~\"$case_id\",server=~\"$server\"}[5s])))",
+          "expr": "count(count by (device_id, chip_id) (autoresearch_machine_npu_hbm_used_mib{server=\"$server\",device_id=~\"$device_id\",chip_id=~\".+\"}))",
           "instant": false,
-          "legendFormat": "case count",
+          "legendFormat": "chip count",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Selected Cases",
+      "title": "Visible NPU Chips",
       "type": "stat"
     },
     {
@@ -208,9 +165,9 @@
         "h": 5,
         "w": 9,
         "x": 6,
-        "y": 6
+        "y": 0
       },
-      "id": 3,
+      "id": 2,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -233,7 +190,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max(autoresearch_npu_hbm_used_mib{run_id=\"$run_id\",case_id=~\"$case_id\",server=~\"$server\"})",
+          "expr": "max(autoresearch_machine_npu_hbm_used_mib{server=\"$server\",device_id=~\"$device_id\",chip_id=~\".+\"})",
           "instant": false,
           "legendFormat": "max HBM",
           "range": true,
@@ -277,9 +234,9 @@
         "h": 5,
         "w": 9,
         "x": 15,
-        "y": 6
+        "y": 0
       },
-      "id": 4,
+      "id": 3,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -302,7 +259,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max(autoresearch_npu_aicore_utilization_percent{run_id=\"$run_id\",case_id=~\"$case_id\",server=~\"$server\"})",
+          "expr": "max(autoresearch_machine_npu_aicore_utilization_percent{server=\"$server\",device_id=~\"$device_id\",chip_id=~\".+\"})",
           "instant": false,
           "legendFormat": "max AI Core",
           "range": true,
@@ -320,7 +277,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
+            "mode": "continuous-GrYlRd"
           },
           "custom": {
             "axisCenteredZero": false,
@@ -370,7 +327,106 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 11
+        "y": 5
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "autoresearch_machine_npu_hbm_used_mib{server=\"$server\",device_id=~\"$device_id\",chip_id=~\".+\"}",
+          "instant": false,
+          "legendFormat": "npu{{device_id}} chip{{chip_id}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "HBM Used by Device",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 4,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 5
       },
       "id": 5,
       "options": {
@@ -395,14 +451,14 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max by (case_id) (autoresearch_npu_hbm_used_mib{run_id=\"$run_id\",case_id=~\"$case_id\",server=~\"$server\"})",
+          "expr": "100 * autoresearch_machine_npu_hbm_used_mib{server=\"$server\",device_id=~\"$device_id\",chip_id=~\".+\"} / autoresearch_machine_npu_hbm_total_mib{server=\"$server\",device_id=~\"$device_id\",chip_id=~\".+\"}",
           "instant": false,
-          "legendFormat": "{{case_id}}",
+          "legendFormat": "npu{{device_id}} chip{{chip_id}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "HBM Used by Case",
+      "title": "HBM Utilization by Device",
       "type": "timeseries"
     },
     {
@@ -413,7 +469,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
+            "mode": "continuous-GrYlRd"
           },
           "custom": {
             "axisCenteredZero": false,
@@ -467,9 +523,9 @@
       },
       "gridPos": {
         "h": 9,
-        "w": 12,
-        "x": 12,
-        "y": 11
+        "w": 24,
+        "x": 0,
+        "y": 14
       },
       "id": 6,
       "options": {
@@ -494,206 +550,14 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "avg by (case_id) (autoresearch_npu_aicore_utilization_percent{run_id=\"$run_id\",case_id=~\"$case_id\",server=~\"$server\"})",
+          "expr": "autoresearch_machine_npu_aicore_utilization_percent{server=\"$server\",device_id=~\"$device_id\",chip_id=~\".+\"}",
           "instant": false,
-          "legendFormat": "{{case_id}}",
+          "legendFormat": "npu{{device_id}} chip{{chip_id}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "AI Core by Case",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "continuous-GrYlRd"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 8,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 4,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "decmbytes"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 0,
-        "y": 20
-      },
-      "id": 7,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "autoresearch_npu_hbm_used_mib{run_id=\"$run_id\",case_id=~\"$case_id\",server=~\"$server\"}",
-          "instant": false,
-          "legendFormat": "{{case_id}} npu{{device_id}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Selected Case HBM by Device",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "continuous-GrYlRd"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 8,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 4,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "max": 100,
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 90
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 12,
-        "y": 20
-      },
-      "id": 8,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "autoresearch_npu_aicore_utilization_percent{run_id=\"$run_id\",case_id=~\"$case_id\",server=~\"$server\"}",
-          "instant": false,
-          "legendFormat": "{{case_id}} npu{{device_id}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Selected Case AI Core by Device",
+      "title": "AI Core by Device",
       "type": "timeseries"
     }
   ],
@@ -701,8 +565,8 @@
   "schemaVersion": 39,
   "tags": [
     "autoresearch",
-    "verl",
-    "experiment"
+    "machine",
+    "npu"
   ],
   "templating": {
     "list": [
@@ -712,77 +576,49 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(autoresearch_npu_hbm_used_mib, run_id)",
+        "definition": "label_values(autoresearch_machine_npu_hbm_used_mib{chip_id=~\".+\"}, server)",
         "hide": 0,
         "includeAll": false,
-        "label": "run_id",
-        "multi": false,
-        "name": "run_id",
-        "options": [],
-        "query": {
-          "query": "label_values(autoresearch_npu_hbm_used_mib, run_id)",
-          "refId": "PrometheusVariableQueryEditor-Run"
-        },
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 1,
-        "type": "query"
-      },
-      {
-        "allValue": ".*",
-        "current": {
-          "selected": true,
-          "text": "All",
-          "value": "$__all"
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
-        },
-        "definition": "label_values(autoresearch_npu_hbm_used_mib{run_id=\"$run_id\"}, case_id)",
-        "hide": 0,
-        "includeAll": true,
-        "label": "case_id",
-        "multi": true,
-        "name": "case_id",
-        "options": [],
-        "query": {
-          "query": "label_values(autoresearch_npu_hbm_used_mib{run_id=\"$run_id\"}, case_id)",
-          "refId": "PrometheusVariableQueryEditor-Case"
-        },
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 1,
-        "type": "query"
-      },
-      {
-        "allValue": ".*",
-        "current": {
-          "selected": true,
-          "text": "All",
-          "value": "$__all"
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
-        },
-        "definition": "label_values(autoresearch_npu_hbm_used_mib{run_id=\"$run_id\"}, server)",
-        "hide": 0,
-        "includeAll": true,
         "label": "server",
-        "multi": true,
+        "multi": false,
         "name": "server",
         "options": [],
         "query": {
-          "query": "label_values(autoresearch_npu_hbm_used_mib{run_id=\"$run_id\"}, server)",
+          "query": "label_values(autoresearch_machine_npu_hbm_used_mib{chip_id=~\".+\"}, server)",
           "refId": "PrometheusVariableQueryEditor-Server"
         },
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
         "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(autoresearch_machine_npu_hbm_used_mib{server=\"$server\",chip_id=~\".+\"}, device_id)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "device_id",
+        "multi": true,
+        "name": "device_id",
+        "options": [],
+        "query": {
+          "query": "label_values(autoresearch_machine_npu_hbm_used_mib{server=\"$server\",chip_id=~\".+\"}, device_id)",
+          "refId": "PrometheusVariableQueryEditor-Device"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 2,
         "type": "query"
       }
     ]
@@ -793,8 +629,8 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "AutoResearch Experiment Telemetry",
-  "uid": "autoresearch-npu",
-  "version": 2,
+  "title": "AutoResearch Machine Telemetry",
+  "uid": "autoresearch-machine-telemetry",
+  "version": 1,
   "weekStart": ""
 }
