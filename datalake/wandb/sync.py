@@ -323,6 +323,8 @@ def _write_restore_artifacts(
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 : "${WANDB_BASE_URL:=http://localhost:8080}"
+: "${WANDB_PROJECT:=verl}"
+: "${WANDB_ENTITY:=autoresearch-local}"
 found=0
 while IFS= read -r run_dir; do
   found=1
@@ -332,13 +334,35 @@ if [ "$found" -eq 0 ]; then
   echo "No W&B offline runs found under $SCRIPT_DIR/source-runs" >&2
   exit 1
 fi
+if [ -f "$SCRIPT_DIR/replay-verl-log-history.py" ] && [ -d "$SCRIPT_DIR/../6-rows/cases" ]; then
+  replay_python="${PYTHON:-}"
+  if [ -z "$replay_python" ] && command -v python3 >/dev/null 2>&1 && python3 -c 'import wandb' >/dev/null 2>&1; then
+    replay_python="python3"
+  fi
+  if [ -z "$replay_python" ] && command -v wandb >/dev/null 2>&1; then
+    replay_python="$(head -n 1 "$(command -v wandb)" | sed 's/^#!//')"
+  fi
+  if [ -n "$replay_python" ]; then
+    WANDB_BASE_URL="$WANDB_BASE_URL" WANDB_PROJECT="$WANDB_PROJECT" WANDB_ENTITY="$WANDB_ENTITY" \
+      "$replay_python" "$SCRIPT_DIR/replay-verl-log-history.py" --run-root "$SCRIPT_DIR/.."
+  else
+    echo "Skip W&B log replay: no Python with wandb module found" >&2
+  fi
+fi
 """
     script_path = wandb_root / "rebuild-wandb.sh"
     script_path.write_text(script, encoding="utf-8")
     script_path.chmod(0o755)
+    replay_path = wandb_root / "replay-verl-log-history.py"
+    replay_path.write_text(_verl_log_replay_script(), encoding="utf-8")
+    replay_path.chmod(0o755)
     readme = """# W&B Restore
 
 This directory contains the raw W&B offline run files for this AutoResearch experiment.
+For verl GRPO runs, `rebuild-wandb.sh` also replays step-level console metrics
+from `../6-rows/cases/*.log` into the same local W&B runs. This preserves the
+full `timing_s/*`, `perf/*`, sequence-length, reward, and actor metrics when a
+remote W&B offline file was truncated during shutdown.
 
 To rebuild the local W&B UI after copying the data repository:
 
@@ -349,3 +373,127 @@ WANDB_BASE_URL=http://localhost:8080 ./rebuild-wandb.sh
 ```
 """
     (wandb_root / "README-WANDB-RESTORE.md").write_text(readme, encoding="utf-8")
+
+
+def _verl_log_replay_script() -> str:
+    """Return a self-contained helper for restoring verl console metrics."""
+    return r'''#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import os
+import re
+from pathlib import Path
+
+import wandb
+
+
+STEP_RE = re.compile(r"step:(?P<step>\d+)\s+-\s+(?P<body>.*)")
+RUN_RE = re.compile(r"offline-run-\d{8}_\d{6}-(?P<id>[A-Za-z0-9]+)")
+EXPERIMENT_RE = re.compile(r"trainer\.experiment_name=(?P<name>[^\s']+)")
+
+
+def _parse_number(raw: str):
+    raw = raw.strip()
+    try:
+        value = float(raw)
+    except ValueError:
+        return None
+    if value != value:
+        return None
+    if value.is_integer() and not any(ch in raw.lower() for ch in (".", "e")):
+        return int(value)
+    return value
+
+
+def _parse_log(path: Path) -> dict | None:
+    run_id = None
+    experiment_name = None
+    steps: dict[int, dict[str, float | int]] = {}
+    for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        if run_id is None:
+            match = RUN_RE.search(line)
+            if match:
+                run_id = match.group("id")
+        if experiment_name is None:
+            match = EXPERIMENT_RE.search(line)
+            if match:
+                experiment_name = match.group("name").strip('"')
+        match = STEP_RE.search(line)
+        if not match:
+            continue
+        step = int(match.group("step"))
+        metrics: dict[str, float | int] = {"training/global_step": step}
+        for part in match.group("body").split(" - "):
+            if ":" not in part:
+                continue
+            key, raw_value = part.split(":", 1)
+            key = key.strip()
+            if not key:
+                continue
+            value = _parse_number(raw_value)
+            if value is None:
+                continue
+            metrics[key] = value
+        if len(metrics) > 1:
+            steps[step] = metrics
+    if not run_id or not steps:
+        return None
+    return {
+        "run_id": run_id,
+        "name": experiment_name or run_id,
+        "path": str(path),
+        "steps": steps,
+    }
+
+
+def _discover(run_root: Path) -> list[dict]:
+    cases_dir = run_root / "6-rows" / "cases"
+    logs = sorted(
+        path
+        for path in cases_dir.glob("*/*.log")
+        if not path.name.startswith(("host-", "npu-smi"))
+    )
+    parsed = []
+    for path in logs:
+        item = _parse_log(path)
+        if item:
+            parsed.append(item)
+    return parsed
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--run-root", required=True)
+    parser.add_argument("--project", default=os.environ.get("WANDB_PROJECT", "verl"))
+    parser.add_argument("--entity", default=os.environ.get("WANDB_ENTITY", "autoresearch-local"))
+    args = parser.parse_args()
+
+    run_root = Path(args.run_root).resolve()
+    items = _discover(run_root)
+    if not items:
+        print("No replayable verl step metrics found")
+        return 0
+
+    for item in items:
+        run = wandb.init(
+            project=args.project,
+            entity=args.entity,
+            id=item["run_id"],
+            resume="allow",
+            name=item["name"],
+            tags=["autoresearch-log-replay"],
+            notes=f"AutoResearch replayed step metrics from {item['path']}",
+        )
+        try:
+            for step, metrics in sorted(item["steps"].items()):
+                run.log(metrics, step=step)
+        finally:
+            run.finish()
+        print(f"replayed {len(item['steps'])} steps into {args.entity}/{args.project}/{item['run_id']}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+'''

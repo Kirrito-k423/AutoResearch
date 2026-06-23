@@ -245,11 +245,15 @@ def test_sync_all_runs_happy_path(tmp_path):
     assert mock_fetch.call_args_list[1][0][1] == "/remote/formal/wandb/wandb/offline-run-20260615_050800-xyz789"
     assert (result / "source-runs.json").exists()
     assert (result / "rebuild-wandb.sh").exists()
+    assert (result / "replay-verl-log-history.py").exists()
     assert (result / "README-WANDB-RESTORE.md").exists()
     index = json.loads((result / "source-runs.json").read_text(encoding="utf-8"))
     assert index["run_id"] == "run123"
     assert len(index["source_runs"]) == 2
     assert "source-runs/offline-run-20260615_050749-abc123" in index["source_runs"][0]["local_dir"]
+    script = (result / "rebuild-wandb.sh").read_text(encoding="utf-8")
+    assert "WANDB_PROJECT:=verl" in script
+    assert "replay-verl-log-history.py" in script
 
 
 def test_sync_all_runs_honors_local_wandb_dir(tmp_path):
@@ -272,6 +276,7 @@ def test_sync_all_runs_honors_local_wandb_dir(tmp_path):
     assert result == local_wandb_dir
     assert mock_fetch.call_args_list[0][0][2] == local_wandb_dir / "source-runs" / "offline-run-20260615_050749-abc123"
     assert (local_wandb_dir / "rebuild-wandb.sh").exists()
+    assert (local_wandb_dir / "replay-verl-log-history.py").exists()
     assert (local_wandb_dir / "source-runs.json").exists()
 
 

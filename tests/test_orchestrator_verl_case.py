@@ -385,12 +385,15 @@ def test_verl_case_orchestration_saves_telemetry_prometheus_evidence(tmp_path, m
     assert prom_evidence["missing_resource_metrics"] == []
     assert "autoresearch_npu_hbm_used_mib" in prom_evidence["metrics_pushed"]
     exposition_path = Path(prom_evidence["telemetry_openmetrics_file"])
+    latest_exposition_path = Path(prom_evidence["telemetry_latest_openmetrics_file"])
     assert exposition_path.exists()
+    assert latest_exposition_path.exists()
     exposition = exposition_path.read_text(encoding="utf-8")
     assert 'case_id="sync-1024-2048"' in exposition
     assert telemetry_calls
     assert telemetry_calls[0][0] == "run123"
     assert telemetry_calls[0][1][0]["source"] == "npu-smi-watch"
+    assert telemetry_calls[0][2] == latest_exposition_path.read_text(encoding="utf-8")
 
 
 def test_verl_case_orchestration_rebuilds_telemetry_from_host_raw_log(tmp_path, monkeypatch):

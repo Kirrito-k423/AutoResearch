@@ -13,6 +13,7 @@ from datalake.logs.collector import LogFetchError, collect_tree
 from datalake.prometheus import (
     RESOURCE_METRIC_NAMES,
     PushError,
+    build_latest_telemetry_exposition,
     build_telemetry_exposition,
     push_metrics,
     push_telemetry_metrics,
@@ -396,11 +397,18 @@ def run_verl_case_orchestration(
             )
     telemetry_rows = _read_telemetry_rows(artifact_layout["paths"]["rows"], run_id=rid, server=server_name)
     telemetry_exposition = build_telemetry_exposition(telemetry_rows)
+    telemetry_latest_exposition = build_latest_telemetry_exposition(telemetry_rows)
     telemetry_exposition_path = None
+    telemetry_latest_exposition_path = None
     if telemetry_exposition.strip():
         telemetry_exposition_path = _write_text(
             artifact_layout["paths"]["prometheus"] / "telemetry-openmetrics.prom",
             telemetry_exposition,
+        )
+    if telemetry_latest_exposition.strip():
+        telemetry_latest_exposition_path = _write_text(
+            artifact_layout["paths"]["prometheus"] / "telemetry-latest-openmetrics.prom",
+            telemetry_latest_exposition,
         )
     matrix_ok = bool(remote_result and remote_result.ok and matrix_path and matrix_path.exists())
     matrix_payload = {
@@ -457,14 +465,14 @@ def run_verl_case_orchestration(
             )
         except PushError as exc:
             warnings.append(f"formal prom push failed: {exc}")
-    if telemetry_exposition.strip():
+    if telemetry_latest_exposition.strip():
         try:
             telemetry_prom_pushed = push_telemetry_metrics(
                 spec,
                 rid,
                 telemetry_rows,
                 pushgateway_url=pushgateway_url,
-                exposition=telemetry_exposition,
+                exposition=telemetry_latest_exposition,
             )
         except PushError as exc:
             warnings.append(f"formal telemetry prom push failed: {exc}")
@@ -494,6 +502,11 @@ def run_verl_case_orchestration(
                 DEFAULT_NPU_TELEMETRY_INTERVAL_SECONDS if telemetry_rows else None
             ),
             "telemetry_openmetrics_file": str(telemetry_exposition_path) if telemetry_exposition_path else None,
+            "telemetry_latest_openmetrics_file": (
+                str(telemetry_latest_exposition_path)
+                if telemetry_latest_exposition_path
+                else None
+            ),
             "row_count": len(remote_result.rows) if remote_result is not None else 0,
             "note": (
                 "已保存 npu-smi watch HBM/Core/NPU telemetry，可从本地 evidence 重建资源曲线。"

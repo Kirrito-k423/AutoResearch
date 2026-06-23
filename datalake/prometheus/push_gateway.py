@@ -76,6 +76,27 @@ def push_metrics(
 
 def build_telemetry_exposition(samples: Iterable[Any]) -> str:
     """Build Prometheus text exposition for normalized NPU telemetry rows."""
+    return _build_telemetry_exposition(samples, include_sample_index=True)
+
+
+def build_latest_telemetry_exposition(samples: Iterable[Any]) -> str:
+    """Build latest-value telemetry exposition suitable for Pushgateway.
+
+    Pushgateway stores one current value per metric label set. The full
+    per-sample file intentionally keeps every row for offline reports, while
+    this helper collapses samples to the latest row for each run/case/device.
+    """
+    latest: dict[str, Any] = {}
+    for sample in samples:
+        latest[_telemetry_labels(sample, include_sample_index=False)] = sample
+    return _build_telemetry_exposition(latest.values(), include_sample_index=False)
+
+
+def _build_telemetry_exposition(
+    samples: Iterable[Any],
+    *,
+    include_sample_index: bool,
+) -> str:
     lines = [
         "# TYPE autoresearch_npu_hbm_used_mib gauge",
         "# TYPE autoresearch_npu_hbm_total_mib gauge",
@@ -84,7 +105,7 @@ def build_telemetry_exposition(samples: Iterable[Any]) -> str:
     ]
     emitted = 0
     for sample in samples:
-        labels = _telemetry_labels(sample)
+        labels = _telemetry_labels(sample, include_sample_index=include_sample_index)
         values = {
             "autoresearch_npu_hbm_used_mib": _sample_value(sample, "hbm_used_mib"),
             "autoresearch_npu_hbm_total_mib": _sample_value(sample, "hbm_total_mib"),
@@ -119,7 +140,7 @@ def push_telemetry_metrics(
     """Push normalized NPU telemetry metrics through the remote host."""
     if not run_id:
         raise PushError("run_id 不能为空")
-    metric = exposition if exposition is not None else build_telemetry_exposition(samples)
+    metric = exposition if exposition is not None else build_latest_telemetry_exposition(samples)
     if not metric.strip():
         return False
 
@@ -145,7 +166,7 @@ def push_telemetry_metrics(
     return True
 
 
-def _telemetry_labels(sample: Any) -> str:
+def _telemetry_labels(sample: Any, *, include_sample_index: bool) -> str:
     label_values = {
         "run_id": _sample_value(sample, "run_id"),
         "case_id": _sample_value(sample, "case_id"),
@@ -153,6 +174,10 @@ def _telemetry_labels(sample: Any) -> str:
         "device_id": _sample_value(sample, "device_id"),
         "source": _sample_value(sample, "source") or "npu-smi-watch",
     }
+    if include_sample_index:
+        sample_index = _sample_value(sample, "sample_index")
+        if sample_index is not None:
+            label_values["sample_index"] = sample_index
     return ",".join(
         f'{name}="{_label_escape(str(value))}"'
         for name, value in label_values.items()

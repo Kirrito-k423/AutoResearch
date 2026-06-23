@@ -9,6 +9,7 @@ from workspace_core.config import ServerSpec
 from datalake.prometheus.push_gateway import (
     RESOURCE_METRIC_NAMES,
     PushError,
+    build_latest_telemetry_exposition,
     build_telemetry_exposition,
     push_metrics,
     push_telemetry_metrics,
@@ -78,6 +79,33 @@ def test_build_telemetry_exposition_includes_resource_metrics_and_labels():
 
 def test_build_telemetry_exposition_returns_empty_without_samples():
     assert build_telemetry_exposition([]) == ""
+
+
+def test_latest_telemetry_exposition_collapses_duplicate_label_sets():
+    exposition = build_latest_telemetry_exposition(
+        [
+            {
+                "run_id": "run123",
+                "case_id": "sync-1024-2048",
+                "server": "A2-AK-225",
+                "device_id": 0,
+                "sample_index": 1,
+                "hbm_used_mib": 1000,
+            },
+            {
+                "run_id": "run123",
+                "case_id": "sync-1024-2048",
+                "server": "A2-AK-225",
+                "device_id": 0,
+                "sample_index": 2,
+                "hbm_used_mib": 1234,
+            },
+        ]
+    )
+
+    assert exposition.count("autoresearch_npu_hbm_used_mib{") == 1
+    assert "1234" in exposition
+    assert "sample_index" not in exposition
 
 
 def test_push_telemetry_metrics_posts_resource_text_exposition():

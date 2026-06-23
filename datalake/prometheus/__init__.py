@@ -3,6 +3,7 @@
 from .push_gateway import (
     RESOURCE_METRIC_NAMES,
     PushError,
+    build_latest_telemetry_exposition,
     build_telemetry_exposition,
     push_metrics,
     push_telemetry_metrics,
@@ -11,6 +12,7 @@ from .push_gateway import (
 __all__ = [
     "RESOURCE_METRIC_NAMES",
     "PushError",
+    "build_latest_telemetry_exposition",
     "build_telemetry_exposition",
     "push_metrics",
     "push_telemetry_metrics",
