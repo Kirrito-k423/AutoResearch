@@ -39,6 +39,8 @@ def test_training_tuning_defaults_start_single_card_bs1():
     assert config.trainer_val_only is False
     assert config.training_steps == 3
     assert config.execution_profile == "fsdp"
+    assert config.use_remove_padding is None
+    assert config.use_dynamic_bsz is None
     assert config.single_card_start_batch_size == 1
     assert config.single_card_devices == [0]
     assert config.single_node_devices == list(range(8))

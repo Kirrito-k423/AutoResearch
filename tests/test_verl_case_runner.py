@@ -1561,6 +1561,10 @@ def test_row_command_builds_real_training_three_step_script():
     assert "configured_agent_workers = int(row.get('agent_num_workers') or case.get('agent_num_workers', 8))" in command
     assert "actor_rollout_ref.rollout.agent.num_workers={agent_num_workers}" in command
     assert "'agent_num_workers': agent_num_workers" in command
+    assert "def _case_bool(name):" in command
+    assert "qwen35_compat = PROFILE == 'fsdp' and _is_qwen35_model(case)" in command
+    assert "use_remove_padding = _runtime_bool('use_remove_padding', PROFILE != 'veomni' and not qwen35_compat)" in command
+    assert "use_dynamic_bsz = _runtime_bool('use_dynamic_bsz', PROFILE != 'veomni' and not qwen35_compat)" in command
     assert "completed_training_steps" in command
     assert "__AR_COMMAND__=" in command
     assert "total_training_steps" in command

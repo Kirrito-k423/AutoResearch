@@ -54,6 +54,8 @@ class VerlCaseConfig(BaseModel):
     tensor_model_parallel_size: int = 2
     row_timeout_seconds: int = 1800
     execution_profile: ExecutionProfile = "fsdp"
+    use_remove_padding: bool | None = None
+    use_dynamic_bsz: bool | None = None
 
 
 class VerlCaseMatrixRow(BaseModel):

@@ -185,6 +185,20 @@ class VerlCaseConfig(BaseModel):
             "and veomni must be selected explicitly after backend validation."
         ),
     )
+    use_remove_padding: bool | None = Field(
+        default=None,
+        description=(
+            "Optional Verl model.use_remove_padding override. None lets the adapter "
+            "choose a backend/model-compatible default."
+        ),
+    )
+    use_dynamic_bsz: bool | None = Field(
+        default=None,
+        description=(
+            "Optional Verl dynamic batch-size override for actor/ref/logprob paths. "
+            "None lets the adapter choose a backend/model-compatible default."
+        ),
+    )
 
     @field_validator("output_tokens")
     @classmethod

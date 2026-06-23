@@ -18,6 +18,8 @@ def test_from_yaml_minimal():
     assert cfg.verl_case.dependency_repo_paths == {}
     assert cfg.verl_case.row_timeout_seconds == 7200
     assert cfg.verl_case.execution_profile == "fsdp"
+    assert cfg.verl_case.use_remove_padding is None
+    assert cfg.verl_case.use_dynamic_bsz is None
 
 
 def test_from_yaml_with_servers():
@@ -50,6 +52,8 @@ verl_case:
   inference_modes: [sync]
   row_timeout_seconds: 60
   execution_profile: fsdp2
+  use_remove_padding: false
+  use_dynamic_bsz: false
   dependency_repo_paths:
     verl: /home/t00906153/verl
 """
@@ -60,6 +64,8 @@ verl_case:
     assert cfg.verl_case.inference_modes == ["sync"]
     assert cfg.verl_case.row_timeout_seconds == 60
     assert cfg.verl_case.execution_profile == "fsdp2"
+    assert cfg.verl_case.use_remove_padding is False
+    assert cfg.verl_case.use_dynamic_bsz is False
     assert cfg.verl_case.dependency_repo_paths["verl"] == "/home/t00906153/verl"
 
 
