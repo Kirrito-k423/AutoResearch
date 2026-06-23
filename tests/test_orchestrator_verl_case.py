@@ -624,6 +624,40 @@ def test_capture_provenance_skips_local_vllm_for_veomni(tmp_path):
     assert [row.repo for row in rows] == ["repo", "verl", "veomni"]
 
 
+def test_capture_provenance_keeps_local_vllm_for_fsdp(tmp_path):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    verl_repo = tmp_path / "verl"
+    verl_repo.mkdir()
+    vllm_repo = tmp_path / "vllm"
+    vllm_repo.mkdir()
+
+    config = case_config.VerlCaseConfig(
+        execution_profile="fsdp",
+        dependency_repo_paths={
+            "verl": str(verl_repo),
+            "vllm": str(vllm_repo),
+        },
+    )
+
+    with patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance) as capture:
+        rows, warnings = importlib.import_module("autoresearch.orchestrator.verl_case")._capture_provenance(
+            repo_root=repo_root,
+            case_config=config,
+            allow_git_push=False,
+            run_id="run123",
+            server_name="A2-AK-225",
+        )
+
+    captured_paths = [Path(call.args[0]) for call in capture.call_args_list]
+
+    assert warnings == []
+    assert repo_root in captured_paths
+    assert verl_repo in captured_paths
+    assert vllm_repo in captured_paths
+    assert [row.repo for row in rows] == ["repo", "verl", "vllm"]
+
+
 def test_verl_case_cli_outputs_single_json_object():
     runner = CliRunner()
     payload = {"ok": True, "command": "verl-case", "run_id": "run123"}

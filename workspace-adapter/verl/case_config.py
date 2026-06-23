@@ -32,6 +32,9 @@ class VerlCaseConfig(BaseModel):
     github_owner: str = "Kirrito-k423"
     remote_workdir: str = "/home/t00906153"
     dependency_repo_paths: dict[str, str] = Field(default_factory=dict)
+    dependency_source_mounts: list[str] = Field(
+        default_factory=lambda: ["verl", "transformers", "mindspeed", "veomni"]
+    )
     case_mode: CaseMode = "training"
     trainer_val_only: bool = False
     training_steps: int = 3

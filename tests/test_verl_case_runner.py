@@ -452,6 +452,25 @@ def test_source_sync_filters_local_vllm_for_veomni_profile():
     }
 
 
+def test_source_sync_runtime_mounts_skip_local_vllm_by_default_for_fsdp():
+    filtered = source_sync.filter_runtime_dependency_repo_paths(
+        dependency_repo_paths={
+            "verl": "/tmp/verl",
+            "vllm": "/tmp/vllm",
+            "transformers": "/tmp/transformers",
+        },
+        dependency_source_mounts=["verl", "transformers", "mindspeed", "veomni"],
+        server="A2-AK-225",
+        model_id="Qwen/Qwen3.5-2B",
+        execution_profile="fsdp",
+    )
+
+    assert filtered == {
+        "verl": "/tmp/verl",
+        "transformers": "/tmp/transformers",
+    }
+
+
 def test_default_source_syncer_skips_local_vllm_for_veomni(monkeypatch):
     run_config = case_config.VerlCaseRunConfig(
         run_id="run123",
@@ -487,6 +506,37 @@ def test_default_source_syncer_skips_local_vllm_for_veomni(monkeypatch):
     assert "vllm" not in captured["dependency_repo_paths"]
     assert captured["dependency_repo_paths"]["verl"] == "/tmp/verl"
     assert captured["dependency_repo_paths"]["veomni"] == "/tmp/veomni"
+
+
+def test_default_source_syncer_skips_local_vllm_runtime_mount_by_default(monkeypatch):
+    run_config = case_config.VerlCaseRunConfig(
+        run_id="run123",
+        created_at=datetime(2026, 6, 16, 8, 0, tzinfo=timezone.utc),
+        server="A2-AK-225",
+        config=case_config.VerlCaseConfig(
+            dependency_repo_paths={
+                "verl": "/tmp/verl",
+                "vllm": "/tmp/vllm",
+            },
+            execution_profile="fsdp",
+        ),
+        matrix=case_config.build_length_matrix(case_config.VerlCaseConfig()),
+    )
+    captured = {}
+
+    def fake_stage_dependency_sources(spec, *, run_id, remote_workdir, dependency_repo_paths):
+        captured["dependency_repo_paths"] = dependency_repo_paths
+        return {}
+
+    monkeypatch.setattr(case_runner, "stage_dependency_sources", fake_stage_dependency_sources)
+
+    result = case_runner._default_source_syncer(
+        ServerSpec(name="A2-AK-225", host="192.168.12.225", user="root"),
+        run_config,
+    )
+
+    assert result == {}
+    assert captured["dependency_repo_paths"] == {"verl": "/tmp/verl"}
 
 
 def test_resume_model_download_continues_largest_incomplete(tmp_path, monkeypatch):

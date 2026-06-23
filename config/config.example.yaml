@@ -149,3 +149,10 @@ verl_case:
     vllm: /home/t00906153/vllm
     transformers: /home/t00906153/transformers
     mindspeed: /home/t00906153/MindSpeed
+  # Runtime source overrides mounted into the container. Keep vllm out by
+  # default so the image's vLLM and vLLM-Ascend versions stay compatible.
+  dependency_source_mounts:
+    - verl
+    - transformers
+    - mindspeed
+    - veomni

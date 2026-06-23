@@ -22,7 +22,7 @@ from .docker import (
     build_docker_pull_command,
     build_docker_run_command,
 )
-from .source_sync import DependencySourceSyncError, filter_dependency_repo_paths, stage_dependency_sources
+from .source_sync import DependencySourceSyncError, filter_runtime_dependency_repo_paths, stage_dependency_sources
 from .telemetry import build_npu_smi_watch_command
 
 
@@ -62,8 +62,9 @@ def _default_source_syncer(spec: ServerSpec, run_config: VerlCaseRunConfig) -> d
         spec,
         run_id=run_config.run_id,
         remote_workdir=run_config.config.remote_workdir,
-        dependency_repo_paths=filter_dependency_repo_paths(
+        dependency_repo_paths=filter_runtime_dependency_repo_paths(
             dependency_repo_paths=dict(run_config.config.dependency_repo_paths or {}),
+            dependency_source_mounts=list(run_config.config.dependency_source_mounts or []),
             server=run_config.server,
             model_id=run_config.config.model_id,
             execution_profile=_execution_profile(run_config),

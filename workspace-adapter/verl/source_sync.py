@@ -53,6 +53,25 @@ def filter_dependency_repo_paths(
     return configured
 
 
+def filter_runtime_dependency_repo_paths(
+    *,
+    dependency_repo_paths: dict[str, str] | None,
+    dependency_source_mounts: list[str] | None,
+    server: str,
+    model_id: str,
+    execution_profile: str | None = None,
+) -> dict[str, str]:
+    """Return dependency repos that should override code inside the runtime container."""
+    configured = filter_dependency_repo_paths(
+        dependency_repo_paths=dependency_repo_paths,
+        server=server,
+        model_id=model_id,
+        execution_profile=execution_profile,
+    )
+    allowed = set(dependency_source_mounts or [])
+    return {repo: path for repo, path in configured.items() if repo in allowed}
+
+
 def stage_dependency_sources(
     spec: ServerSpec,
     *,
