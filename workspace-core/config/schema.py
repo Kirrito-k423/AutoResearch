@@ -115,6 +115,10 @@ class VerlCaseConfig(BaseModel):
         default="quay.io/ascend/verl:verl-8.5.2-910b-ubuntu22.04-py3.11-qwen3-5",
         min_length=1,
     )
+    docker_images_by_server: dict[str, str] = Field(
+        default_factory=dict,
+        description="Optional per-server Docker image overrides for heterogeneous Ascend pools.",
+    )
     model_id: str = Field(default="Qwen/Qwen3.5-2B", min_length=1)
     dataset_id: str = Field(default="hiyouga/geometry3k", min_length=1)
     local_asset_limit_gb: int = Field(default=5, ge=1)
@@ -138,6 +142,13 @@ class VerlCaseConfig(BaseModel):
         description=(
             "Optional local or remote checkout paths for dependency provenance, "
             "for example verl/vllm/transformers/mindspeed."
+        ),
+    )
+    dependency_source_mounts: list[str] = Field(
+        default_factory=lambda: ["verl", "transformers", "mindspeed", "veomni"],
+        description=(
+            "Dependency source repos mounted into the runtime container. Keep vllm "
+            "out by default so the image's vLLM and vLLM-Ascend versions stay compatible."
         ),
     )
     case_mode: Literal["validation", "training"] = Field(

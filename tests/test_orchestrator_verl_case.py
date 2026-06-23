@@ -35,6 +35,7 @@ def _config_file(
     dependency_path: Path | None = None,
     server_workdir: str = "/root",
     extra_servers: str = "",
+    extra_verl_case: str = "",
     artifact_root: Path | None = None,
 ) -> Path:
     dep_yaml = ""
@@ -60,6 +61,7 @@ verl_case:
   output_tokens: [2048, 4096]
   inference_modes: [sync, async]
 {dep_yaml}
+{extra_verl_case}
 """,
         encoding="utf-8",
     )
@@ -1084,3 +1086,56 @@ def test_verl_case_auto_selects_first_qualified_host(tmp_path):
     assert payload["server"] == "A3-AX-180"
     assert any("auto-selected host: A3-AX-180" in item for item in payload["warnings"])
     assert readiness.call_args.kwargs["server"] == "A3-AX-180"
+
+
+def test_verl_case_uses_server_docker_image_override(tmp_path):
+    a3_image = "quay.io/ascend/verl:verl-8.5.2-a3-ubuntu22.04-py3.11-qwen3-5"
+    config = _config_file(
+        tmp_path,
+        extra_servers="""
+  - name: A3-AX-180
+    host: 192.168.13.180
+    user: root
+    conda_env: verl-env
+    workdir: /home/t00906153
+""",
+        extra_verl_case=f"""
+  docker_images_by_server:
+    A3-AX-180: {a3_image}
+""",
+    )
+    runs_root = tmp_path / "runs"
+    wandb_dir = runs_root / "run123" / "wandb"
+
+    def qualify(spec, **kwargs):
+        assert spec.name == "A3-AX-180"
+        assert kwargs["docker_image"] == a3_image
+        return True, "exact image NPU smoke passed"
+
+    def remote(spec, run_config, **_kwargs):
+        assert spec.name == "A3-AX-180"
+        assert run_config.config.docker_image == a3_image
+        return _remote_result(run_config)
+
+    def sync_all(_run_id, _spec, **_kwargs):
+        (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
+        return wandb_dir
+
+    with patch("autoresearch.orchestrator.verl_case._qualify_formal_case_host", side_effect=qualify), \
+         patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
+         patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance), \
+         patch("autoresearch.orchestrator.verl_case.prepare_model_cache", return_value=_fake_model_cache(tmp_path)), \
+         patch("autoresearch.orchestrator.verl_case.stage_model_cache", return_value="/home/t00906153/autoresearch/model-cache/Qwen__Qwen3.5-2B"), \
+         patch("autoresearch.orchestrator.verl_case.run_verl_case", side_effect=remote), \
+         patch("autoresearch.orchestrator.verl_case.sync_all_runs", side_effect=sync_all), \
+         patch("autoresearch.orchestrator.verl_case.push_metrics", return_value=True), \
+         patch("autoresearch.orchestrator.verl_case.run_render", side_effect=_fake_report):
+        exit_code, payload = run_verl_case_orchestration(
+            server="A3-AX-180",
+            config=str(config),
+            run_id="run123",
+            runs_root=runs_root,
+        )
+
+    assert exit_code == 0
+    assert payload["server"] == "A3-AX-180"

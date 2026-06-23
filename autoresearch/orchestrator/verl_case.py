@@ -145,7 +145,8 @@ def run_verl_case_orchestration(
         spec, selection_warnings = _resolve_spec(
             cfg,
             server,
-            docker_image=cfg.verl_case.docker_image,
+            default_docker_image=cfg.verl_case.docker_image,
+            docker_images_by_server=cfg.verl_case.docker_images_by_server,
             config_path=cfg_path,
             local_proxy_url=local_proxy_url,
             remote_proxy_port=remote_proxy_port,
@@ -160,6 +161,7 @@ def run_verl_case_orchestration(
             cache_root=cache_root,
             artifact_root=artifact_root,
             workdir=resolved_workdir,
+            server_name=server_name,
         )
     except Exception as exc:
         step = step_result(
@@ -596,14 +598,22 @@ def _adapter_config(
     cache_root: str | Path | None,
     artifact_root: str | Path | None = None,
     workdir: str,
+    server_name: str | None = None,
 ) -> Any:
     payload = cfg.verl_case.model_dump(mode="json")
     payload["remote_workdir"] = workdir
+    if server_name is not None:
+        payload["docker_image"] = _docker_image_for_server(cfg, server_name)
     if cache_root is not None:
         payload["cache_root"] = str(cache_root)
     if artifact_root is not None:
         payload["artifact_root"] = str(artifact_root)
     return VerlCaseConfig.model_validate(payload)
+
+
+def _docker_image_for_server(cfg: Any, server_name: str) -> str:
+    overrides = getattr(cfg.verl_case, "docker_images_by_server", {}) or {}
+    return overrides.get(server_name, cfg.verl_case.docker_image)
 
 
 def _case_matrix_kind(adapter_config: Any) -> str:
@@ -714,7 +724,8 @@ def _resolve_spec(
     cfg: Any,
     server: str | None,
     *,
-    docker_image: str,
+    default_docker_image: str,
+    docker_images_by_server: dict[str, str] | None = None,
     config_path: str,
     local_proxy_url: str | None,
     remote_proxy_port: int,
@@ -733,6 +744,11 @@ def _resolve_spec(
     if server is None:
         failures: list[str] = []
         for item in cfg.servers:
+            docker_image = _docker_image_from_mapping(
+                item.name,
+                default_docker_image=default_docker_image,
+                docker_images_by_server=docker_images_by_server,
+            )
             ok, detail = _qualify_formal_case_host(
                 item,
                 docker_image=docker_image,
@@ -746,6 +762,11 @@ def _resolve_spec(
         raise ConfigError("没有找到可运行 formal case 的宿主机: " + "; ".join(failures))
     for item in cfg.servers:
         if item.name == server:
+            docker_image = _docker_image_from_mapping(
+                item.name,
+                default_docker_image=default_docker_image,
+                docker_images_by_server=docker_images_by_server,
+            )
             ok, detail = _qualify_formal_case_host(
                 item,
                 docker_image=docker_image,
@@ -757,6 +778,15 @@ def _resolve_spec(
                 raise ConfigError(f"formal case 宿主机不可用: {item.name}: {detail}")
             return item, []
     raise ConfigError(f"未找到服务器: {server}")
+
+
+def _docker_image_from_mapping(
+    server_name: str,
+    *,
+    default_docker_image: str,
+    docker_images_by_server: dict[str, str] | None,
+) -> str:
+    return (docker_images_by_server or {}).get(server_name, default_docker_image)
 
 
 def _container_proxy_url(
