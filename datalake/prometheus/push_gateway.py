@@ -33,6 +33,7 @@ MACHINE_RESOURCE_METRIC_NAMES = (
     "autoresearch_machine_npu_hbm_total_mib",
     "autoresearch_machine_npu_aicore_utilization_percent",
     "autoresearch_machine_npu_utilization_percent",
+    "autoresearch_machine_npu_sample_time_seconds",
 )
 
 EXPERIMENT_CASE_METRIC_NAMES = (
@@ -227,7 +228,7 @@ def _build_telemetry_exposition(
         for name, value in values.items():
             if value is None:
                 continue
-            lines.append(f"{name}{{{labels}}} {float(value):g}")
+            lines.append(f"{name}{{{labels}}} {_metric_number(value)}")
             emitted += 1
     if emitted == 0:
         return ""
@@ -240,6 +241,7 @@ def _build_machine_telemetry_exposition(samples: Iterable[Any]) -> str:
         "# TYPE autoresearch_machine_npu_hbm_total_mib gauge",
         "# TYPE autoresearch_machine_npu_aicore_utilization_percent gauge",
         "# TYPE autoresearch_machine_npu_utilization_percent gauge",
+        "# TYPE autoresearch_machine_npu_sample_time_seconds gauge",
     ]
     emitted = 0
     for sample in samples:
@@ -255,11 +257,15 @@ def _build_machine_telemetry_exposition(samples: Iterable[Any]) -> str:
                 sample,
                 "npu_utilization_percent",
             ),
+            "autoresearch_machine_npu_sample_time_seconds": _sample_value(
+                sample,
+                "sample_time_seconds",
+            ),
         }
         for name, value in values.items():
             if value is None:
                 continue
-            lines.append(f"{name}{{{labels}}} {float(value):g}")
+            lines.append(f"{name}{{{labels}}} {_metric_number(value)}")
             emitted += 1
     if emitted == 0:
         return ""
@@ -444,6 +450,8 @@ def _metric_number(value: Any) -> str:
     number = float(value)
     if number.is_integer():
         return str(int(number))
+    if abs(number) >= 1_000_000:
+        return f"{number:.6f}".rstrip("0").rstrip(".")
     return f"{number:g}"
 
 

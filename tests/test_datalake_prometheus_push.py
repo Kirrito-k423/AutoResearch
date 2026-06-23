@@ -104,6 +104,7 @@ def test_latest_telemetry_exposition_collapses_duplicate_label_sets():
                 "server": "A2-AK-225",
                 "device_id": 0,
                 "sample_index": 2,
+                "sample_time_seconds": 1782229758.123456,
                 "hbm_used_mib": 1234,
             },
         ]
@@ -131,6 +132,7 @@ def test_machine_latest_telemetry_exposition_drops_run_and_case_labels():
                 "server": "A2-AK-225",
                 "device_id": 0,
                 "sample_index": 2,
+                "sample_time_seconds": 1782229758.123456,
                 "hbm_used_mib": 1234,
             },
         ]
@@ -143,6 +145,7 @@ def test_machine_latest_telemetry_exposition_drops_run_and_case_labels():
     assert 'device_id="0"' in exposition
     assert 'chip_id="0"' in exposition
     assert "1234" in exposition
+    assert "1782229758.123456" in exposition
     assert "run_id" not in exposition
     assert "case_id" not in exposition
 

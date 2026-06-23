@@ -80,6 +80,7 @@ wandb:
     assert NPU_SMI_ONCE_COMMAND in commands[0][1]
     assert pushed[0][0].endswith("/metrics/job/autoresearch_machine/server/A2-AK-225")
     assert "autoresearch_machine_npu_hbm_used_mib" in pushed[0][1]
+    assert "autoresearch_machine_npu_sample_time_seconds" in pushed[0][1]
     assert 'server="A2-AK-225"' in pushed[0][1]
     assert 'device_id="0"' in pushed[0][1]
     assert 'chip_id="0"' in pushed[0][1]

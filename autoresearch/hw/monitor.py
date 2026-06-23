@@ -6,6 +6,7 @@ import json
 import sys
 import time
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Callable
 
@@ -137,24 +138,45 @@ def _monitor_loop(
     }
     while True:
         iterations += 1
-        for spec in servers:
-            row = results[spec.name]
-            emit_progress("hw.monitor.sample", server=spec.name, iteration=iterations)
-            try:
-                samples = _sample_server(spec, runner=runner)
-                exposition = build_machine_latest_telemetry_exposition(samples)
-                pushed = bool(exposition.strip()) and push_text(
-                    _machine_endpoint(pushgateway_url, spec.name),
-                    exposition,
-                )
-                row["samples"] += len(samples)
-                row["pushes"] += 1 if pushed else 0
-                row["last_device_count"] = len({_sample_identity(sample) for sample in samples})
-                row["error"] = None if pushed else "no telemetry pushed"
-                total_samples += len(samples)
-                total_pushes += 1 if pushed else 0
-            except Exception as exc:
-                row["error"] = str(exc)
+        if len(servers) == 1:
+            name, samples, pushed, error = _sample_and_push(
+                servers[0],
+                iteration=iterations,
+                pushgateway_url=pushgateway_url,
+                runner=runner,
+                push_text=push_text,
+            )
+            total_samples, total_pushes = _record_result(
+                results[name],
+                samples=samples,
+                pushed=pushed,
+                error=error,
+                total_samples=total_samples,
+                total_pushes=total_pushes,
+            )
+        else:
+            with ThreadPoolExecutor(max_workers=len(servers)) as executor:
+                futures = [
+                    executor.submit(
+                        _sample_and_push,
+                        spec,
+                        iteration=iterations,
+                        pushgateway_url=pushgateway_url,
+                        runner=runner,
+                        push_text=push_text,
+                    )
+                    for spec in servers
+                ]
+                for future in as_completed(futures):
+                    name, samples, pushed, error = future.result()
+                    total_samples, total_pushes = _record_result(
+                        results[name],
+                        samples=samples,
+                        pushed=pushed,
+                        error=error,
+                        total_samples=total_samples,
+                        total_pushes=total_pushes,
+                    )
         if once:
             break
         if duration_seconds is not None and monotonic() - started >= duration_seconds:
@@ -170,6 +192,43 @@ def _monitor_loop(
         "pushgateway_url": pushgateway_url,
         "results": results,
     }
+
+
+def _sample_and_push(
+    spec: ServerSpec,
+    *,
+    iteration: int,
+    pushgateway_url: str,
+    runner: RunInEnv,
+    push_text: PushText,
+) -> tuple[str, list[Any], bool, str | None]:
+    emit_progress("hw.monitor.sample", server=spec.name, iteration=iteration)
+    try:
+        samples = _sample_server(spec, runner=runner)
+        exposition = build_machine_latest_telemetry_exposition(samples)
+        pushed = bool(exposition.strip()) and push_text(
+            _machine_endpoint(pushgateway_url, spec.name),
+            exposition,
+        )
+        return spec.name, samples, pushed, None if pushed else "no telemetry pushed"
+    except Exception as exc:
+        return spec.name, [], False, str(exc)
+
+
+def _record_result(
+    row: dict[str, Any],
+    *,
+    samples: list[Any],
+    pushed: bool,
+    error: str | None,
+    total_samples: int,
+    total_pushes: int,
+) -> tuple[int, int]:
+    row["samples"] += len(samples)
+    row["pushes"] += 1 if pushed else 0
+    row["last_device_count"] = len({_sample_identity(sample) for sample in samples})
+    row["error"] = error
+    return total_samples + len(samples), total_pushes + (1 if pushed else 0)
 
 
 def _sample_server(spec: ServerSpec, *, runner: RunInEnv) -> list[Any]:
@@ -188,7 +247,7 @@ def _sample_server(spec: ServerSpec, *, runner: RunInEnv) -> list[Any]:
         samples = _samples_from_hw_parser(stdout, server=spec.name)
     if not samples:
         raise RuntimeError("npu-smi output contained no telemetry samples")
-    return samples
+    return [_with_sample_time(sample, time.time()) for sample in samples]
 
 
 def _run_command(spec: ServerSpec, command: str, timeout: float) -> tuple[int, str, str]:
@@ -235,6 +294,17 @@ def _samples_from_hw_parser(text: str, *, server: str) -> list[Any]:
             }
         )
     return samples
+
+
+def _with_sample_time(sample: Any, sampled_at: float) -> dict[str, Any]:
+    if isinstance(sample, dict):
+        row = dict(sample)
+    elif hasattr(sample, "model_dump"):
+        row = sample.model_dump()
+    else:
+        row = dict(getattr(sample, "__dict__", {}))
+    row["sample_time_seconds"] = sampled_at
+    return row
 
 
 def _sample_identity(sample: Any) -> tuple[Any, Any]:
