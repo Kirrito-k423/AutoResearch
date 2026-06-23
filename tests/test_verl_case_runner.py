@@ -1508,6 +1508,9 @@ def test_row_command_builds_real_training_three_step_script():
     assert "train_batch_size = int(row['train_batch_size'])" in command
     assert "actor_rollout_ref.actor.ppo_mini_batch_size={ppo_mini_batch_size}" in command
     assert "actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu={ppo_micro_batch_size_per_gpu}" in command
+    assert "configured_agent_workers = int(row.get('agent_num_workers') or case.get('agent_num_workers', 8))" in command
+    assert "actor_rollout_ref.rollout.agent.num_workers={agent_num_workers}" in command
+    assert "'agent_num_workers': agent_num_workers" in command
     assert "completed_training_steps" in command
     assert "__AR_COMMAND__=" in command
     assert "total_training_steps" in command
