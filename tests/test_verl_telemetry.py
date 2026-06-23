@@ -9,18 +9,18 @@ import pytest
 telemetry = importlib.import_module("workspace-adapter.verl.telemetry")
 
 
-def test_npu_smi_watch_command_uses_native_one_second_sampling():
+def test_npu_smi_watch_command_uses_half_second_sampling():
     command = telemetry.build_npu_smi_watch_command()
 
     assert "command -v npu-smi" in command
     assert "/usr/local/sbin/npu-smi" in command
     assert '"$NPU_SMI_BIN" info' in command
-    assert "sleep 1" in command
+    assert "sleep 0.5" in command
 
 
-def test_npu_smi_watch_command_rejects_half_second_sampling():
-    with pytest.raises(ValueError, match="integer seconds"):
-        telemetry.build_npu_smi_watch_command(0.5)
+def test_npu_smi_watch_command_rejects_too_fast_sampling():
+    with pytest.raises(ValueError, match=r"\[0.5, 100\]"):
+        telemetry.build_npu_smi_watch_command(0.25)
 
 
 def test_parse_watch_table_preserves_correlation_labels():
@@ -106,7 +106,7 @@ def test_summarize_telemetry_tracks_peak_values():
 
     assert summary.sample_count == 2
     assert summary.device_count == 1
-    assert summary.sample_interval_seconds == 1
+    assert summary.sample_interval_seconds == 0.5
     assert summary.max_hbm_used_mib == 900
     assert summary.hbm_total_mib == 1000
     assert summary.max_ai_core_utilization_percent == 90

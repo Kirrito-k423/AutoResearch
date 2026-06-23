@@ -23,7 +23,7 @@ from .docker import (
     build_docker_run_command,
 )
 from .source_sync import DependencySourceSyncError, filter_runtime_dependency_repo_paths, stage_dependency_sources
-from .telemetry import build_npu_smi_watch_command
+from .telemetry import DEFAULT_NPU_TELEMETRY_INTERVAL_SECONDS, build_npu_smi_watch_command
 
 
 RemoteRunner = Callable[[ServerSpec, str, float], tuple[int, str, str]]
@@ -317,6 +317,7 @@ def _formal_row_script(
         f"PROFILE = {execution_profile!r}\n"
         f"PATHS = json.loads({json.dumps(paths, ensure_ascii=False)!r})\n"
         f"TELEMETRY_COMMAND = {telemetry_command!r}\n"
+        f"TELEMETRY_SAMPLE_INTERVAL_SECONDS = {DEFAULT_NPU_TELEMETRY_INTERVAL_SECONDS!r}\n"
         "\n"
         "def _path(name, default):\n"
         "    value = PATHS.get(name)\n"
@@ -636,7 +637,7 @@ def _formal_row_script(
         "    pending_info_device_id = None\n"
         "    rows = []\n"
         "    if not Path(raw_path).exists():\n"
-        "        return {'sample_count': 0, 'device_count': 0, 'sample_interval_seconds': 1, 'source': 'npu-smi-watch'}\n"
+        "        return {'sample_count': 0, 'device_count': 0, 'sample_interval_seconds': TELEMETRY_SAMPLE_INTERVAL_SECONDS, 'source': 'npu-smi-watch'}\n"
         "    for line in Path(raw_path).read_text(encoding='utf-8', errors='replace').splitlines():\n"
         "        cells = _telemetry_cells(line)\n"
         "        if not cells:\n"
@@ -674,7 +675,7 @@ def _formal_row_script(
         "        return max(values) if values else None\n"
         "    return {\n"
         "        'sample_count': len(rows), 'device_count': len({row['device_id'] for row in rows}),\n"
-        "        'sample_interval_seconds': 1, 'source': 'npu-smi-watch',\n"
+        "        'sample_interval_seconds': TELEMETRY_SAMPLE_INTERVAL_SECONDS, 'source': 'npu-smi-watch',\n"
         "        'max_hbm_used_mib': _max_value('hbm_used_mib'),\n"
         "        'hbm_total_mib': _max_value('hbm_total_mib'),\n"
         "        'max_ai_core_utilization_percent': _max_value('ai_core_utilization_percent'),\n"
@@ -1077,10 +1078,14 @@ def _stop_host_telemetry_sampler(
         f"if test -f {quoted_pid_path}; then "
         f"pid=$(cat {quoted_pid_path} 2>/dev/null | tail -1); "
         "if test -n \"$pid\"; then "
+        "children=$(pgrep -P \"$pid\" 2>/dev/null || true); "
+        "for child in $children; do kill \"$child\" 2>/dev/null || true; done; "
         "kill \"$pid\" 2>/dev/null || true; "
         "sleep 1; "
+        "for child in $children; do kill -9 \"$child\" 2>/dev/null || true; done; "
         "kill -9 \"$pid\" 2>/dev/null || true; "
         "fi; "
+        f"rm -f {quoted_pid_path}; "
         "fi"
     )
     try:

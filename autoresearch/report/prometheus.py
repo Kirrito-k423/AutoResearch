@@ -89,7 +89,7 @@ def load_prometheus_view(
         current_value=None,
         series=[],
         resource_series=resource_series,
-        sample_interval_seconds=int(sample_interval) if isinstance(sample_interval, (int, float)) else None,
+        sample_interval_seconds=float(sample_interval) if isinstance(sample_interval, (int, float)) else None,
         evidence_path=evidence_path,
         notes=notes,
         warning=None,
@@ -175,7 +175,11 @@ def _evidence_notes(evidence: dict[str, Any]) -> list[str]:
         notes.append("本地 evidence 包含 HBM/Core/NPU telemetry，可离线重建资源曲线。")
     samples = evidence.get("telemetry_samples")
     if isinstance(samples, int):
-        notes.append(f"npu-smi watch 采样点: {samples}，原生采样间隔 1s。")
+        interval = evidence.get("sample_interval_seconds") or evidence.get(
+            "telemetry_sample_interval_seconds"
+        )
+        interval_text = f"{float(interval):g}s" if isinstance(interval, (int, float)) else "未知"
+        notes.append(f"npu-smi watch 采样点: {samples}，原生采样间隔 {interval_text}。")
     missing = evidence.get("missing_resource_metrics")
     if isinstance(missing, list) and missing:
         notes.append("尚未采集资源指标: " + ", ".join(str(item) for item in missing))

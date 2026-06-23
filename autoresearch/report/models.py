@@ -72,7 +72,7 @@ class PrometheusView:
     current_value: float | None = None
     series: list[MetricPoint] = field(default_factory=list)
     resource_series: dict[str, list[MetricPoint]] = field(default_factory=dict)
-    sample_interval_seconds: int | None = None
+    sample_interval_seconds: float | None = None
     evidence_path: Path | None = None
     notes: list[str] = field(default_factory=list)
     warning: str | None = None

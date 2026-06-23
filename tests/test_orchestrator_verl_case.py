@@ -252,7 +252,7 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path, monke
             assert run_config.matrix[0].train_batch_size == 1
         else:
             assert run_config.extra["training_tuning_stage"] == "single_node_promotion"
-            assert [row.train_batch_size for row in run_config.matrix] == [1, 2, 4, 8]
+            assert [row.train_batch_size for row in run_config.matrix] == [8, 16, 32, 64]
             assert run_config.matrix[0].case_id.startswith("train-8npu-bs")
             assert run_config.matrix[0].device_count == 8
             assert run_config.matrix[0].visible_devices == list(range(8))

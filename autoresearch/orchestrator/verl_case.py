@@ -66,6 +66,7 @@ extract_stage_timings_from_log = stage_timing_mod.extract_stage_timings_from_log
 write_stage_timings_jsonl = stage_timing_mod.write_stage_timings_jsonl
 SOURCE_HOST_NPU_SMI_WATCH = telemetry_mod.SOURCE_HOST_NPU_SMI_WATCH
 SOURCE_NPU_SMI_WATCH = telemetry_mod.SOURCE_NPU_SMI_WATCH
+DEFAULT_NPU_TELEMETRY_INTERVAL_SECONDS = telemetry_mod.DEFAULT_NPU_TELEMETRY_INTERVAL_SECONDS
 
 
 DEFAULT_PUSHGATEWAY_URL = "http://127.0.0.1:17891"
@@ -489,7 +490,9 @@ def run_verl_case_orchestration(
             ),
             "missing_resource_metrics": [] if telemetry_rows else list(RESOURCE_METRIC_NAMES),
             "telemetry_samples": len(telemetry_rows),
-            "telemetry_sample_interval_seconds": 1 if telemetry_rows else None,
+            "telemetry_sample_interval_seconds": (
+                DEFAULT_NPU_TELEMETRY_INTERVAL_SECONDS if telemetry_rows else None
+            ),
             "telemetry_openmetrics_file": str(telemetry_exposition_path) if telemetry_exposition_path else None,
             "row_count": len(remote_result.rows) if remote_result is not None else 0,
             "note": (
@@ -697,12 +700,15 @@ def _build_single_node_promotion_rows(adapter_config: Any, rows: list[Any]) -> l
     if not stable_rows:
         return []
     best = max(stable_rows, key=lambda row: int(getattr(row, "train_batch_size", 0) or 0))
-    batch_candidates = _unique_positive_ints(
+    per_device_batch_candidates = _unique_positive_ints(
         [
             *list(getattr(adapter_config, "tuning_train_batch_sizes", []) or []),
             int(getattr(best, "train_batch_size", 0) or 0),
             int(getattr(adapter_config, "train_batch_size", 0) or 0),
         ]
+    )
+    batch_candidates = _unique_positive_ints(
+        [per_device_batch_size * len(devices) for per_device_batch_size in per_device_batch_candidates]
     )
     rows_out: list[Any] = []
     for train_batch_size in batch_candidates:

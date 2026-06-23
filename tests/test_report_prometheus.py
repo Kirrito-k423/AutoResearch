@@ -117,7 +117,7 @@ def test_load_prometheus_view_uses_saved_resource_curves_when_live_is_down(tmp_p
                 ],
                 "missing_resource_metrics": [],
                 "telemetry_samples": 1,
-                "telemetry_sample_interval_seconds": 1,
+                "telemetry_sample_interval_seconds": 0.5,
                 "telemetry_openmetrics_file": str(openmetrics),
             }
         ),
@@ -129,7 +129,7 @@ def test_load_prometheus_view_uses_saved_resource_curves_when_live_is_down(tmp_p
 
     assert view.available is True
     assert "已使用本地 telemetry evidence" in (view.warning or "")
-    assert view.sample_interval_seconds == 1
+    assert view.sample_interval_seconds == 0.5
     assert view.resource_series["autoresearch_npu_hbm_used_mib"][0].y == 1234
     assert view.resource_series["autoresearch_npu_aicore_utilization_percent"][0].label == "sync-1024-2048/npu0"
-    assert any("原生采样间隔 1s" in note for note in view.notes)
+    assert any("原生采样间隔 0.5s" in note for note in view.notes)

@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 SOURCE_NPU_SMI_WATCH = "npu-smi-watch"
 SOURCE_HOST_NPU_SMI_WATCH = "host-npu-smi-watch"
+DEFAULT_NPU_TELEMETRY_INTERVAL_SECONDS = 0.5
 
 
 class NpuTelemetrySample(BaseModel):
@@ -34,7 +35,7 @@ class NpuTelemetrySummary(BaseModel):
 
     sample_count: int = 0
     device_count: int = 0
-    sample_interval_seconds: int = 1
+    sample_interval_seconds: float = DEFAULT_NPU_TELEMETRY_INTERVAL_SECONDS
     source: str = SOURCE_NPU_SMI_WATCH
     max_hbm_used_mib: float | None = None
     hbm_total_mib: float | None = None
@@ -43,20 +44,15 @@ class NpuTelemetrySummary(BaseModel):
 
 
 def build_npu_smi_watch_command(
-    sample_interval_seconds: int | float = 1,
+    sample_interval_seconds: int | float = DEFAULT_NPU_TELEMETRY_INTERVAL_SECONDS,
     metric_selector: str = "amn",
 ) -> str:
     """Build the native Ascend watch command used during Verl cases."""
     if isinstance(sample_interval_seconds, bool):
-        raise ValueError("npu-smi watch interval must be an integer second in [1, 100]")
-    if int(sample_interval_seconds) != sample_interval_seconds:
-        raise ValueError(
-            "npu-smi info watch only supports integer seconds in [1, 100]; "
-            f"got {sample_interval_seconds!r}"
-        )
-    interval = int(sample_interval_seconds)
-    if interval < 1 or interval > 100:
-        raise ValueError("npu-smi watch interval must be in [1, 100] seconds")
+        raise ValueError("npu-smi watch interval must be a number in [0.5, 100]")
+    interval = float(sample_interval_seconds)
+    if interval < 0.5 or interval > 100:
+        raise ValueError("npu-smi watch interval must be in [0.5, 100] seconds")
     selector = metric_selector.strip()
     if not selector or not re.fullmatch(r"[A-Za-z]+", selector):
         raise ValueError("npu-smi watch metric selector must contain only letters")
@@ -69,7 +65,7 @@ def build_npu_smi_watch_command(
         " || { test -x /usr/local/Ascend/ascend-toolkit/latest/tools/npu-smi"
         " && echo /usr/local/Ascend/ascend-toolkit/latest/tools/npu-smi; }); "
         'test -n "$NPU_SMI_BIN" || exit 127; '
-        f'while true; do date "+%Y-%m-%d %H:%M:%S"; "$NPU_SMI_BIN" info; sleep {interval}; done'
+        f'while true; do date "+%Y-%m-%d %H:%M:%S"; "$NPU_SMI_BIN" info; sleep {interval:g}; done'
     )
 
 
@@ -143,7 +139,7 @@ def parse_npu_smi_watch_output(
 def summarize_telemetry(
     samples: Iterable[NpuTelemetrySample],
     *,
-    sample_interval_seconds: int = 1,
+    sample_interval_seconds: int | float = DEFAULT_NPU_TELEMETRY_INTERVAL_SECONDS,
 ) -> NpuTelemetrySummary:
     """Summarize normalized telemetry rows for result metadata."""
     rows = list(samples)
