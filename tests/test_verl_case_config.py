@@ -49,7 +49,74 @@ def test_training_tuning_defaults_start_single_card_bs1():
     assert rows[0].train_batch_size == 1
     assert rows[0].input_tokens == 1024
     assert rows[0].output_tokens == 2048
-    assert rows[0].case_id.startswith("train-1npu-bs1-")
+    assert rows[0].case_id.startswith("train-1npu-sync-bs1-")
+
+
+def test_training_tuning_matrix_covers_lengths_and_modes():
+    config = case_config.VerlCaseConfig(
+        output_tokens=[1024, 2048],
+        inference_modes=["sync", "async"],
+        tuning_output_tokens=[1024, 2048],
+        tuning_inference_modes=["sync", "async"],
+        tuning_train_batch_sizes=[1, 2],
+    )
+
+    rows = case_config.build_training_tuning_matrix(config)
+
+    assert {
+        (row.output_tokens, row.inference_mode, row.train_batch_size)
+        for row in rows
+    } == {
+        (1024, "sync", 1),
+        (1024, "sync", 2),
+        (1024, "async", 1),
+        (1024, "async", 2),
+        (2048, "sync", 1),
+        (2048, "sync", 2),
+        (2048, "async", 1),
+        (2048, "async", 2),
+    }
+
+
+def test_training_tuning_matrix_uses_configured_device_count_in_case_id():
+    config = case_config.VerlCaseConfig(
+        single_card_devices=list(range(8)),
+        single_card_start_batch_size=8,
+        tuning_train_batch_sizes=[16],
+        tuning_output_tokens=[1024],
+        tuning_inference_modes=["sync"],
+    )
+
+    rows = case_config.build_training_tuning_matrix(config)
+
+    assert [row.case_id for row in rows] == [
+        "train-8npu-sync-bs8-mini8-micro1-1024-1024",
+        "train-8npu-sync-bs16-mini16-micro1-1024-1024",
+    ]
+    assert all(row.device_count == 8 for row in rows)
+    assert all(row.visible_devices == list(range(8)) for row in rows)
+    assert [row.ppo_mini_batch_size for row in rows] == [8, 16]
+
+
+def test_training_tuning_matrix_allows_explicit_full_node_batch_below_device_count():
+    config = case_config.VerlCaseConfig(
+        single_card_devices=list(range(8)),
+        single_card_start_batch_size=4,
+        tuning_train_batch_sizes=[4],
+        tuning_ppo_mini_batch_sizes=[4],
+        tuning_output_tokens=[1024],
+        tuning_inference_modes=["sync"],
+    )
+
+    rows = case_config.build_training_tuning_matrix(config)
+
+    assert [row.case_id for row in rows] == [
+        "train-8npu-sync-bs4-mini4-micro1-1024-1024"
+    ]
+    assert rows[0].device_count == 8
+    assert rows[0].visible_devices == list(range(8))
+    assert rows[0].train_batch_size == 4
+    assert rows[0].ppo_mini_batch_size == 4
 
 
 def test_immutable_config_snapshot_has_second_timestamp(tmp_path):

@@ -26,6 +26,24 @@ class VerlStageTiming(BaseModel):
     raw_line: str | None = None
 
 
+class VerlSteadyStateThroughput(BaseModel):
+    """Steady-state throughput over a selected training-step window."""
+
+    run_id: str
+    case_id: str
+    step_start: int
+    step_end: int
+    step_count: int
+    device_count: int
+    train_batch_size: int
+    total_tokens: float
+    total_seconds: float
+    tokens_per_second: float
+    tokens_per_second_per_npu: float
+    token_source: str
+    time_keys: list[str]
+
+
 def normalize_stage_metric_key(key: str) -> str:
     """Map verbose Verl/W&B timing metric names into stable report stages."""
     lowered = _normalize_key(key)
@@ -137,6 +155,78 @@ def count_completed_training_steps(log_text: str) -> int:
                 except (TypeError, ValueError):
                     pass
     return max(numbers) if numbers else 0
+
+
+def extract_steady_state_throughput_from_log(
+    log_text: str,
+    *,
+    run_id: str,
+    case_id: str,
+    train_batch_size: int,
+    output_tokens: int,
+    device_count: int,
+    step_start: int = 3,
+    step_end: int = 5,
+) -> VerlSteadyStateThroughput | None:
+    """Compute average per-NPU throughput over completed steady-state steps.
+
+    The preferred token estimate is ``global_seqlen/mean * train_batch_size``
+    from Verl logs. If that is missing, fall back to
+    ``output_tokens * train_batch_size`` so failed/partial logs can still be
+    compared with a clearly marked token source.
+    """
+    if step_end < step_start:
+        return None
+    selected: dict[int, dict[str, Any]] = {}
+    for line in log_text.splitlines():
+        step = _step_from_line(line)
+        if step is None or step < step_start or step > step_end:
+            continue
+        seconds, time_key = _step_seconds_from_line(line)
+        if seconds is None or seconds <= 0:
+            continue
+        seq_mean = _metric_value_from_line(line, "global_seqlen/mean")
+        if seq_mean is not None and seq_mean > 0:
+            tokens = seq_mean * max(1, int(train_batch_size))
+            token_source = "global_seqlen_mean"
+        else:
+            tokens = max(1, int(output_tokens)) * max(1, int(train_batch_size))
+            token_source = "output_tokens_fallback"
+        current = selected.get(step)
+        priority = _step_time_key_priority(time_key)
+        if current is None or priority < int(current["priority"]):
+            selected[step] = {
+                "seconds": seconds,
+                "tokens": tokens,
+                "token_source": token_source,
+                "time_key": time_key,
+                "priority": priority,
+            }
+    if not selected:
+        return None
+    total_seconds = sum(float(item["seconds"]) for item in selected.values())
+    if total_seconds <= 0:
+        return None
+    total_tokens = sum(float(item["tokens"]) for item in selected.values())
+    npu_count = max(1, int(device_count))
+    tokens_per_second = total_tokens / total_seconds
+    return VerlSteadyStateThroughput(
+        run_id=run_id,
+        case_id=case_id,
+        step_start=step_start,
+        step_end=step_end,
+        step_count=len(selected),
+        device_count=npu_count,
+        train_batch_size=max(1, int(train_batch_size)),
+        total_tokens=total_tokens,
+        total_seconds=total_seconds,
+        tokens_per_second=tokens_per_second,
+        tokens_per_second_per_npu=tokens_per_second / npu_count,
+        token_source="mixed"
+        if len({str(item["token_source"]) for item in selected.values()}) > 1
+        else str(next(iter(selected.values()))["token_source"]),
+        time_keys=sorted({str(item["time_key"]) for item in selected.values()}),
+    )
 
 
 def write_stage_timings_jsonl(path: str | Path, rows: Iterable[VerlStageTiming]) -> Path:
@@ -267,6 +357,56 @@ def _timing_pairs_from_log_line(line: str) -> Iterable[tuple[str, Any]]:
             yield key.strip(" ,;"), float(raw_value)
         except ValueError:
             continue
+
+
+def _step_seconds_from_line(line: str) -> tuple[float | None, str]:
+    candidates: list[tuple[int, float, str]] = []
+    for key in (
+        "perf/time_per_step",
+        "perf/time-per-step",
+        "timing_s/step",
+        "timing/step",
+        "time_per_step",
+        "step_time",
+    ):
+        value = _metric_value_from_line(line, key)
+        if value is None:
+            continue
+        seconds = value / 1000.0 if key.endswith("_ms") or key.endswith("-ms") else value
+        candidates.append((_step_time_key_priority(key), seconds, key))
+    if not candidates:
+        return None, ""
+    _priority, seconds, key = min(candidates, key=lambda item: item[0])
+    return seconds, key
+
+
+def _metric_value_from_line(line: str, key: str) -> float | None:
+    pattern = re.compile(
+        rf"(?<![A-Za-z0-9_./-]){re.escape(key)}\s*[:=]\s*([-+]?[0-9]+(?:\.[0-9]+)?)",
+        flags=re.IGNORECASE,
+    )
+    match = pattern.search(line)
+    if not match:
+        return None
+    try:
+        return float(match.group(1))
+    except ValueError:
+        return None
+
+
+def _step_time_key_priority(key: str) -> int:
+    normalized = key.lower().replace("-", "_")
+    order = (
+        "perf/time_per_step",
+        "timing_s/step",
+        "timing/step",
+        "time_per_step",
+        "step_time",
+    )
+    for index, item in enumerate(order):
+        if normalized == item:
+            return index
+    return len(order)
 
 
 def _dict_payloads_from_line(line: str) -> Iterable[dict[str, Any]]:

@@ -166,6 +166,20 @@ class VerlCaseConfig(BaseModel):
     tuning_train_batch_sizes: list[int] = Field(default_factory=lambda: [1, 2, 4, 8])
     tuning_ppo_mini_batch_sizes: list[int] = Field(default_factory=lambda: [1])
     tuning_ppo_micro_batch_sizes_per_gpu: list[int] = Field(default_factory=lambda: [1])
+    tuning_output_tokens: list[int] | None = Field(
+        default=None,
+        description=(
+            "Optional training-tuning sequence lengths. None keeps the conservative "
+            "single shortest output length; set explicitly to search sequence length."
+        ),
+    )
+    tuning_inference_modes: list[Literal["sync", "async"]] | None = Field(
+        default=None,
+        description=(
+            "Optional training-tuning inference modes. None keeps the first "
+            "configured inference mode; set explicitly to search sync/async."
+        ),
+    )
     train_batch_size: int = Field(default=8, ge=1)
     val_batch_size: int = Field(default=1, ge=1)
     train_max_samples: int = Field(default=8, ge=1)
@@ -173,6 +187,44 @@ class VerlCaseConfig(BaseModel):
     rollout_n: int = Field(default=1, ge=1)
     n_gpus_per_node: int = Field(default=8, ge=1)
     tensor_model_parallel_size: int = Field(default=2, ge=1)
+    rollout_gpu_memory_utilization: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="vLLM rollout gpu_memory_utilization; raise when KV cache cannot allocate.",
+    )
+    rollout_max_model_len_floor: int = Field(
+        default=24576,
+        ge=0,
+        description=(
+            "Lower bound for rollout.max_model_len/max_num_batched_tokens. Set 0 "
+            "to use the actual prompt+response length during short-context sweeps."
+        ),
+    )
+    ppo_max_token_len_per_gpu_floor: int = Field(
+        default=24576,
+        ge=0,
+        description=(
+            "Lower bound for actor/ref/rollout log-prob max_token_len_per_gpu. "
+            "Lower this for short-context sweeps when update_actor OOMs."
+        ),
+    )
+    rollout_update_weights_bucket_megabytes: int = Field(
+        default=2048,
+        ge=1,
+        description=(
+            "Verl/vLLM rollout update_weights bucket size in MiB. Lower this when "
+            "FSDP-to-rollout weight sync OOMs on the bucket allocation."
+        ),
+    )
+    cleanup_stale_verl_processes: bool = Field(
+        default=True,
+        description=(
+            "Before each formal matrix run, terminate stale Verl/Ray/vLLM worker "
+            "processes from earlier failed runs so the selected single-node host "
+            "starts with exclusive NPU access."
+        ),
+    )
     row_timeout_seconds: int = Field(
         default=7200,
         ge=1,
@@ -218,6 +270,22 @@ class VerlCaseConfig(BaseModel):
             raise ValueError("inference_modes 不能为空")
         if len(set(v)) != len(v):
             raise ValueError("inference_modes 不能重复")
+        return v
+
+    @field_validator("tuning_output_tokens")
+    @classmethod
+    def _tuning_output_tokens_positive(cls, v: list[int] | None) -> list[int] | None:
+        if v is not None and any(item <= 0 for item in v):
+            raise ValueError("tuning_output_tokens 必须全部为正整数")
+        return v
+
+    @field_validator("tuning_inference_modes")
+    @classmethod
+    def _tuning_inference_modes_unique(
+        cls, v: list[Literal["sync", "async"]] | None
+    ) -> list[Literal["sync", "async"]] | None:
+        if v is not None and len(set(v)) != len(v):
+            raise ValueError("tuning_inference_modes 不能重复")
         return v
 
 

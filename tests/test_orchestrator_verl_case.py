@@ -7,16 +7,19 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+import yaml
 from click.testing import CliRunner
 from workspace_core.config import ServerSpec
 
 from autoresearch.cli import main
+from autoresearch.orchestrator import verl_case as verl_case_orchestrator
 from autoresearch.orchestrator.verl_case import run_verl_case_orchestration
 
 
 case_config = importlib.import_module("workspace-adapter.verl.case_config")
 case_runner = importlib.import_module("workspace-adapter.verl.case_runner")
 data_prep = importlib.import_module("workspace-adapter.verl.data_prep")
+model_sync = importlib.import_module("workspace-adapter.verl.model_sync")
 
 
 @pytest.fixture(autouse=True)
@@ -66,6 +69,55 @@ verl_case:
         encoding="utf-8",
     )
     return path
+
+
+def test_data_config_path_follows_selected_config_directory(tmp_path):
+    config_path = tmp_path / "configs" / "custom.yaml"
+
+    assert verl_case_orchestrator._data_config_path_for(config_path) == tmp_path / "configs" / "data.yaml"
+
+
+def test_full_node_initial_matrix_skips_training_promotion():
+    config = case_config.VerlCaseConfig(
+        single_card_devices=list(range(8)),
+        single_node_devices=list(range(8)),
+        single_card_start_batch_size=8,
+        tuning_train_batch_sizes=[16],
+        tuning_output_tokens=[1024],
+        tuning_inference_modes=["sync"],
+    )
+    matrix = case_config.build_training_tuning_matrix(config)
+    passed_rows = [
+        case_config.VerlCaseResultRow(
+            run_id="run123",
+            case_id=matrix[0].case_id,
+            input_tokens=matrix[0].input_tokens,
+            output_tokens=matrix[0].output_tokens,
+            inference_mode=matrix[0].inference_mode,
+            ignore_eos=matrix[0].ignore_eos,
+            status="passed",
+            train_batch_size=matrix[0].train_batch_size,
+            ppo_mini_batch_size=matrix[0].ppo_mini_batch_size,
+            ppo_micro_batch_size_per_gpu=matrix[0].ppo_micro_batch_size_per_gpu,
+            device_count=matrix[0].device_count,
+            visible_devices=matrix[0].visible_devices,
+        )
+    ]
+
+    promotion = verl_case_orchestrator._build_single_node_promotion_rows(config, passed_rows)
+
+    assert promotion == []
+
+
+def test_telemetry_npu_count_counts_device_chip_pairs():
+    rows = [
+        {"device_id": 0, "chip_id": 0},
+        {"device_id": 0, "chip_id": 1},
+        {"device_id": 1, "chip_id": 2},
+        {"device_id": 1, "chip_id": 3},
+    ]
+
+    assert verl_case_orchestrator._npu_count_from_telemetry_rows(rows) == 4
 
 
 def _rows(run_config, *, failed_key: str | None = None):
@@ -154,6 +206,28 @@ def _fake_model_cache(tmp_path: Path):
         ready=True,
         downloaded=False,
     )
+
+
+def _readiness_payload_with_npu_devices(device_count: int) -> dict:
+    devices = [{"id": index // 2, "chip_id": index} for index in range(device_count)]
+    return {
+        "ok": True,
+        "steps": [
+            {
+                "id": "hw",
+                "label": "server-hardware-probe",
+                "ok": True,
+                "status": "pass",
+                "exit_code": 0,
+                "diagnosis": None,
+                "payload": {
+                    "ok": True,
+                    "severity": "ok",
+                    "data": {"devices": devices},
+                },
+            }
+        ],
+    }
 
 
 def _fake_prepared_dataset(tmp_path: Path, *, with_parquet: bool = False):
@@ -250,22 +324,22 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path, monke
         assert run_config.config.trainer_val_only is False
         assert run_config.extra["case_matrix_kind"] == "training_tuning"
         if len(run_configs) == 1:
-            assert run_config.matrix[0].case_id.startswith("train-1npu-bs1-")
+            assert run_config.matrix[0].case_id.startswith("train-1npu-sync-bs1-")
             assert run_config.matrix[0].device_count == 1
             assert run_config.matrix[0].visible_devices == [0]
             assert run_config.matrix[0].train_batch_size == 1
         else:
             assert run_config.extra["training_tuning_stage"] == "single_node_promotion"
             assert [row.train_batch_size for row in run_config.matrix] == [8, 16, 32, 64]
-            assert run_config.matrix[0].case_id.startswith("train-8npu-bs")
+            assert run_config.matrix[0].case_id.startswith("train-8npu-sync-bs")
             assert run_config.matrix[0].device_count == 8
             assert run_config.matrix[0].visible_devices == list(range(8))
         return _remote_result(run_config)
 
     def collect_with_stage_timing(_spec, _remote_dir, local_dir, **_kwargs):
-        row_dir = Path(local_dir) / "train-1npu-bs1-mini1-micro1-1024-2048"
+        row_dir = Path(local_dir) / "train-1npu-sync-bs1-mini1-micro1-1024-2048"
         row_dir.mkdir(parents=True, exist_ok=True)
-        (row_dir / "run123-train-1npu-bs1-mini1-micro1-1024-2048.log").write_text(
+        (row_dir / "run123-train-1npu-sync-bs1-mini1-micro1-1024-2048.log").write_text(
             "global_step: 1 timing_raw: {'rollout_generate_seconds': 1.5, 'actor_log_prob_ms': 250}\n",
             encoding="utf-8",
         )
@@ -302,7 +376,7 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path, monke
     assert Path(runs_root / "run123" / "1-wandb" / "files" / "wandb-summary.json").exists()
     matrix_lines = Path(payload["matrix_results"]).read_text(encoding="utf-8").splitlines()
     assert len(matrix_lines) == 8
-    assert any("train-8npu-bs" in line for line in matrix_lines)
+    assert any("train-8npu-sync-bs" in line for line in matrix_lines)
     manifest = json.loads(Path(payload["manifest"]).read_text(encoding="utf-8"))
     assert manifest["formal_case"]["matrix_results"] == payload["matrix_results"]
     assert manifest["config_snapshot"] == payload["config_snapshot"]
@@ -318,7 +392,7 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path, monke
     stage_lines = (runs_root / "run123" / "6-rows" / "stage-timings.jsonl").read_text(encoding="utf-8").splitlines()
     assert len(stage_lines) == 2
     assert json.loads(stage_lines[0])["stage"] == "rollout"
-    assert (runs_root / "run123" / "6-rows" / "cases" / "train-1npu-bs1-mini1-micro1-1024-2048" / "stage-timings.jsonl").exists()
+    assert (runs_root / "run123" / "6-rows" / "cases" / "train-1npu-sync-bs1-mini1-micro1-1024-2048" / "stage-timings.jsonl").exists()
     assert manifest["formal_case"]["rebuild_environment_script"] == str(runs_root / "run123" / "restore" / "rebuild-environment.sh")
     assert Path(runs_root / "run123" / "README.md").exists()
     assert Path(runs_root / "run123" / "RUN.md").exists()
@@ -326,6 +400,139 @@ def test_verl_case_orchestration_success_creates_local_artifacts(tmp_path, monke
     assert ensured
     assert ensured[0][0][0] == "A2-AK-225"
     assert ensured[0][1]["remote_proxy_port"] == 17892
+
+
+def test_verl_case_runtime_npu_count_follows_hardware_readiness(tmp_path):
+    config = _config_file(tmp_path)
+    runs_root = tmp_path / "runs"
+    wandb_dir = runs_root / "run123" / "wandb"
+    run_configs = []
+    pushed_counts = []
+
+    def sync_all(_run_id, _spec, **_kwargs):
+        (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
+        return wandb_dir
+
+    def remote(_spec, run_config, **_kwargs):
+        run_configs.append(run_config)
+        return _remote_result(run_config)
+
+    def push_count(_spec, _run_id, npu_count, **_kwargs):
+        pushed_counts.append(npu_count)
+        return True
+
+    with patch("autoresearch.orchestrator.verl_case._qualify_formal_case_host", return_value=(True, "ok")), \
+         patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, _readiness_payload_with_npu_devices(16))), \
+         patch("autoresearch.orchestrator.verl_case.ensure_proxy_tunnel", return_value={"remote_proxy_url": "http://127.0.0.1:17892"}), \
+         patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance), \
+         patch("autoresearch.orchestrator.verl_case.prepare_model_cache", return_value=_fake_model_cache(tmp_path)), \
+         patch("autoresearch.orchestrator.verl_case.stage_model_cache", return_value="/home/t00906153/autoresearch/runs/run123/model"), \
+         patch("autoresearch.orchestrator.verl_case.run_verl_case", side_effect=remote), \
+         patch("autoresearch.orchestrator.verl_case.sync_all_runs", side_effect=sync_all), \
+         patch("autoresearch.orchestrator.verl_case.push_metrics", side_effect=push_count), \
+         patch("autoresearch.orchestrator.verl_case.run_render", side_effect=_fake_report):
+        exit_code, payload = run_verl_case_orchestration(
+            server="A2-AK-225",
+            config=str(config),
+            run_id="run123",
+            runs_root=runs_root,
+        )
+
+    assert exit_code == 0
+    assert payload["ok"] is True
+    assert any("detected 16 NPU devices" in warning for warning in payload["warnings"])
+    assert len(run_configs) == 2
+    assert run_configs[0].config.n_gpus_per_node == 16
+    assert run_configs[0].config.single_node_devices == list(range(16))
+    assert run_configs[0].extra["npu_count_source"] == "readiness_hw"
+    assert run_configs[1].matrix[0].device_count == 16
+    assert run_configs[1].matrix[0].visible_devices == list(range(16))
+    assert pushed_counts == [16]
+
+    snapshot = json.loads(Path(payload["config_snapshot"]).read_text(encoding="utf-8"))
+    assert snapshot["config"]["n_gpus_per_node"] == 16
+    assert snapshot["config"]["single_node_devices"] == list(range(16))
+    prom_evidence = json.loads((runs_root / "run123" / "2-prometheus" / "formal-case-prometheus.json").read_text(encoding="utf-8"))
+    assert prom_evidence["npu_count"] == 16
+
+
+def test_verl_case_orchestration_reuses_ready_remote_model_registry(tmp_path, monkeypatch):
+    config = _config_file(
+        tmp_path,
+        extra_verl_case="  model_id: Qwen/Qwen3.5-35B-A3B\n",
+    )
+    data_config = tmp_path / "data.yaml"
+    remote_model_path = "/home/t00906153/autoresearch-assets/models/Qwen__Qwen3.5-35B-A3B"
+    data_config.write_text(
+        yaml.safe_dump(
+            {
+                "version": 1,
+                "assets": {
+                    "models": {
+                        "qwen3-5-35b-a3b": {
+                            "kind": "model",
+                            "canonical_id": "Qwen/Qwen3.5-35B-A3B",
+                            "status": "ready",
+                            "remote": {
+                                "server": "A2-AK-225",
+                                "host": "192.168.9.225",
+                                "path": remote_model_path,
+                            },
+                        }
+                    }
+                },
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    runs_root = tmp_path / "runs"
+    wandb_dir = runs_root / "run123" / "wandb"
+
+    class _Client:
+        def __init__(self, host, bootstrap_password=None):
+            self.host = host
+            self.bootstrap_password = bootstrap_password
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def exec(self, command, timeout):
+            if f"{remote_model_path}/config.json" in command:
+                return 0, "", ""
+            raise AssertionError(f"unexpected exec command: {command}")
+
+    def sync_all(_run_id, _spec, **_kwargs):
+        (wandb_dir / "files").mkdir(parents=True, exist_ok=True)
+        return wandb_dir
+
+    def remote(_spec, run_config, **_kwargs):
+        assert run_config.extra["remote_model_path"] == remote_model_path
+        assert run_config.extra["cache"]["local_model_cache"]["remote_registry_reused"] is True
+        return _remote_result(run_config)
+
+    monkeypatch.setattr(model_sync, "SSHClient", _Client)
+    with patch("autoresearch.orchestrator.verl_case._qualify_formal_case_host", return_value=(True, "ok")), \
+         patch("autoresearch.orchestrator.verl_case.run_check_all", return_value=(0, {"ok": True})), \
+         patch("autoresearch.orchestrator.verl_case.capture_repo_provenance", side_effect=_fake_provenance), \
+         patch("autoresearch.orchestrator.verl_case.prepare_model_cache", side_effect=AssertionError("local model cache should not be prepared")), \
+         patch("autoresearch.orchestrator.verl_case.stage_model_cache", side_effect=AssertionError("remote ready model should not be staged")), \
+         patch("autoresearch.orchestrator.verl_case.run_verl_case", side_effect=remote), \
+         patch("autoresearch.orchestrator.verl_case.sync_all_runs", side_effect=sync_all), \
+         patch("autoresearch.orchestrator.verl_case.push_metrics", return_value=True), \
+         patch("autoresearch.orchestrator.verl_case.run_render", side_effect=_fake_report):
+        exit_code, payload = run_verl_case_orchestration(
+            server="A2-AK-225",
+            config=str(config),
+            run_id="run123",
+            runs_root=runs_root,
+        )
+
+    assert exit_code == 0
+    assert payload["ok"] is True
 
 
 def test_verl_case_orchestration_saves_telemetry_prometheus_evidence(tmp_path, monkeypatch):
@@ -341,13 +548,13 @@ def test_verl_case_orchestration_saves_telemetry_prometheus_evidence(tmp_path, m
         return wandb_dir
 
     def collect_with_telemetry(_spec, _remote_dir, local_dir, **_kwargs):
-        row_dir = Path(local_dir) / "train-1npu-bs1-mini1-micro1-1024-2048"
+        row_dir = Path(local_dir) / "train-1npu-sync-bs1-mini1-micro1-1024-2048"
         row_dir.mkdir(parents=True, exist_ok=True)
         (row_dir / "npu-telemetry.jsonl").write_text(
             json.dumps(
                 {
                     "run_id": "run123",
-                    "case_id": "train-1npu-bs1-mini1-micro1-1024-2048",
+                    "case_id": "train-1npu-sync-bs1-mini1-micro1-1024-2048",
                     "server": "A2-AK-225",
                     "device_id": 0,
                     "source": "npu-smi-watch",
@@ -411,7 +618,7 @@ def test_verl_case_orchestration_saves_telemetry_prometheus_evidence(tmp_path, m
     assert machine_exposition_path.exists()
     assert cases_exposition_path.exists()
     exposition = exposition_path.read_text(encoding="utf-8")
-    assert 'case_id="train-1npu-bs1-mini1-micro1-1024-2048"' in exposition
+    assert 'case_id="train-1npu-sync-bs1-mini1-micro1-1024-2048"' in exposition
     assert telemetry_calls
     assert machine_calls
     assert case_calls
@@ -419,12 +626,13 @@ def test_verl_case_orchestration_saves_telemetry_prometheus_evidence(tmp_path, m
     assert telemetry_calls[0][1][0]["source"] == "npu-smi-watch"
     assert telemetry_calls[0][2] == latest_exposition_path.read_text(encoding="utf-8")
     assert "autoresearch_machine_npu_hbm_used_mib" in machine_calls[0][1]
-    assert "autoresearch_experiment_case_info" in case_calls[0][2]
-    assert "autoresearch_experiment_case_start_time_seconds" in case_calls[0][2]
-    assert "autoresearch_experiment_case_end_time_seconds" in case_calls[0][2]
-    assert "autoresearch_experiment_case_elapsed_seconds" in case_calls[0][2]
-    assert 'case_started_at="2026-06-23T01:00:00Z"' in case_calls[0][2]
-    assert 'case_finished_at="2026-06-23T01:00:01Z"' in case_calls[0][2]
+    case_exposition = "\n".join(call[2] for call in case_calls)
+    assert "autoresearch_experiment_case_info" in case_exposition
+    assert "autoresearch_experiment_case_start_time_seconds" in case_exposition
+    assert "autoresearch_experiment_case_end_time_seconds" in case_exposition
+    assert "autoresearch_experiment_case_elapsed_seconds" in case_exposition
+    assert 'case_started_at="2026-06-23T01:00:00Z"' in case_exposition
+    assert 'case_finished_at="2026-06-23T01:00:01Z"' in case_exposition
 
 
 def test_verl_case_orchestration_rebuilds_telemetry_from_host_raw_log(tmp_path, monkeypatch):
@@ -440,7 +648,7 @@ def test_verl_case_orchestration_rebuilds_telemetry_from_host_raw_log(tmp_path, 
         return wandb_dir
 
     def collect_with_host_raw(_spec, _remote_dir, local_dir, **_kwargs):
-        row_dir = Path(local_dir) / "train-1npu-bs1-mini1-micro1-1024-2048"
+        row_dir = Path(local_dir) / "train-1npu-sync-bs1-mini1-micro1-1024-2048"
         row_dir.mkdir(parents=True, exist_ok=True)
         (row_dir / "host-npu-smi-watch.raw.log").write_text(
             """
@@ -449,6 +657,9 @@ def test_verl_case_orchestration_rebuilds_telemetry_from_host_raw_log(tmp_path, 
 | Chip                      | Bus-Id        | AICore(%)   Memory-Usage(MB)  HBM-Usage(MB)        |
 | 0     910B2               | OK            | 108.8       39                0    / 0             |
 | 0                         | 0000:C1:00.0  | 7           0    / 0          49290/ 65536         |
+__AR_HOST_SAMPLE__ sample_time_seconds=1782153601.25
+__AR_HOST_MEMORY__ used_bytes=34359738368 total_bytes=68719476736 free_bytes=17179869184 available_bytes=51539607552 shared_bytes=1073741824 buff_cache_bytes=17179869184 occupied_bytes=51539607552 utilization_percent=50.000000 occupied_percent=75.000000
+__AR_HOST_CPU__ utilization_percent=37.500000
 """,
             encoding="utf-8",
         )
@@ -489,15 +700,30 @@ def test_verl_case_orchestration_rebuilds_telemetry_from_host_raw_log(tmp_path, 
     assert exit_code == 0
     assert payload["ok"] is True
     normalized = (
-        runs_root / "run123" / "6-rows" / "cases" / "train-1npu-bs1-mini1-micro1-1024-2048" / "host-npu-telemetry.jsonl"
+        runs_root / "run123" / "6-rows" / "cases" / "train-1npu-sync-bs1-mini1-micro1-1024-2048" / "host-npu-telemetry.jsonl"
     )
     assert normalized.exists()
+    host_resource = (
+        runs_root / "run123" / "6-rows" / "cases" / "train-1npu-sync-bs1-mini1-micro1-1024-2048" / "host-resource-telemetry.jsonl"
+    )
+    assert host_resource.exists()
     prom_evidence = json.loads((runs_root / "run123" / "2-prometheus" / "formal-case-prometheus.json").read_text(encoding="utf-8"))
     assert prom_evidence["telemetry_samples"] == 1
+    assert prom_evidence["host_resource_samples"] == 1
     assert prom_evidence["missing_resource_metrics"] == []
+    assert prom_evidence["missing_host_resource_metrics"] == []
+    assert "autoresearch_machine_host_memory_used_bytes" in prom_evidence["metrics_pushed"]
+    assert "autoresearch_machine_host_memory_buff_cache_bytes" in prom_evidence["metrics_pushed"]
+    assert "autoresearch_machine_host_memory_occupied_bytes" in prom_evidence["metrics_pushed"]
+    assert "autoresearch_machine_host_cpu_utilization_percent" in prom_evidence["metrics_pushed"]
+    assert Path(prom_evidence["host_resource_openmetrics_file"]).exists()
     assert telemetry_calls[0][1][0]["source"] == "host-npu-smi-watch"
     assert telemetry_calls[0][1][0]["hbm_used_mib"] == 49290
     assert machine_calls
+    assert "autoresearch_machine_host_memory_used_bytes" in machine_calls[0][1]
+    assert "autoresearch_machine_host_memory_buff_cache_bytes" in machine_calls[0][1]
+    assert "autoresearch_machine_host_memory_occupied_bytes" in machine_calls[0][1]
+    assert "autoresearch_machine_host_cpu_utilization_percent" in machine_calls[0][1]
     assert case_calls
 
 

@@ -15,6 +15,14 @@ from concurrent.futures import ThreadPoolExecutor
 from pydantic import BaseModel
 import requests
 
+from workspace_core.asset_registry import (
+    AssetRegistryError,
+    find_asset,
+    load_registry,
+    local_path_for_asset,
+    select_remote_location,
+    update_asset_record,
+)
 from workspace_core.config import ServerSpec
 from workspace_core.secrets import resolve_secret
 from workspace_core.ssh import HostSpec
@@ -84,12 +92,19 @@ def prepare_model_cache(
     cache_root: str | Path,
     *,
     proxy_url: str | None = None,
+    data_config_path: str | Path | None = None,
 ) -> PreparedModelCache:
     """Ensure the formal-case model exists under the configured local cache root."""
     root = Path(cache_root).expanduser()
-    model_cache = root / "models" / config.model_id.replace("/", "__")
+    model_cache = local_path_for_asset(
+        kind="model",
+        canonical_id=config.model_id,
+        cache_root=root,
+        data_config_path=data_config_path,
+    )
     model_cache.mkdir(parents=True, exist_ok=True)
     if _model_ready(model_cache):
+        _record_model_cache(config.model_id, data_config_path, model_cache)
         return PreparedModelCache(
             model_id=config.model_id,
             cache_root=root,
@@ -103,6 +118,7 @@ def prepare_model_cache(
         except Exception:
             pass
         else:
+            _record_model_cache(config.model_id, data_config_path, model_cache)
             return PreparedModelCache(
                 model_id=config.model_id,
                 cache_root=root,
@@ -157,6 +173,7 @@ def prepare_model_cache(
             proxy_url=proxy_url,
             context=f"模型缓存不完整: {model_cache}",
         )
+    _record_model_cache(config.model_id, data_config_path, model_cache)
     return PreparedModelCache(
         model_id=config.model_id,
         cache_root=root,
@@ -172,6 +189,8 @@ def stage_model_cache(
     local_model_dir: str | Path,
     remote_model_dir: str | PurePosixPath,
     remote_shared_model_root: str | PurePosixPath | None = None,
+    model_id: str | None = None,
+    data_config_path: str | Path | None = None,
 ) -> str:
     """Upload the prepared local model cache or reuse an existing remote cache."""
     local_path = Path(local_model_dir).expanduser()
@@ -195,6 +214,13 @@ def stage_model_cache(
     )
     with SSHClient(host, bootstrap_password=password) as client:
         if _remote_model_cache_ready(client, shared_dir):
+            _record_remote_model_cache(
+                model_id,
+                data_config_path,
+                local_path,
+                spec,
+                shared_dir,
+            )
             return shared_dir.as_posix()
         _ensure_remote_dir(client, shared_dir.parent)
         archive = _build_model_archive(local_path)
@@ -217,7 +243,96 @@ def stage_model_cache(
         if code != 0:
             detail = (stderr or stdout or "").strip() or f"exit={code}"
             raise ModelSyncError(f"远端模型缓存同步失败: {detail}")
+    _record_remote_model_cache(
+        model_id,
+        data_config_path,
+        local_path,
+        spec,
+        shared_dir,
+    )
     return shared_dir.as_posix()
+
+
+def resolve_ready_remote_model_cache(
+    spec: ServerSpec,
+    config: VerlCaseConfig,
+    *,
+    data_config_path: str | Path | None = None,
+) -> str | None:
+    """Return a ready registry model path on the selected remote host, if present."""
+    if data_config_path is None:
+        return None
+    try:
+        registry = load_registry(data_config_path)
+    except AssetRegistryError:
+        return None
+    found = find_asset(registry, kind="model", canonical_id=config.model_id)
+    if found is None:
+        return None
+    entry = found[1]
+    if str(entry.get("status") or "").lower() != "ready":
+        return None
+    remote = select_remote_location(
+        entry,
+        server_name=spec.name,
+        host=spec.host,
+    )
+    if remote is None:
+        return None
+    remote_path = remote["path"]
+    if not remote_path:
+        return None
+
+    id_file = Path(spec.identity_file).expanduser() if spec.identity_file else None
+    password = resolve_secret(spec.bootstrap_password_secret) if spec.bootstrap_password_secret else None
+    host = HostSpec(
+        alias=spec.name,
+        host=spec.host,
+        port=spec.port,
+        user=spec.user,
+        identity_file=id_file,
+    )
+    with SSHClient(host, bootstrap_password=password) as client:
+        if _remote_model_cache_ready(client, PurePosixPath(remote_path)):
+            return remote_path
+    return None
+
+
+def _record_model_cache(
+    model_id: str,
+    data_config_path: str | Path | None,
+    model_cache: Path,
+) -> None:
+    if data_config_path is None:
+        return
+    update_asset_record(
+        kind="model",
+        canonical_id=model_id,
+        data_config_path=data_config_path,
+        status="ready",
+        local_path=model_cache,
+    )
+
+
+def _record_remote_model_cache(
+    model_id: str | None,
+    data_config_path: str | Path | None,
+    local_model_dir: Path,
+    spec: ServerSpec,
+    remote_path: PurePosixPath,
+) -> None:
+    if data_config_path is None or model_id is None:
+        return
+    update_asset_record(
+        kind="model",
+        canonical_id=model_id,
+        data_config_path=data_config_path,
+        status="ready",
+        local_path=local_model_dir,
+        remote_server=spec.name,
+        remote_host=spec.host,
+        remote_path=remote_path.as_posix(),
+    )
 
 
 def _model_ready(model_cache: Path) -> bool:

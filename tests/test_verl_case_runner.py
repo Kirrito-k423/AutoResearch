@@ -9,6 +9,7 @@ import types
 from datetime import datetime, timezone
 from pathlib import Path
 
+import yaml
 from workspace_core.config import ServerSpec
 
 
@@ -201,6 +202,47 @@ def test_prepare_geometry3k_detects_existing_parquet_cache(tmp_path):
     assert prepared.test_parquet == dataset_cache / "test.parquet"
 
 
+def test_prepare_geometry3k_uses_and_updates_asset_registry(tmp_path):
+    data_config = tmp_path / "data.yaml"
+    dataset_cache = tmp_path / "registry" / "datasets" / "geo3k"
+    dataset_cache.mkdir(parents=True)
+    (dataset_cache / "train.parquet").write_bytes(b"train")
+    (dataset_cache / "test.parquet").write_bytes(b"test")
+    data_config.write_text(
+        yaml.safe_dump(
+            {
+                "version": 1,
+                "assets": {
+                    "datasets": {
+                        "geo3k": {
+                            "kind": "dataset",
+                            "canonical_id": "hiyouga/geometry3k",
+                            "local": {"path": str(dataset_cache)},
+                            "status": "planned",
+                        }
+                    }
+                },
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    prepared = data_prep.prepare_geometry3k(
+        case_config.VerlCaseConfig(),
+        tmp_path / "fallback-cache",
+        data_config_path=data_config,
+    )
+    registry = yaml.safe_load(data_config.read_text(encoding="utf-8"))
+
+    assert prepared.ready is True
+    assert prepared.dataset_cache == dataset_cache
+    entry = registry["assets"]["datasets"]["geo3k"]
+    assert entry["status"] == "ready"
+    assert entry["local"]["path"] == str(dataset_cache)
+    assert entry["updated_at"]
+
+
 def test_stage_geometry3k_uploads_cached_parquet(tmp_path, monkeypatch):
     dataset_cache = tmp_path / "cache" / "datasets" / "hiyouga__geometry3k"
     dataset_cache.mkdir(parents=True)
@@ -272,6 +314,52 @@ def test_prepare_model_cache_short_circuits_existing_snapshot(tmp_path):
     assert prepared.ready is True
     assert prepared.downloaded is False
     assert prepared.model_cache == model_cache
+
+
+def test_prepare_model_cache_uses_and_updates_asset_registry(tmp_path):
+    data_config = tmp_path / "data.yaml"
+    model_cache = tmp_path / "registry" / "models" / "qwen"
+    model_cache.mkdir(parents=True)
+    (model_cache / "config.json").write_text("{}", encoding="utf-8")
+    (model_cache / "model.safetensors.index.json").write_text(
+        json.dumps({"weight_map": {"model.embed_tokens.weight": "model.safetensors-00001-of-00001.safetensors"}}),
+        encoding="utf-8",
+    )
+    (model_cache / "model.safetensors-00001-of-00001.safetensors").write_bytes(b"stub")
+    data_config.write_text(
+        yaml.safe_dump(
+            {
+                "version": 1,
+                "assets": {
+                    "models": {
+                        "qwen3-5-2b": {
+                            "kind": "model",
+                            "canonical_id": "Qwen/Qwen3.5-2B",
+                            "local": {"path": str(model_cache)},
+                            "status": "planned",
+                        }
+                    }
+                },
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    prepared = model_sync.prepare_model_cache(
+        case_config.VerlCaseConfig(),
+        tmp_path / "fallback-cache",
+        data_config_path=data_config,
+    )
+    registry = yaml.safe_load(data_config.read_text(encoding="utf-8"))
+
+    assert prepared.ready is True
+    assert prepared.downloaded is False
+    assert prepared.model_cache == model_cache
+    entry = registry["assets"]["models"]["qwen3-5-2b"]
+    assert entry["status"] == "ready"
+    assert entry["local"]["path"] == str(model_cache)
+    assert entry["updated_at"]
 
 
 def test_prepare_model_cache_recovers_completed_snapshot_via_resume(tmp_path, monkeypatch):
@@ -416,6 +504,202 @@ def test_stage_model_cache_reuses_shared_remote_cache(tmp_path, monkeypatch):
 
     assert remote_path == "/home/t00906153/autoresearch/model-cache/Qwen__Qwen3.5-2B"
     assert put_calls == []
+    assert len(exec_calls) == 1
+
+
+def test_stage_model_cache_records_remote_asset_location(tmp_path, monkeypatch):
+    data_config = tmp_path / "data.yaml"
+    model_cache = tmp_path / "cache" / "models" / "Qwen__Qwen3.5-2B"
+    model_cache.mkdir(parents=True)
+    (model_cache / "config.json").write_text("{}", encoding="utf-8")
+    (model_cache / "model.safetensors.index.json").write_text(
+        json.dumps({"weight_map": {"model.embed_tokens.weight": "model.safetensors-00001-of-00001.safetensors"}}),
+        encoding="utf-8",
+    )
+    (model_cache / "model.safetensors-00001-of-00001.safetensors").write_bytes(b"stub")
+    data_config.write_text(
+        yaml.safe_dump(
+            {
+                "version": 1,
+                "assets": {
+                    "models": {
+                        "qwen3-5-2b": {
+                            "kind": "model",
+                            "canonical_id": "Qwen/Qwen3.5-2B",
+                            "local": {"path": str(model_cache)},
+                            "status": "ready",
+                        }
+                    }
+                },
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    class _Client:
+        def __init__(self, host, bootstrap_password=None):
+            self.host = host
+            self.bootstrap_password = bootstrap_password
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def exec(self, command, timeout):
+            if "/home/t00906153/autoresearch/model-cache/Qwen__Qwen3.5-2B/config.json" in command:
+                return 0, "", ""
+            raise AssertionError(f"unexpected exec command: {command}")
+
+    monkeypatch.setattr(model_sync, "SSHClient", _Client)
+
+    remote_path = model_sync.stage_model_cache(
+        ServerSpec(name="A3-AX-180", host="192.168.13.180", user="root"),
+        local_model_dir=model_cache,
+        remote_model_dir="/home/t00906153/autoresearch/runs/run123/model",
+        remote_shared_model_root="/home/t00906153/autoresearch/model-cache",
+        model_id="Qwen/Qwen3.5-2B",
+        data_config_path=data_config,
+    )
+    registry = yaml.safe_load(data_config.read_text(encoding="utf-8"))
+
+    assert remote_path == "/home/t00906153/autoresearch/model-cache/Qwen__Qwen3.5-2B"
+    remote = registry["assets"]["models"]["qwen3-5-2b"]["remote"]
+    assert remote == {
+        "server": "A3-AX-180",
+        "host": "192.168.13.180",
+        "path": "/home/t00906153/autoresearch/model-cache/Qwen__Qwen3.5-2B",
+    }
+
+
+def test_resolve_ready_remote_model_cache_reuses_registry_path(tmp_path, monkeypatch):
+    data_config = tmp_path / "data.yaml"
+    data_config.write_text(
+        yaml.safe_dump(
+            {
+                "version": 1,
+                "assets": {
+                    "models": {
+                        "qwen3-5-35b-a3b": {
+                            "kind": "model",
+                            "canonical_id": "Qwen/Qwen3.5-35B-A3B",
+                            "status": "ready",
+                            "remote": {
+                                "server": "A3-AX-180",
+                                "host": "192.168.13.180",
+                                "path": "/home/t00906153/autoresearch-assets/models/Qwen__Qwen3.5-35B-A3B",
+                            },
+                        }
+                    }
+                },
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    exec_calls = []
+
+    class _Client:
+        def __init__(self, host, bootstrap_password=None):
+            self.host = host
+            self.bootstrap_password = bootstrap_password
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def exec(self, command, timeout):
+            exec_calls.append(command)
+            if "/home/t00906153/autoresearch-assets/models/Qwen__Qwen3.5-35B-A3B/config.json" in command:
+                return 0, "", ""
+            raise AssertionError(f"unexpected exec command: {command}")
+
+    monkeypatch.setattr(model_sync, "SSHClient", _Client)
+
+    remote_path = model_sync.resolve_ready_remote_model_cache(
+        ServerSpec(name="A3-AX-180", host="192.168.13.180", user="root"),
+        case_config.VerlCaseConfig(model_id="Qwen/Qwen3.5-35B-A3B"),
+        data_config_path=data_config,
+    )
+
+    assert remote_path == "/home/t00906153/autoresearch-assets/models/Qwen__Qwen3.5-35B-A3B"
+    assert len(exec_calls) == 1
+
+
+def test_resolve_ready_remote_model_cache_selects_matching_remote_location(
+    tmp_path,
+    monkeypatch,
+):
+    data_config = tmp_path / "data.yaml"
+    selected_path = "/home/t00906153/autoresearch-assets/models/Qwen__Qwen3.5-35B-A3B"
+    other_path = "/mnt/shared/models/Qwen__Qwen3.5-35B-A3B"
+    data_config.write_text(
+        yaml.safe_dump(
+            {
+                "version": 1,
+                "assets": {
+                    "models": {
+                        "qwen3-5-35b-a3b": {
+                            "kind": "model",
+                            "canonical_id": "Qwen/Qwen3.5-35B-A3B",
+                            "status": "ready",
+                            "remote": {
+                                "server": "A2-AK-225",
+                                "host": "192.168.9.225",
+                                "path": other_path,
+                            },
+                            "remotes": {
+                                "A2-AK-225": {
+                                    "server": "A2-AK-225",
+                                    "host": "192.168.9.225",
+                                    "path": other_path,
+                                },
+                                "A3-AX-180": {
+                                    "server": "A3-AX-180",
+                                    "host": "192.168.13.180",
+                                    "path": selected_path,
+                                },
+                            },
+                        }
+                    }
+                },
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    exec_calls = []
+
+    class _Client:
+        def __init__(self, host, bootstrap_password=None):
+            self.host = host
+            self.bootstrap_password = bootstrap_password
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def exec(self, command, timeout):
+            exec_calls.append(command)
+            if f"{selected_path}/config.json" in command:
+                return 0, "", ""
+            raise AssertionError(f"unexpected exec command: {command}")
+
+    monkeypatch.setattr(model_sync, "SSHClient", _Client)
+
+    remote_path = model_sync.resolve_ready_remote_model_cache(
+        ServerSpec(name="A3-AX-180", host="192.168.13.180", user="root"),
+        case_config.VerlCaseConfig(model_id="Qwen/Qwen3.5-35B-A3B"),
+        data_config_path=data_config,
+    )
+
+    assert remote_path == selected_path
     assert len(exec_calls) == 1
 
 
@@ -1425,6 +1709,8 @@ def test_run_verl_case_default_row_runner_polls_remote_result_file(monkeypatch):
             return 0, "", ""
         if command.startswith("docker ps --filter status=running"):
             return 1, "", ""
+        if "AR_STALE_VERL_CLEANUP" in command:
+            return 0, 'AR_STALE_VERL_CLEANUP={"terminated":[],"sigkilled":[]}', ""
         if command.startswith("mkdir -p "):
             return 0, "", ""
         if "AR_HOST_TELEMETRY_PID" in command:
@@ -1459,8 +1745,14 @@ def test_run_verl_case_default_row_runner_polls_remote_result_file(monkeypatch):
     assert any("AR_HOST_TELEMETRY_PID" in command for command, *_rest in calls)
     assert any("host-npu-smi-watch.raw.log" in command for command, *_rest in calls)
     assert any("AR_ROW_PID" in command for command, *_rest in calls)
+    assert any("setsid nohup /bin/bash -lc" in command for command, *_rest in calls)
     assert any("launcher.exit" in command and "echo $ec" in command for command, *_rest in calls)
     assert any(command.startswith("test -f ") and command.endswith("result.json") for command, *_rest in calls)
+    assert any("VLLM::Worker_TP" in command for command, *_rest in calls)
+    assert any("normalized_comm = comm.replace('::', '')" in command for command, *_rest in calls)
+    assert any("owned_markers =" in command and "/tmp/ar-" in command for command, *_rest in calls)
+    assert any("_is_owned_pid(pid)" in command for command, *_rest in calls)
+    assert {conda_env for _command, conda_env, _workdir, _timeout in calls} == {""}
 
 
 def test_run_verl_case_custom_row_runner_uses_marker_exec(monkeypatch):
@@ -1474,6 +1766,8 @@ def test_run_verl_case_custom_row_runner_uses_marker_exec(monkeypatch):
             return 0, "", ""
         if command.startswith("docker ps --filter status=running"):
             return 1, "", ""
+        if "AR_STALE_VERL_CLEANUP" in command:
+            return 0, 'AR_STALE_VERL_CLEANUP={"terminated":[],"sigkilled":[]}', ""
         raise AssertionError(command)
 
     def fake_row_runner(spec, command, timeout):
@@ -1509,6 +1803,7 @@ def test_row_command_builds_formal_verl_script():
     command = case_runner._row_command(_run_config(), "sync-1024-2048")
     async_command = case_runner._row_command(_run_config(), "async-1024-2048")
     script = shlex.split(command)[2]
+    async_script = shlex.split(async_command)[2]
 
     assert "verl.trainer.main_ppo" in command
     assert "examples/data_preprocess/geo3k.py" in command
@@ -1524,11 +1819,16 @@ def test_row_command_builds_formal_verl_script():
     assert "trainer.project_name={wandb_project}" in command
     assert "trainer.experiment_name={wandb_run_name}" in command
     assert "wandb_run_name = _wandb_run_name(case, row)" in command
+    assert "rollout_max_num_seqs = max(1, val_batch_size, train_batch_size)" in command
+    assert "actor_rollout_ref.rollout.max_num_seqs={rollout_max_num_seqs}" in command
     assert "data.return_raw_chat=True" in command
     assert "ray_tmp_root = Path(" in command
     assert "/tmp" in command
-    assert "rollout_max_model_len = max_tokens if is_async else max(max_tokens, 24576)" in async_command
-    assert "rollout_max_num_batched_tokens = rollout_max_model_len" in async_command
+    assert "rollout_max_model_len_floor = int(case.get('rollout_max_model_len_floor', 24576))" in async_script
+    assert "ppo_max_token_len_per_gpu_floor = int(case.get('ppo_max_token_len_per_gpu_floor', 24576))" in async_script
+    assert "ppo_max_token_len_per_gpu = max(max_tokens, ppo_max_token_len_per_gpu_floor)" in async_script
+    assert "rollout_max_model_len = max(max_tokens, rollout_max_model_len_floor)" in async_script
+    assert "rollout_max_num_batched_tokens = rollout_max_model_len" in async_script
     assert "result_path = row_dir" in command
     assert "result.json" in command
     assert "NPU_SMI_BIN=$(command -v npu-smi" in command
@@ -1552,7 +1852,7 @@ def test_row_command_builds_formal_verl_script():
     assert command.index("_start_telemetry_sampler") < command.index("proc = _run(cmd")
     compile(script.split("python3 - <<'PY'\n", 1)[1].rsplit("\nPY", 1)[0], "<verl-row-script>", "exec")
     assert async_command.index("is_async =") < async_command.index(
-        "rollout_max_model_len = max_tokens if is_async else max(max_tokens, 24576)"
+        "rollout_max_model_len = max(max_tokens, rollout_max_model_len_floor)"
     )
 
 
@@ -1578,11 +1878,26 @@ def test_row_command_builds_real_training_three_step_script():
     assert "qwen35_compat = PROFILE == 'fsdp' and _is_qwen35_model(case)" in command
     assert "use_remove_padding = _runtime_bool('use_remove_padding', PROFILE != 'veomni' and not qwen35_compat)" in command
     assert "use_dynamic_bsz = _runtime_bool('use_dynamic_bsz', PROFILE != 'veomni' and not qwen35_compat)" in command
+    assert "rollout_max_model_len_floor = int(case.get('rollout_max_model_len_floor', 24576))" in command
+    assert "ppo_max_token_len_per_gpu_floor = int(case.get('ppo_max_token_len_per_gpu_floor', 24576))" in command
+    assert "ppo_max_token_len_per_gpu = max(max_tokens, ppo_max_token_len_per_gpu_floor)" in command
+    assert "rollout_max_model_len = max(max_tokens, rollout_max_model_len_floor)" in command
+    assert "rollout_gpu_memory_utilization = float(case.get('rollout_gpu_memory_utilization', 0.5))" in command
+    assert "rollout_update_weights_bucket_megabytes = int(case.get('rollout_update_weights_bucket_megabytes', 2048))" in command
+    assert "actor_rollout_ref.rollout.gpu_memory_utilization={rollout_gpu_memory_utilization}" in command
+    assert (
+        "actor_rollout_ref.rollout.checkpoint_engine.update_weights_bucket_megabytes="
+        "{rollout_update_weights_bucket_megabytes}"
+        in command
+    )
     assert "completed_training_steps" in command
+    assert "_steady_state_throughput" in command
+    assert "steady_state_tokens_per_second_per_npu" in command
     assert "__AR_COMMAND__=" in command
     assert "total_training_steps" in command
     assert "total training steps" in command
     assert "resource_busy" in command
+    assert "vllm_kv_cache_memory" in command
     assert "_telemetry_info_device_id" in command
     assert "_telemetry_info_sample" in command
     assert "incomplete_training_steps" in command
