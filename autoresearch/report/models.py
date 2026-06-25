@@ -93,6 +93,7 @@ class ArtifactStatus:
 class VerlCaseMatrixRowView:
     """One formal Verl case matrix row for reports."""
 
+    case_id: str | None
     input_tokens: int
     output_tokens: int
     mode: str
@@ -102,6 +103,14 @@ class VerlCaseMatrixRowView:
     sample_count: int
     accuracy: float | None
     consistency: float | None
+    completed_training_steps: int | None = None
+    target_training_steps: int | None = None
+    device_count: int | None = None
+    train_batch_size: int | None = None
+    steady_state_step_count: int | None = None
+    steady_state_tokens_per_second: float | None = None
+    steady_state_tokens_per_second_per_npu: float | None = None
+    steady_state_total_seconds: float | None = None
     error: str | None = None
 
 
