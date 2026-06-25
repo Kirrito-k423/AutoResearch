@@ -14,7 +14,10 @@ from workspace_core.config import ConfigError, ServerSpec, from_path
 from workspace_core.progress import emit_progress
 from workspace_core.ssh import HostSpec, SSHClient
 
-from datalake.prometheus import build_machine_latest_telemetry_exposition
+from datalake.prometheus import (
+    build_host_latest_exposition,
+    build_machine_latest_telemetry_exposition,
+)
 from autoresearch.hw.parser import parse_npu_smi_info
 
 
@@ -24,6 +27,7 @@ PushText = Callable[[str, str], bool]
 run_in_env = importlib.import_module("workspace-adapter.common.conda_utils").run_in_env
 telemetry_mod = importlib.import_module("workspace-adapter.verl.telemetry")
 parse_npu_smi_watch_output = telemetry_mod.parse_npu_smi_watch_output
+parse_host_metrics_output = telemetry_mod.parse_host_metrics_output
 
 NPU_SMI_ONCE_COMMAND = (
     "NPU_SMI_BIN=$(command -v npu-smi"
@@ -35,6 +39,8 @@ NPU_SMI_ONCE_COMMAND = (
     'test -n "$NPU_SMI_BIN" || exit 127; '
     'date "+%Y-%m-%d %H:%M:%S"; "$NPU_SMI_BIN" info'
 )
+HOST_METRICS_ONCE_COMMAND = telemetry_mod.build_host_metrics_command()
+MACHINE_ONCE_COMMAND = NPU_SMI_ONCE_COMMAND + "; " + HOST_METRICS_ONCE_COMMAND
 
 
 def run_monitor(
@@ -126,10 +132,12 @@ def _monitor_loop(
     started = monotonic()
     iterations = 0
     total_samples = 0
+    total_host_samples = 0
     total_pushes = 0
     results = {
         spec.name: {
             "samples": 0,
+            "host_samples": 0,
             "pushes": 0,
             "last_device_count": 0,
             "error": None,
@@ -139,19 +147,21 @@ def _monitor_loop(
     while True:
         iterations += 1
         if len(servers) == 1:
-            name, samples, pushed, error = _sample_and_push(
+            name, samples, host_samples, pushed, error = _sample_and_push(
                 servers[0],
                 iteration=iterations,
                 pushgateway_url=pushgateway_url,
                 runner=runner,
                 push_text=push_text,
             )
-            total_samples, total_pushes = _record_result(
+            total_samples, total_host_samples, total_pushes = _record_result(
                 results[name],
                 samples=samples,
+                host_samples=host_samples,
                 pushed=pushed,
                 error=error,
                 total_samples=total_samples,
+                total_host_samples=total_host_samples,
                 total_pushes=total_pushes,
             )
         else:
@@ -168,13 +178,15 @@ def _monitor_loop(
                     for spec in servers
                 ]
                 for future in as_completed(futures):
-                    name, samples, pushed, error = future.result()
-                    total_samples, total_pushes = _record_result(
+                    name, samples, host_samples, pushed, error = future.result()
+                    total_samples, total_host_samples, total_pushes = _record_result(
                         results[name],
                         samples=samples,
+                        host_samples=host_samples,
                         pushed=pushed,
                         error=error,
                         total_samples=total_samples,
+                        total_host_samples=total_host_samples,
                         total_pushes=total_pushes,
                     )
         if once:
@@ -188,6 +200,7 @@ def _monitor_loop(
         "duration_seconds": duration_seconds,
         "iterations": iterations,
         "samples": total_samples,
+        "host_samples": total_host_samples,
         "pushes": total_pushes,
         "pushgateway_url": pushgateway_url,
         "results": results,
@@ -201,38 +214,54 @@ def _sample_and_push(
     pushgateway_url: str,
     runner: RunInEnv,
     push_text: PushText,
-) -> tuple[str, list[Any], bool, str | None]:
+) -> tuple[str, list[Any], list[Any], bool, str | None]:
     emit_progress("hw.monitor.sample", server=spec.name, iteration=iteration)
     try:
-        samples = _sample_server(spec, runner=runner)
-        exposition = build_machine_latest_telemetry_exposition(samples)
+        samples, host_samples = _sample_server(spec, runner=runner)
+        exposition = (
+            build_machine_latest_telemetry_exposition(samples)
+            + build_host_latest_exposition(host_samples)
+        )
         pushed = bool(exposition.strip()) and push_text(
             _machine_endpoint(pushgateway_url, spec.name),
             exposition,
         )
-        return spec.name, samples, pushed, None if pushed else "no telemetry pushed"
+        return (
+            spec.name,
+            samples,
+            host_samples,
+            pushed,
+            None if pushed else "no telemetry pushed",
+        )
     except Exception as exc:
-        return spec.name, [], False, str(exc)
+        return spec.name, [], [], False, str(exc)
 
 
 def _record_result(
     row: dict[str, Any],
     *,
     samples: list[Any],
+    host_samples: list[Any],
     pushed: bool,
     error: str | None,
     total_samples: int,
+    total_host_samples: int,
     total_pushes: int,
-) -> tuple[int, int]:
+) -> tuple[int, int, int]:
     row["samples"] += len(samples)
+    row["host_samples"] += len(host_samples)
     row["pushes"] += 1 if pushed else 0
     row["last_device_count"] = len({_sample_identity(sample) for sample in samples})
     row["error"] = error
-    return total_samples + len(samples), total_pushes + (1 if pushed else 0)
+    return (
+        total_samples + len(samples),
+        total_host_samples + len(host_samples),
+        total_pushes + (1 if pushed else 0),
+    )
 
 
-def _sample_server(spec: ServerSpec, *, runner: RunInEnv) -> list[Any]:
-    code, stdout, stderr = runner(spec, NPU_SMI_ONCE_COMMAND, 15.0)
+def _sample_server(spec: ServerSpec, *, runner: RunInEnv) -> tuple[list[Any], list[Any]]:
+    code, stdout, stderr = runner(spec, MACHINE_ONCE_COMMAND, 15.0)
     if code != 0:
         detail = (stderr or stdout or "").strip()[:240] or f"exit={code}"
         raise RuntimeError(f"npu-smi failed: {detail}")
@@ -247,7 +276,18 @@ def _sample_server(spec: ServerSpec, *, runner: RunInEnv) -> list[Any]:
         samples = _samples_from_hw_parser(stdout, server=spec.name)
     if not samples:
         raise RuntimeError("npu-smi output contained no telemetry samples")
-    return [_with_sample_time(sample, time.time()) for sample in samples]
+    sampled_at = time.time()
+    host_samples = parse_host_metrics_output(
+        stdout,
+        run_id="machine-monitor",
+        case_id="machine-monitor",
+        server=spec.name,
+        source="host-resource-watch",
+    )
+    return (
+        [_with_sample_time(sample, sampled_at) for sample in samples],
+        [_with_sample_time(sample, sampled_at) for sample in host_samples],
+    )
 
 
 def _run_command(spec: ServerSpec, command: str, timeout: float) -> tuple[int, str, str]:

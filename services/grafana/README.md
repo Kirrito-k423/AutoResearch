@@ -51,6 +51,16 @@ autoresearch_npu_aicore_utilization_percent
 autoresearch_machine_npu_hbm_used_mib
 autoresearch_machine_npu_aicore_utilization_percent
 autoresearch_machine_npu_sample_time_seconds
+autoresearch_machine_host_memory_used_bytes
+autoresearch_machine_host_memory_free_bytes
+autoresearch_machine_host_memory_available_bytes
+autoresearch_machine_host_memory_shared_bytes
+autoresearch_machine_host_memory_buff_cache_bytes
+autoresearch_machine_host_memory_occupied_bytes
+autoresearch_machine_host_memory_utilization_percent
+autoresearch_machine_host_memory_occupied_percent
+autoresearch_machine_host_cpu_utilization_percent
+autoresearch_machine_host_sample_time_seconds
 autoresearch_experiment_case_info
 autoresearch_experiment_case_start_time_seconds
 autoresearch_experiment_case_end_time_seconds
@@ -68,6 +78,10 @@ autoresearch_npu_hbm_used_mib{run_id="Qwen35-2B-GRPO-1Kto16K-260623d-130014s-tra
 ```promql
 autoresearch_machine_npu_hbm_used_mib{server="A2-AK-225",chip_id=~".+"}
 autoresearch_machine_npu_aicore_utilization_percent{server="A2-AK-225",chip_id=~".+"}
+autoresearch_machine_host_memory_utilization_percent{server="A2-AK-225"}
+autoresearch_machine_host_memory_buff_cache_bytes{server="A2-AK-225"}
+autoresearch_machine_host_memory_occupied_percent{server="A2-AK-225"}
+autoresearch_machine_host_cpu_utilization_percent{server="A2-AK-225"}
 ```
 
 按实验 case 查看 W&B 名称和时间窗口：
@@ -83,7 +97,7 @@ autoresearch_experiment_case_end_time_seconds{run_id="Qwen35-2B-GRPO-1Kto16K-260
 Pushgateway 只保存每个 label set 的当前 gauge 值，不是历史样本导入器。
 如果 run 结束后才把 `telemetry-latest-openmetrics.prom` 推一次，Prometheus 会在后续 scrape 中反复看到同一个最新值，Grafana 就是一条直线。
 
-正式 GRPO case 的运行期采样仍是 0.5s：row 脚本会持续写 `npu-smi-watch.raw.log`，并在训练进程运行期间把最新 `autoresearch_npu_*` 与 `autoresearch_machine_npu_*` 推到 Pushgateway。Prometheus 的 pushgateway job 以 500ms scrape，这样新 run 的 Grafana 曲线来自运行期真实 scrape。历史数据包里的完整 0.5s 原始曲线仍以 `2-prometheus/telemetry-openmetrics.prom` 和 `6-rows/cases/*/npu-telemetry.jsonl` 为准。
+正式 GRPO case 的运行期采样仍是 0.5s：row 脚本会持续写 `npu-smi-watch.raw.log`，并在训练进程运行期间把最新 `autoresearch_npu_*`、`autoresearch_machine_npu_*` 与 `autoresearch_machine_host_*` 推到 Pushgateway。Prometheus 的 pushgateway job 以 500ms scrape，这样新 run 的 Grafana 曲线来自运行期真实 scrape。历史数据包里的完整 0.5s 原始曲线仍以 `2-prometheus/telemetry-openmetrics.prom` 和 `6-rows/cases/*/npu-telemetry.jsonl` / `host-resource-telemetry.jsonl` 为准。
 
 不跑训练但要长期看四台机器资源时，另开终端运行：
 

@@ -54,6 +54,9 @@ wandb:
 | Chip                      | Bus-Id        | AICore(%)   Memory-Usage(MB)  HBM-Usage(MB)        |
 | 0     910B2               | OK            | 108.8       39                0    / 0             |
 | 0                         | 0000:C1:00.0  | 7           0    / 0          49290/ 65536         |
+__AR_HOST_SAMPLE__ sample_time_seconds=1782153601.25
+__AR_HOST_MEMORY__ used_bytes=34359738368 total_bytes=68719476736 free_bytes=17179869184 available_bytes=51539607552 shared_bytes=1073741824 buff_cache_bytes=17179869184 occupied_bytes=51539607552 utilization_percent=50.000000 occupied_percent=75.000000
+__AR_HOST_CPU__ utilization_percent=37.500000
 """,
             "",
         )
@@ -75,12 +78,17 @@ wandb:
     assert exit_code == 0
     assert payload["ok"] is True
     assert payload["data"]["samples"] == 1
+    assert payload["data"]["host_samples"] == 1
     assert payload["data"]["pushes"] == 1
     assert commands[0][0] == "A2-AK-225"
     assert NPU_SMI_ONCE_COMMAND in commands[0][1]
     assert pushed[0][0].endswith("/metrics/job/autoresearch_machine/server/A2-AK-225")
     assert "autoresearch_machine_npu_hbm_used_mib" in pushed[0][1]
     assert "autoresearch_machine_npu_sample_time_seconds" in pushed[0][1]
+    assert "autoresearch_machine_host_memory_used_bytes" in pushed[0][1]
+    assert "autoresearch_machine_host_memory_buff_cache_bytes" in pushed[0][1]
+    assert "autoresearch_machine_host_memory_occupied_bytes" in pushed[0][1]
+    assert "autoresearch_machine_host_cpu_utilization_percent" in pushed[0][1]
     assert 'server="A2-AK-225"' in pushed[0][1]
     assert 'device_id="0"' in pushed[0][1]
     assert 'chip_id="0"' in pushed[0][1]

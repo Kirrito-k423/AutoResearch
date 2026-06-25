@@ -8,10 +8,12 @@ from workspace_core.config import ServerSpec
 
 from datalake.prometheus.push_gateway import (
     EXPERIMENT_CASE_METRIC_NAMES,
+    HOST_RESOURCE_METRIC_NAMES,
     MACHINE_RESOURCE_METRIC_NAMES,
     RESOURCE_METRIC_NAMES,
     PushError,
     build_experiment_case_exposition,
+    build_host_latest_exposition,
     build_latest_telemetry_exposition,
     build_machine_latest_telemetry_exposition,
     build_telemetry_exposition,
@@ -115,6 +117,35 @@ def test_latest_telemetry_exposition_collapses_duplicate_label_sets():
     assert "sample_index" not in exposition
 
 
+def test_latest_telemetry_exposition_keeps_dual_chip_devices_separate():
+    exposition = build_latest_telemetry_exposition(
+        [
+            {
+                "run_id": "run123",
+                "case_id": "sync-1024-2048",
+                "server": "A3-AX-180",
+                "device_id": 0,
+                "chip_id": 0,
+                "sample_index": 1,
+                "hbm_used_mib": 1000,
+            },
+            {
+                "run_id": "run123",
+                "case_id": "sync-1024-2048",
+                "server": "A3-AX-180",
+                "device_id": 0,
+                "chip_id": 1,
+                "sample_index": 2,
+                "hbm_used_mib": 2000,
+            },
+        ]
+    )
+
+    assert exposition.count("autoresearch_npu_hbm_used_mib{") == 2
+    assert 'chip_id="0"' in exposition
+    assert 'chip_id="1"' in exposition
+
+
 def test_machine_latest_telemetry_exposition_drops_run_and_case_labels():
     exposition = build_machine_latest_telemetry_exposition(
         [
@@ -146,6 +177,40 @@ def test_machine_latest_telemetry_exposition_drops_run_and_case_labels():
     assert 'chip_id="0"' in exposition
     assert "1234" in exposition
     assert "1782229758.123456" in exposition
+    assert "run_id" not in exposition
+    assert "case_id" not in exposition
+
+
+def test_host_latest_exposition_includes_cpu_and_memory_metrics():
+    exposition = build_host_latest_exposition(
+        [
+            {
+                "run_id": "run123",
+                "case_id": "case-a",
+                "server": "A3-AX-180",
+                "sample_index": 1,
+                "source": "host-resource-watch",
+                "memory_used_bytes": 34359738368,
+                "memory_total_bytes": 68719476736,
+                "memory_free_bytes": 17179869184,
+                "memory_available_bytes": 51539607552,
+                "memory_shared_bytes": 1073741824,
+                "memory_buff_cache_bytes": 17179869184,
+                "memory_occupied_bytes": 51539607552,
+                "memory_utilization_percent": 50,
+                "memory_occupied_percent": 75,
+                "cpu_utilization_percent": 37.5,
+                "sample_time_seconds": 1782153601.25,
+            }
+        ]
+    )
+
+    for metric_name in HOST_RESOURCE_METRIC_NAMES:
+        assert metric_name in exposition
+    assert 'server="A3-AX-180"' in exposition
+    assert 'source="host-resource-watch"' in exposition
+    assert "autoresearch_machine_host_memory_buff_cache_bytes" in exposition
+    assert "autoresearch_machine_host_memory_occupied_bytes" in exposition
     assert "run_id" not in exposition
     assert "case_id" not in exposition
 
