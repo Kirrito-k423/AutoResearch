@@ -1,3 +1,8 @@
+---
+name: local-services-health
+description: Start, stop, and health-check local AutoResearch services including Archon, W&B, Prometheus, and Grafana. Use when working on autoresearch services commands, service compose files, local healthz checks, fixed ports, or local service orchestration.
+---
+
 # Skill 02: local-services
 
 > 启停 + healthz 检查本机 archon / wandb / Prometheus / Grafana。

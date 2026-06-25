@@ -1,0 +1,4 @@
+interface:
+  display_name: "Model/Data Assets"
+  short_description: "Track model and dataset cache locations."
+  default_prompt: "Use $model-data-assets to prepare, record, and locate model weights or datasets for AutoResearch."

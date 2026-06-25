@@ -1,4 +1,9 @@
-# Skill: workspace-adapter/verl
+---
+name: workspace-adapter-verl
+description: Verl GRPO formal case adapter for AutoResearch. Use when building, running, or diagnosing autoresearch run verl-case; preparing Qwen/geo3k GRPO matrices; wiring Verl containers to model/data assets, W&B, Prometheus, reports, provenance, and numbered evidence bundles; or explaining val-only versus real GRPO training boundaries.
+---
+
+# workspace-adapter/verl
 
 > Verl GRPO 正式 case 的训练栈适配层，负责把 AutoResearch 的 1-8 skill 串到 Verl 容器、数据、模型、W&B、Prometheus 和报告交付件上。
 
@@ -8,8 +13,15 @@
 |---|---|
 | 构造 `autoresearch run verl-case` 的正式矩阵 | 管理通用 SSH / secret / layout |
 | 同步 verl/vllm/transformers/mindspeed 等依赖仓并记录 commit | 维护本地服务 compose |
-| 生成 Qwen/geo3k/GRPO 的不可变 config lock | 修改数据仓总目录结构 |
+| 生成 Qwen/geo3k/GRPO 的不可变 config lock | 绕过 `workspace-core/model-data-assets` 自行规定下载和缓存策略 |
 | 解释 val-only、真实 GRPO 训练、严格 reward/acc 的边界 | 把验证矩阵结果包装成训练收益 |
+
+## Core 资产依赖
+
+- 准备、下载、定位、同步或登记 Qwen3.5-2B、geo3k 或任何模型/数据集资产前，先读取并遵守 `workspace-core/model-data-assets/SKILL.md`。
+- `workspace-core/model-data-assets` 拥有 `config/data.yaml`、`config/data.example.yaml`、ModelScope 优先/Hugging Face 兜底、`127.0.0.1:7890` 代理、本地小资产和远端大资产登记规则。
+- 本 adapter 只声明 Verl formal case 需要的资产：模型 `Qwen/Qwen3.5-2B` 或 `Qwen/Qwen3.5-35B-A3B`，数据集 `hiyouga/geometry3k`。不要在这里发明与 core asset skill 冲突的 cache root、下载优先级或远端目录规则。
+- 同一份 35B 权重需要跑多台机器时，在 `config/data.yaml` 里保留一个 canonical model entry，并用 `remotes.<server-name>.path` 登记每台机器自己的 `/home/t00906153/autoresearch-assets/models/Qwen__Qwen3.5-35B-A3B` 路径；运行时按当前 server 选择匹配路径。
 
 ## 命名规范
 
@@ -20,9 +32,9 @@
 
 ## Formal Case 流程
 
-1. 读取客户配置和数据仓根目录，确认 `cache_root`、`artifact_root`、`wandb_project` 可配置。
+1. 读取客户配置、`config/data.yaml` 和数据仓根目录，确认 `cache_root`、`artifact_root`、`wandb_project` 可配置。
 2. 跑 1-6 readiness，选择满足 Docker/NPU/网络/训练栈要求的远程机器。
-3. 准备 Qwen3.5-2B 和 `hiyouga/geometry3k`，5GB 内允许本地缓存。
+3. 按 `workspace-core/model-data-assets` 准备 Qwen3.5-2B、Qwen3.5-35B-A3B 和 `hiyouga/geometry3k`：优先 ModelScope，兜底 Hugging Face，必要时使用 `127.0.0.1:7890` 代理；5GB 内允许本地缓存，大资产登记到远程服务器路径，35B 这类大资产用 `remotes` 记录多台机器副本。
 4. 生成不可变 `config.lock.json` 和 `provenance.lock.json`，记录所有参与仓的 commit / branch / GitHub 链接；默认使用当前分支，不按 run 自动创建新分支。
 5. 真实 GRPO 训练从单卡 BS=1 开始调参，逐步增大 batch/micro-batch 等旋钮；每个 case 必须完成 3 个 training step，少于 3 步的结果只能记为失败数据点。
 6. 稳定单卡候选再晋升到单机 8 卡吞吐 case；仍需保留每个 case 的 `completed_training_steps`、`target_training_steps`、失败类别、吞吐和资源曲线。

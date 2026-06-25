@@ -1,3 +1,8 @@
+---
+name: service-reachability
+description: Verify that remote training servers can reach local AutoResearch services such as W&B, Prometheus, Grafana, and Pushgateway. Use when testing service URLs from a remote host, validating SSH reverse proxy behavior, or implementing reachability CLI results.
+---
+
 # Skill 05: service-reachability
 
 > 从远端服务器，探活本机的 wandb / Prometheus / Grafana。

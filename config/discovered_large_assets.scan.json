@@ -1,0 +1,2818 @@
+{
+  "meta": {
+    "A2-AK-225": {
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "roots": [
+        "/data",
+        "/data/home/data",
+        "/data/home/data/weights",
+        "/home/HwHiAiUser/data",
+        "/home/p00893103/data",
+        "/home/p00893103/data/weights",
+        "/home/t00906153/autoresearch-assets",
+        "/home/x00824404/data"
+      ],
+      "count": 34
+    },
+    "A3-AK-182": {
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "roots": [
+        "/data",
+        "/home/HwHiAiUser/data",
+        "/home/b00961046/res/weights",
+        "/home/c00845082/project/qwen3.5/weights",
+        "/home/data",
+        "/home/data/weights",
+        "/home/l00889958/data",
+        "/home/p00893103/data",
+        "/home/p00893103/data/weights",
+        "/home/s00791173/data",
+        "/home/t00906153/autoresearch-assets",
+        "/home/t00906153/data",
+        "/home/wangsijie/data"
+      ],
+      "count": 56
+    },
+    "A3-AX-180": {
+      "scanned_at": "2026-06-25T11:41:29Z",
+      "roots": [
+        "/data",
+        "/home/s00791173/data",
+        "/home/t00906153/autoresearch-assets",
+        "/home/weights",
+        "/home/z00893055/weights"
+      ],
+      "count": 15
+    },
+    "A2-AK-102": {
+      "scanned_at": "2026-06-25T11:42:18Z",
+      "roots": [
+        "/data01",
+        "/data01/autoresearch-assets"
+      ],
+      "count": 4
+    }
+  },
+  "entries": [
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data",
+      "size_gb": 3333,
+      "kind_guess": "model",
+      "name_guess": "data",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 5,
+        "config_json": 5,
+        "safetensors": 194,
+        "parquet": 0,
+        "arrow": 1,
+        "jsonl": 9,
+        "bin_or_ckpt": 2,
+        "sample_files": [
+          "/data/clabagent.tar",
+          "/data/LLM/mindSpeed_mm/Lumina_mgpt2/movqgan_270M.ckpt",
+          "/data/LLM/mindSpeed_mm/sd3_5/reach-vb___pokemon-blip-captions-train.arrow",
+          "/data/LLM/mindSpeed_mm/sd3_5/dataset_info.json",
+          "/data/wangsijie/data/910b4_bak/cann.zip"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/home",
+      "size_gb": 1306,
+      "kind_guess": "model",
+      "name_guess": "home",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 9,
+        "config_json": 21,
+        "safetensors": 272,
+        "parquet": 56,
+        "arrow": 2,
+        "jsonl": 6,
+        "bin_or_ckpt": 1650,
+        "sample_files": [
+          "/data/home/model/Qwen/Qwen3-VL-30B-A3B-Instruct/config.json",
+          "/data/home/model/Qwen/Qwen3-VL-30B-A3B-Instruct/model-00001-of-00013.safetensors",
+          "/data/home/model/Qwen/Qwen3-VL-30B-A3B-Instruct/model-00002-of-00013.safetensors",
+          "/data/home/model/Qwen/Qwen3-VL-30B-A3B-Instruct/model-00003-of-00013.safetensors",
+          "/data/home/model/Qwen/Qwen3-VL-30B-A3B-Instruct/model-00004-of-00013.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/LLM",
+      "size_gb": 1257,
+      "kind_guess": "model",
+      "name_guess": "LLM",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 3,
+        "config_json": 4,
+        "safetensors": 60,
+        "parquet": 0,
+        "arrow": 1,
+        "jsonl": 3,
+        "bin_or_ckpt": 2,
+        "sample_files": [
+          "/data/LLM/mindSpeed_mm/wan_2_1/pixabay_v2_features_480_832_81_new/data.jsonl",
+          "/data/LLM/mindSpeed_mm/wan_2_1/pixabay_v2_features_480_832_81_new/data_1point3b_t2v.jsonl",
+          "/data/LLM/mindSpeed_mm/FLUX/FLUX.1-dev/flux1-dev.safetensors",
+          "/data/LLM/mindSpeed_mm/FLUX/FLUX.1-dev/ae.safetensors",
+          "/data/LLM/mindSpeed_mm/flux_kontext/._____temp/flux1-kontext-dev.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/home/model/DeepSeek-V3",
+      "size_gb": 642,
+      "kind_guess": "model",
+      "name_guess": "DeepSeek-V3",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 163,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/home/model/DeepSeek-V3/model-00033-of-000163.safetensors",
+          "/data/home/model/DeepSeek-V3/model-00110-of-000163.safetensors",
+          "/data/home/model/DeepSeek-V3/model-00031-of-000163.safetensors",
+          "/data/home/model/DeepSeek-V3/model-00124-of-000163.safetensors",
+          "/data/home/model/DeepSeek-V3/model-00039-of-000163.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/verl",
+      "size_gb": 566,
+      "kind_guess": "dataset",
+      "name_guess": "verl",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": []
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/home/data",
+      "size_gb": 431,
+      "kind_guess": "model",
+      "name_guess": "data",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 4,
+        "config_json": 13,
+        "safetensors": 56,
+        "parquet": 67,
+        "arrow": 2,
+        "jsonl": 6,
+        "bin_or_ckpt": 1818,
+        "sample_files": [
+          "/data/home/data/bloom-560m/onnx/config.json",
+          "/data/home/data/InternVL/InternVL3_5-1B-HF/config.json",
+          "/data/home/data/InternVL/InternVL3_5-1B-HF/model.safetensors",
+          "/data/home/data/InternVL/InternVL3.5-1B-HF_bak/config.json",
+          "/data/home/data/InternVL/InternVL3.5-1B-HF_bak/model.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/home/data/LTX_2",
+      "size_gb": 293,
+      "kind_guess": "model",
+      "name_guess": "LTX_2",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 7,
+        "safetensors": 44,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/home/data/LTX_2/ltx-2-19b-dev-fp4.safetensors",
+          "/data/home/data/LTX_2/ltx-2-19b-distilled-fp8.safetensors",
+          "/data/home/data/LTX_2/ltx-2-19b-dev.safetensors",
+          "/data/home/data/LTX_2/ltx-2-19b-distilled-lora-384.safetensors",
+          "/data/home/data/LTX_2/ltx-2-19b-dev-fp8.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/home/data/LTX_2/text_encoder",
+      "size_gb": 94,
+      "kind_guess": "model",
+      "name_guess": "text_encoder",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 23,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/home/data/LTX_2/text_encoder/config.json",
+          "/data/home/data/LTX_2/text_encoder/diffusion_pytorch_model-00001-of-00012.safetensors",
+          "/data/home/data/LTX_2/text_encoder/diffusion_pytorch_model-00002-of-00012.safetensors",
+          "/data/home/data/LTX_2/text_encoder/diffusion_pytorch_model-00003-of-00012.safetensors",
+          "/data/home/data/LTX_2/text_encoder/diffusion_pytorch_model-00004-of-00012.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/t00906153",
+      "size_gb": 73,
+      "kind_guess": "model",
+      "name_guess": "t00906153",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 2,
+        "config_json": 2,
+        "safetensors": 17,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 1,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/t00906153/llada2_alignment_sample.jsonl",
+          "/data/t00906153/hf_models/LLaDA2.0-mini-preview/config.json",
+          "/data/t00906153/hf_models/LLaDA2.0-mini-preview/model-00002-of-00007.safetensors",
+          "/data/t00906153/hf_models/LLaDA2.0-mini-preview/model-00001-of-00007.safetensors",
+          "/data/t00906153/hf_models/LLaDA2.0-mini-preview/model-00004-of-00007.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/wangsijie",
+      "size_gb": 72,
+      "kind_guess": "model",
+      "name_guess": "wangsijie",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 4,
+        "bin_or_ckpt": 1,
+        "sample_files": [
+          "/data/wangsijie/data/910b4_bak/cann.zip",
+          "/data/wangsijie/data/910b4_bak/cann/ascend_gitee_v2.zip",
+          "/data/wangsijie/data/910b4_bak/cann/tasks_v2_1to3line.zip",
+          "/data/wangsijie/miniconda3/bin/deepspeed.pt",
+          "/data/wangsijie/tmp/ascend_gitee_v2.zip"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/LLM/mindSpeed_mm/sd3_5",
+      "size_gb": 67,
+      "kind_guess": "model",
+      "name_guess": "sd3_5",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 5,
+        "safetensors": 16,
+        "parquet": 0,
+        "arrow": 1,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/LLM/mindSpeed_mm/sd3_5/reach-vb___pokemon-blip-captions-train.arrow",
+          "/data/LLM/mindSpeed_mm/sd3_5/dataset_info.json",
+          "/data/LLM/mindSpeed_mm/sd3_5/stable-diffusion-3.5-large/sd3.5_large.safetensors",
+          "/data/LLM/mindSpeed_mm/sd3_5/stable-diffusion-3.5-large/text_encoder_2/config.json",
+          "/data/LLM/mindSpeed_mm/sd3_5/stable-diffusion-3.5-large/text_encoder_2/model.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/home/p00893103/data",
+      "size_gb": 67,
+      "kind_guess": "model",
+      "name_guess": "data",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 2,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/p00893103/data/weights/gemma-4-26B-A4B-it/model-00001-of-00002.safetensors",
+          "/home/p00893103/data/weights/gemma-4-26B-A4B-it/model.safetensors.index.json",
+          "/home/p00893103/data/weights/gemma-4-26B-A4B-it/model-00002-of-00002.safetensors",
+          "/home/p00893103/data/weights/gemma-4-26B-A4B-it/config.json"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/home/t00906153/autoresearch-assets",
+      "size_gb": 67,
+      "kind_guess": "model",
+      "name_guess": "autoresearch-assets",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 14,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/t00906153/autoresearch-assets/models/Qwen__Qwen3.5-35B-A3B/model.safetensors-00014-of-00014.safetensors",
+          "/home/t00906153/autoresearch-assets/models/Qwen__Qwen3.5-35B-A3B/model.safetensors-00002-of-00014.safetensors",
+          "/home/t00906153/autoresearch-assets/models/Qwen__Qwen3.5-35B-A3B/model.safetensors-00012-of-00014.safetensors",
+          "/home/t00906153/autoresearch-assets/models/Qwen__Qwen3.5-35B-A3B/model.safetensors.index.json",
+          "/home/t00906153/autoresearch-assets/models/Qwen__Qwen3.5-35B-A3B/model.safetensors-00005-of-00014.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/home/t00906153/autoresearch-assets/models",
+      "size_gb": 67,
+      "kind_guess": "model",
+      "name_guess": "models",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 14,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/t00906153/autoresearch-assets/models/Qwen__Qwen3.5-35B-A3B/model.safetensors-00014-of-00014.safetensors",
+          "/home/t00906153/autoresearch-assets/models/Qwen__Qwen3.5-35B-A3B/model.safetensors-00002-of-00014.safetensors",
+          "/home/t00906153/autoresearch-assets/models/Qwen__Qwen3.5-35B-A3B/model.safetensors-00012-of-00014.safetensors",
+          "/home/t00906153/autoresearch-assets/models/Qwen__Qwen3.5-35B-A3B/model.safetensors.index.json",
+          "/home/t00906153/autoresearch-assets/models/Qwen__Qwen3.5-35B-A3B/model.safetensors-00005-of-00014.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/home/t00906153/autoresearch-assets/models/Qwen__Qwen3.5-35B-A3B",
+      "size_gb": 67,
+      "kind_guess": "model",
+      "name_guess": "Qwen__Qwen3.5-35B-A3B",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 14,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/t00906153/autoresearch-assets/models/Qwen__Qwen3.5-35B-A3B/model.safetensors-00014-of-00014.safetensors",
+          "/home/t00906153/autoresearch-assets/models/Qwen__Qwen3.5-35B-A3B/model.safetensors-00002-of-00014.safetensors",
+          "/home/t00906153/autoresearch-assets/models/Qwen__Qwen3.5-35B-A3B/model.safetensors-00012-of-00014.safetensors",
+          "/home/t00906153/autoresearch-assets/models/Qwen__Qwen3.5-35B-A3B/model.safetensors.index.json",
+          "/home/t00906153/autoresearch-assets/models/Qwen__Qwen3.5-35B-A3B/model.safetensors-00005-of-00014.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/home/data/FineVideo_LTX2",
+      "size_gb": 49,
+      "kind_guess": "model",
+      "name_guess": "FineVideo_LTX2",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 4,
+        "bin_or_ckpt": 6600,
+        "sample_files": [
+          "/data/home/data/FineVideo_LTX2/dataset.jsonl",
+          "/data/home/data/FineVideo_LTX2/dataset_100.jsonl",
+          "/data/home/data/FineVideo_LTX2/dataset_100_rel.jsonl",
+          "/data/home/data/FineVideo_LTX2/dataset_rel.jsonl",
+          "/data/home/data/FineVideo_LTX2/videos/train-00000-of-01357_0_d6b4OmUFt7I.pt"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/home/p00893103/data/weights",
+      "size_gb": 49,
+      "kind_guess": "model",
+      "name_guess": "weights",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 2,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/p00893103/data/weights/gemma-4-26B-A4B-it/model-00001-of-00002.safetensors",
+          "/home/p00893103/data/weights/gemma-4-26B-A4B-it/model.safetensors.index.json",
+          "/home/p00893103/data/weights/gemma-4-26B-A4B-it/model-00002-of-00002.safetensors",
+          "/home/p00893103/data/weights/gemma-4-26B-A4B-it/config.json"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/home/p00893103/data/weights/gemma-4-26B-A4B-it",
+      "size_gb": 49,
+      "kind_guess": "model",
+      "name_guess": "gemma-4-26B-A4B-it",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 2,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/p00893103/data/weights/gemma-4-26B-A4B-it/model-00001-of-00002.safetensors",
+          "/home/p00893103/data/weights/gemma-4-26B-A4B-it/model.safetensors.index.json",
+          "/home/p00893103/data/weights/gemma-4-26B-A4B-it/model-00002-of-00002.safetensors",
+          "/home/p00893103/data/weights/gemma-4-26B-A4B-it/config.json"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/czc",
+      "size_gb": 43,
+      "kind_guess": "dataset",
+      "name_guess": "czc",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 19,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/czc/CodeBench/ascend_gitee_v2.zip",
+          "/data/czc/CodeBench/tasks_v2_1to3line.zip",
+          "/data/czc/CodeBench/LiveCANNBench/task_infos_reordered.jsonl",
+          "/data/czc/.codex/session_index.jsonl",
+          "/data/czc/LLM4InfraBench/tasks/inference_framework_v1/eval_dataset.jsonl"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/wangsijie/data/910b4_bak",
+      "size_gb": 42,
+      "kind_guess": "dataset",
+      "name_guess": "910b4_bak",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 6,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/wangsijie/data/910b4_bak/cann.zip",
+          "/data/wangsijie/data/910b4_bak/cann/ascend_gitee_v2.zip",
+          "/data/wangsijie/data/910b4_bak/cann/tasks_v2_1to3line.zip",
+          "/data/wangsijie/data/910b4_bak/cann/LiveCANNBench_github/task_infos_reordered.jsonl",
+          "/data/wangsijie/data/910b4_bak/cann/LiveCANNBench_github_v2/task_infos_reordered.jsonl"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/home/data/FineVideo_LTX2/videos",
+      "size_gb": 36,
+      "kind_guess": "model",
+      "name_guess": "videos",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 1650,
+        "sample_files": [
+          "/data/home/data/FineVideo_LTX2/videos/train-00000-of-01357_0_d6b4OmUFt7I.pt",
+          "/data/home/data/FineVideo_LTX2/videos/train-00000-of-01357_1_bswbQtOPk6E.pt",
+          "/data/home/data/FineVideo_LTX2/videos/train-00000-of-01357_2_G_VTkkb34gw.pt",
+          "/data/home/data/FineVideo_LTX2/videos/train-00000-of-01357_3_vd6hr_AtYtQ.pt",
+          "/data/home/data/FineVideo_LTX2/videos/train-00000-of-01357_4_eLPe7xp0jRw.pt"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/home/data/LTX_2/transformer",
+      "size_gb": 36,
+      "kind_guess": "model",
+      "name_guess": "transformer",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 1,
+        "safetensors": 8,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/home/data/LTX_2/transformer/config.json",
+          "/data/home/data/LTX_2/transformer/diffusion_pytorch_model-00001-of-00008.safetensors",
+          "/data/home/data/LTX_2/transformer/diffusion_pytorch_model-00002-of-00008.safetensors",
+          "/data/home/data/LTX_2/transformer/diffusion_pytorch_model-00003-of-00008.safetensors",
+          "/data/home/data/LTX_2/transformer/diffusion_pytorch_model-00004-of-00008.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/home/x00824404/data",
+      "size_gb": 35,
+      "kind_guess": "dataset",
+      "name_guess": "data",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": []
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/t00906153/hf_models/LLaDA2.0-mini-preview",
+      "size_gb": 31,
+      "kind_guess": "model",
+      "name_guess": "LLaDA2.0-mini-preview",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 7,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/t00906153/hf_models/LLaDA2.0-mini-preview/config.json",
+          "/data/t00906153/hf_models/LLaDA2.0-mini-preview/model-00002-of-00007.safetensors",
+          "/data/t00906153/hf_models/LLaDA2.0-mini-preview/model-00001-of-00007.safetensors",
+          "/data/t00906153/hf_models/LLaDA2.0-mini-preview/model-00004-of-00007.safetensors",
+          "/data/t00906153/hf_models/LLaDA2.0-mini-preview/model-00003-of-00007.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/t00906153/modelscope_models/LLaDA2.0-mini-preview",
+      "size_gb": 31,
+      "kind_guess": "model",
+      "name_guess": "LLaDA2.0-mini-preview",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 7,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/t00906153/modelscope_models/LLaDA2.0-mini-preview/config.json",
+          "/data/t00906153/modelscope_models/LLaDA2.0-mini-preview/model.safetensors.index.json",
+          "/data/t00906153/modelscope_models/LLaDA2.0-mini-preview/model-00004-of-00007.safetensors",
+          "/data/t00906153/modelscope_models/LLaDA2.0-mini-preview/model-00001-of-00007.safetensors",
+          "/data/t00906153/modelscope_models/LLaDA2.0-mini-preview/model-00002-of-00007.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/home/data/FineVideo_Subset",
+      "size_gb": 24,
+      "kind_guess": "dataset",
+      "name_guess": "FineVideo_Subset",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 50,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/home/data/FineVideo_Subset/data/train-00001-of-01357.parquet",
+          "/data/home/data/FineVideo_Subset/data/train-00007-of-01357.parquet",
+          "/data/home/data/FineVideo_Subset/data/train-00002-of-01357.parquet",
+          "/data/home/data/FineVideo_Subset/data/train-00004-of-01357.parquet",
+          "/data/home/data/FineVideo_Subset/data/train-00005-of-01357.parquet"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/home/data/FineVideo_Subset/data",
+      "size_gb": 24,
+      "kind_guess": "dataset",
+      "name_guess": "data",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 50,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/home/data/FineVideo_Subset/data/train-00001-of-01357.parquet",
+          "/data/home/data/FineVideo_Subset/data/train-00007-of-01357.parquet",
+          "/data/home/data/FineVideo_Subset/data/train-00002-of-01357.parquet",
+          "/data/home/data/FineVideo_Subset/data/train-00004-of-01357.parquet",
+          "/data/home/data/FineVideo_Subset/data/train-00005-of-01357.parquet"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/home/data/gemma-3-12b-it-qat-q4_0-unquantized",
+      "size_gb": 23,
+      "kind_guess": "model",
+      "name_guess": "gemma-3-12b-it-qat-q4_0-unquantized",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 5,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/home/data/gemma-3-12b-it-qat-q4_0-unquantized/model-00001-of-00005.safetensors",
+          "/data/home/data/gemma-3-12b-it-qat-q4_0-unquantized/config.json",
+          "/data/home/data/gemma-3-12b-it-qat-q4_0-unquantized/model-00003-of-00005.safetensors",
+          "/data/home/data/gemma-3-12b-it-qat-q4_0-unquantized/model-00004-of-00005.safetensors",
+          "/data/home/data/gemma-3-12b-it-qat-q4_0-unquantized/model.safetensors.index.json"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/home/data/InternVL",
+      "size_gb": 21,
+      "kind_guess": "model",
+      "name_guess": "InternVL",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 3,
+        "safetensors": 6,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/home/data/InternVL/InternVL3_5-1B-HF/config.json",
+          "/data/home/data/InternVL/InternVL3_5-1B-HF/model.safetensors",
+          "/data/home/data/InternVL/InternVL3.5-1B-HF_bak/config.json",
+          "/data/home/data/InternVL/InternVL3.5-1B-HF_bak/model.safetensors",
+          "/data/home/data/InternVL/InternVL3_5-8B-HF/config.json"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/home/p00893103/data/datasets",
+      "size_gb": 19,
+      "kind_guess": "dataset",
+      "name_guess": "datasets",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": []
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/home/x00824404/data/train2017",
+      "size_gb": 19,
+      "kind_guess": "dataset",
+      "name_guess": "train2017",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": []
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/home/data/InternVL/InternVL3_5-8B-HF",
+      "size_gb": 17,
+      "kind_guess": "model",
+      "name_guess": "InternVL3_5-8B-HF",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 4,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/home/data/InternVL/InternVL3_5-8B-HF/config.json",
+          "/data/home/data/InternVL/InternVL3_5-8B-HF/model-00001-of-00004.safetensors",
+          "/data/home/data/InternVL/InternVL3_5-8B-HF/model-00002-of-00004.safetensors",
+          "/data/home/data/InternVL/InternVL3_5-8B-HF/model-00003-of-00004.safetensors",
+          "/data/home/data/InternVL/InternVL3_5-8B-HF/model-00004-of-00004.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/LLM/mindSpeed_mm/Lumina_mgpt2",
+      "size_gb": 16,
+      "kind_guess": "model",
+      "name_guess": "Lumina_mgpt2",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 4,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 1,
+        "bin_or_ckpt": 3,
+        "sample_files": [
+          "/data/LLM/mindSpeed_mm/Lumina_mgpt2/movqgan_270M.ckpt",
+          "/data/LLM/mindSpeed_mm/Lumina_mgpt2/data/sora_features/data.jsonl",
+          "/data/LLM/mindSpeed_mm/Lumina_mgpt2/data/sora_features/features/000000052846_jpg.pt",
+          "/data/LLM/mindSpeed_mm/Lumina_mgpt2/data/sora_features/features/000000033471_jpg.pt",
+          "/data/LLM/mindSpeed_mm/Lumina_mgpt2/ckpt_hf/Lumina-mGPT-2.0/config.json"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-225",
+      "host": "192.168.9.225",
+      "path": "/data/t00906153/modelscope_models/LLaDA2.0-mini-preview-extra",
+      "size_gb": 12,
+      "kind_guess": "model",
+      "name_guess": "LLaDA2.0-mini-preview-extra",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:40:21Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 3,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/t00906153/modelscope_models/LLaDA2.0-mini-preview-extra/model-00005-of-00007.safetensors",
+          "/data/t00906153/modelscope_models/LLaDA2.0-mini-preview-extra/model-00006-of-00007.safetensors",
+          "/data/t00906153/modelscope_models/LLaDA2.0-mini-preview-extra/model-00007-of-00007.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/data",
+      "size_gb": 1641,
+      "kind_guess": "model",
+      "name_guess": "data",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 4,
+        "arrow": 0,
+        "jsonl": 2,
+        "bin_or_ckpt": 3,
+        "sample_files": [
+          "/data/ci/datasets/tune_dataset/alpaca_train_indexmap_60ns_1234s_shuffle_decoder_packed_idx.npy",
+          "/data/ci/datasets/tune_dataset/alpaca_test_indexmap_0ns_1234s_decoder_packed_shuffle_idx.npy",
+          "/data/ci/datasets/tune_dataset/alpaca_train_indexmap_480ns_1234s_shuffle_decoder_packed_idx.npy",
+          "/data/ci/datasets/tune_dataset/alpaca_valid_indexmap_0ns_1234s_shuffle_decoder_packed_idx.npy",
+          "/data/ci/datasets/tune_dataset/alpaca_packed_attention_mask_document.bin"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/data/ci",
+      "size_gb": 1641,
+      "kind_guess": "model",
+      "name_guess": "ci",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 8,
+        "arrow": 0,
+        "jsonl": 23,
+        "bin_or_ckpt": 110,
+        "sample_files": [
+          "/data/ci/datasets/tune_dataset/alpaca_train_indexmap_60ns_1234s_shuffle_decoder_packed_idx.npy",
+          "/data/ci/datasets/tune_dataset/alpaca_test_indexmap_0ns_1234s_decoder_packed_shuffle_idx.npy",
+          "/data/ci/datasets/tune_dataset/alpaca_train_indexmap_480ns_1234s_shuffle_decoder_packed_idx.npy",
+          "/data/ci/datasets/tune_dataset/alpaca_valid_indexmap_0ns_1234s_shuffle_decoder_packed_idx.npy",
+          "/data/ci/datasets/tune_dataset/alpaca_packed_attention_mask_document.bin"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data",
+      "size_gb": 1237,
+      "kind_guess": "model",
+      "name_guess": "data",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 22,
+        "config_json": 26,
+        "safetensors": 193,
+        "parquet": 48,
+        "arrow": 2,
+        "jsonl": 31,
+        "bin_or_ckpt": 5,
+        "sample_files": [
+          "/home/data/ERNIE-4.5-21B-A3B-Thinking/config.json",
+          "/home/data/ERNIE-4.5-21B-A3B-PT/model-00004-of-00009.safetensors",
+          "/home/data/ERNIE-4.5-21B-A3B-PT/config.json",
+          "/home/data/ERNIE-4.5-21B-A3B-PT/model.safetensors.index.json",
+          "/home/data/ERNIE-4.5-21B-A3B-PT/model-00009-of-00009.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/b00961046/res/weights",
+      "size_gb": 1050,
+      "kind_guess": "model",
+      "name_guess": "weights",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 6,
+        "config_json": 9,
+        "safetensors": 235,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/text_encoder/model-00001-of-00003.safetensors",
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/text_encoder/config.json",
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/text_encoder/model.safetensors.index.json",
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/text_encoder/model-00003-of-00003.safetensors",
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/text_encoder/model-00002-of-00003.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/weights",
+      "size_gb": 1003,
+      "kind_guess": "model",
+      "name_guess": "weights",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 18,
+        "config_json": 23,
+        "safetensors": 177,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 5,
+        "sample_files": [
+          "/home/data/weights/dancegrpo/hps_ckpt/HPS_v2.1_compressed.pt",
+          "/home/data/weights/Qwen35-0.8B/config.json",
+          "/home/data/weights/Qwen35-0.8B/model.safetensors.index.json",
+          "/home/data/weights/Qwen35-0.8B/model.safetensors-00001-of-00001.safetensors",
+          "/home/data/weights/Qwen35-4B-mtp/config.json"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/b00961046/res/weights/bkp",
+      "size_gb": 365,
+      "kind_guess": "model",
+      "name_guess": "bkp",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 3,
+        "config_json": 6,
+        "safetensors": 69,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/b00961046/res/weights/bkp/Wan-AI/Wan2.2-I2V-A14B-Diffusers/text_encoder/model-00001-of-00003.safetensors",
+          "/home/b00961046/res/weights/bkp/Wan-AI/Wan2.2-I2V-A14B-Diffusers/text_encoder/config.json",
+          "/home/b00961046/res/weights/bkp/Wan-AI/Wan2.2-I2V-A14B-Diffusers/text_encoder/model.safetensors.index.json",
+          "/home/b00961046/res/weights/bkp/Wan-AI/Wan2.2-I2V-A14B-Diffusers/text_encoder/model-00003-of-00003.safetensors",
+          "/home/b00961046/res/weights/bkp/Wan-AI/Wan2.2-I2V-A14B-Diffusers/text_encoder/model-00002-of-00003.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/b00961046/res/weights/bkp/qwen3.5",
+      "size_gb": 234,
+      "kind_guess": "model",
+      "name_guess": "qwen3.5",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 39,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/b00961046/res/weights/bkp/qwen3.5/model.safetensors-00018-of-00039.safetensors",
+          "/home/b00961046/res/weights/bkp/qwen3.5/model.safetensors-00027-of-00039.safetensors",
+          "/home/b00961046/res/weights/bkp/qwen3.5/model.safetensors-00023-of-00039.safetensors",
+          "/home/b00961046/res/weights/bkp/qwen3.5/config.json",
+          "/home/b00961046/res/weights/bkp/qwen3.5/model.safetensors-00021-of-00039.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/b00961046/res/weights/qwen3.5",
+      "size_gb": 234,
+      "kind_guess": "model",
+      "name_guess": "qwen3.5",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 39,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/b00961046/res/weights/qwen3.5/model.safetensors-00018-of-00039.safetensors",
+          "/home/b00961046/res/weights/qwen3.5/model.safetensors-00027-of-00039.safetensors",
+          "/home/b00961046/res/weights/qwen3.5/model.safetensors-00023-of-00039.safetensors",
+          "/home/b00961046/res/weights/qwen3.5/config.json",
+          "/home/b00961046/res/weights/qwen3.5/model.safetensors-00021-of-00039.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/b00961046/res/weights/Wan-AI",
+      "size_gb": 224,
+      "kind_guess": "model",
+      "name_guess": "Wan-AI",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 4,
+        "safetensors": 28,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/text_encoder/model-00001-of-00003.safetensors",
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/text_encoder/config.json",
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/text_encoder/model.safetensors.index.json",
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/text_encoder/model-00003-of-00003.safetensors",
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/text_encoder/model-00002-of-00003.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/weights/inclusionAI",
+      "size_gb": 222,
+      "kind_guess": "model",
+      "name_guess": "inclusionAI",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 2,
+        "config_json": 9,
+        "safetensors": 53,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 4,
+        "sample_files": [
+          "/home/data/weights/inclusionAI/Ming-flash-omni-2.0/model-00016-of-00042.safetensors",
+          "/home/data/weights/inclusionAI/Ming-flash-omni-2.0/model-00024-of-00042.safetensors",
+          "/home/data/weights/inclusionAI/Ming-flash-omni-2.0/model-00033-of-00042.safetensors",
+          "/home/data/weights/inclusionAI/Ming-flash-omni-2.0/model-00003-of-00042.safetensors",
+          "/home/data/weights/inclusionAI/Ming-flash-omni-2.0/model-00004-of-00042.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/weights/inclusionAI/Ming-flash-omni-2.0",
+      "size_gb": 222,
+      "kind_guess": "model",
+      "name_guess": "Ming-flash-omni-2.0",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 2,
+        "config_json": 9,
+        "safetensors": 53,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 4,
+        "sample_files": [
+          "/home/data/weights/inclusionAI/Ming-flash-omni-2.0/model-00016-of-00042.safetensors",
+          "/home/data/weights/inclusionAI/Ming-flash-omni-2.0/model-00024-of-00042.safetensors",
+          "/home/data/weights/inclusionAI/Ming-flash-omni-2.0/model-00033-of-00042.safetensors",
+          "/home/data/weights/inclusionAI/Ming-flash-omni-2.0/model-00003-of-00042.safetensors",
+          "/home/data/weights/inclusionAI/Ming-flash-omni-2.0/model-00004-of-00042.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/b00961046/res/weights/minimax",
+      "size_gb": 215,
+      "kind_guess": "model",
+      "name_guess": "minimax",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 125,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/b00961046/res/weights/minimax/model-00124-of-00126.safetensors",
+          "/home/b00961046/res/weights/minimax/model-00077-of-00126.safetensors",
+          "/home/b00961046/res/weights/minimax/model-00081-of-00126.safetensors",
+          "/home/b00961046/res/weights/minimax/model-00079-of-00126.safetensors",
+          "/home/b00961046/res/weights/minimax/model-00064-of-00126.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/p00893103/data",
+      "size_gb": 197,
+      "kind_guess": "model",
+      "name_guess": "data",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 3,
+        "config_json": 3,
+        "safetensors": 19,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/p00893103/data/weights/Qwen3_6-27B/model-00011-of-00015.safetensors",
+          "/home/p00893103/data/weights/Qwen3_6-27B/model-00005-of-00015.safetensors",
+          "/home/p00893103/data/weights/Qwen3_6-27B/config.json",
+          "/home/p00893103/data/weights/Qwen3_6-27B/model-00009-of-00015.safetensors",
+          "/home/p00893103/data/weights/Qwen3_6-27B/model-00007-of-00015.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/p00893103/data/weights",
+      "size_gb": 197,
+      "kind_guess": "model",
+      "name_guess": "weights",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 3,
+        "config_json": 3,
+        "safetensors": 19,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/p00893103/data/weights/Qwen3_6-27B/model-00011-of-00015.safetensors",
+          "/home/p00893103/data/weights/Qwen3_6-27B/model-00005-of-00015.safetensors",
+          "/home/p00893103/data/weights/Qwen3_6-27B/config.json",
+          "/home/p00893103/data/weights/Qwen3_6-27B/model-00009-of-00015.safetensors",
+          "/home/p00893103/data/weights/Qwen3_6-27B/model-00007-of-00015.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/l00889958/data",
+      "size_gb": 169,
+      "kind_guess": "model",
+      "name_guess": "data",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 2,
+        "safetensors": 16,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 1,
+        "sample_files": [
+          "/home/l00889958/data/LongCat-Next/model-00011-of-00015.safetensors",
+          "/home/l00889958/data/LongCat-Next/model-00005-of-00015.safetensors",
+          "/home/l00889958/data/LongCat-Next/config.json",
+          "/home/l00889958/data/LongCat-Next/model-00009-of-00015.safetensors",
+          "/home/l00889958/data/LongCat-Next/model-00007-of-00015.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/weights/Qwen3-Next-80B-A3B-Instruct",
+      "size_gb": 152,
+      "kind_guess": "model",
+      "name_guess": "Qwen3-Next-80B-A3B-Instruct",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 41,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/data/weights/Qwen3-Next-80B-A3B-Instruct/model-00022-of-00041.safetensors",
+          "/home/data/weights/Qwen3-Next-80B-A3B-Instruct/model-00030-of-00041.safetensors",
+          "/home/data/weights/Qwen3-Next-80B-A3B-Instruct/model-00001-of-00041.safetensors",
+          "/home/data/weights/Qwen3-Next-80B-A3B-Instruct/model-00010-of-00041.safetensors",
+          "/home/data/weights/Qwen3-Next-80B-A3B-Instruct/model-00005-of-00041.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/l00889958/data/LongCat-Next",
+      "size_gb": 151,
+      "kind_guess": "model",
+      "name_guess": "LongCat-Next",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 2,
+        "safetensors": 16,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 1,
+        "sample_files": [
+          "/home/l00889958/data/LongCat-Next/model-00011-of-00015.safetensors",
+          "/home/l00889958/data/LongCat-Next/model-00005-of-00015.safetensors",
+          "/home/l00889958/data/LongCat-Next/config.json",
+          "/home/l00889958/data/LongCat-Next/model-00009-of-00015.safetensors",
+          "/home/l00889958/data/LongCat-Next/model-00007-of-00015.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/weights/DanceGrpo",
+      "size_gb": 129,
+      "kind_guess": "model",
+      "name_guess": "DanceGrpo",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 4,
+        "safetensors": 9,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 2,
+        "sample_files": [
+          "/home/data/weights/DanceGrpo/flux/FLUX.1-dev/ae.safetensors",
+          "/home/data/weights/DanceGrpo/flux/FLUX.1-dev/flux1-dev.safetensors",
+          "/home/data/weights/DanceGrpo/flux/FLUX.1-dev/text_encoder/config.json",
+          "/home/data/weights/DanceGrpo/flux/FLUX.1-dev/text_encoder/model.safetensors",
+          "/home/data/weights/DanceGrpo/flux/FLUX.1-dev/transformer/config.json"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/datasets",
+      "size_gb": 122,
+      "kind_guess": "dataset",
+      "name_guess": "datasets",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 48,
+        "arrow": 0,
+        "jsonl": 30,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/data/datasets/alamy_bak/204alamy_2_1_4.tar",
+          "/home/data/datasets/alamy_bak/204alamy_3_11_3.tar",
+          "/home/data/datasets/alamy_bak/204alamy_2_0_3.tar",
+          "/home/data/datasets/alamy_bak/204alamy_2_0_4.tar",
+          "/home/data/datasets/alamy_bak/204alamy_4_0_4.tar"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/weights/DanceGrpo/flux/FLUX.1-dev",
+      "size_gb": 108,
+      "kind_guess": "model",
+      "name_guess": "FLUX.1-dev",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 4,
+        "safetensors": 9,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/data/weights/DanceGrpo/flux/FLUX.1-dev/ae.safetensors",
+          "/home/data/weights/DanceGrpo/flux/FLUX.1-dev/flux1-dev.safetensors",
+          "/home/data/weights/DanceGrpo/flux/FLUX.1-dev/text_encoder/config.json",
+          "/home/data/weights/DanceGrpo/flux/FLUX.1-dev/text_encoder/model.safetensors",
+          "/home/data/weights/DanceGrpo/flux/FLUX.1-dev/transformer/config.json"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/transformer",
+      "size_gb": 107,
+      "kind_guess": "model",
+      "name_guess": "transformer",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 1,
+        "safetensors": 12,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 1,
+        "sample_files": [
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/transformer/diffusion_pytorch_model-00006-of-00012.safetensors",
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/transformer/diffusion_pytorch_model-00005-of-00012.safetensors",
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/transformer/diffusion_pytorch_model-00010-of-00012.safetensors",
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/transformer/config.json",
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/transformer/diffusion_pytorch_model-00012-of-00012.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/transformer_2",
+      "size_gb": 107,
+      "kind_guess": "model",
+      "name_guess": "transformer_2",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 1,
+        "safetensors": 12,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 1,
+        "sample_files": [
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/transformer_2/diffusion_pytorch_model-00006-of-00012.safetensors",
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/transformer_2/diffusion_pytorch_model-00005-of-00012.safetensors",
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/transformer_2/diffusion_pytorch_model-00010-of-00012.safetensors",
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/transformer_2/config.json",
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/transformer_2/diffusion_pytorch_model-00012-of-00012.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/wangsijie/data",
+      "size_gb": 79,
+      "kind_guess": "dataset",
+      "name_guess": "data",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 5,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/wangsijie/data/910b4_bak/cann.zip",
+          "/home/wangsijie/data/910b4_bak/cann/LiveCANNBench_github_v2/task_infos_reordered.jsonl",
+          "/home/wangsijie/data/910b4_bak/cann/LiveCANNBench_github/task_infos_reordered.jsonl",
+          "/home/wangsijie/data/910b4_bak/cann/LiveCANNBench/traj.jsonl",
+          "/home/wangsijie/data/910b4_bak/cann/LiveCANNBench/task_infos_reordered.jsonl"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/c00845082/project/qwen3.5/weights",
+      "size_gb": 67,
+      "kind_guess": "model",
+      "name_guess": "weights",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 14,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/c00845082/project/qwen3.5/weights/Qwen/Qwen3___5-35B-A3B/model.safetensors-00014-of-00014.safetensors",
+          "/home/c00845082/project/qwen3.5/weights/Qwen/Qwen3___5-35B-A3B/config.json",
+          "/home/c00845082/project/qwen3.5/weights/Qwen/Qwen3___5-35B-A3B/model.safetensors-00011-of-00014.safetensors",
+          "/home/c00845082/project/qwen3.5/weights/Qwen/Qwen3___5-35B-A3B/model.safetensors-00003-of-00014.safetensors",
+          "/home/c00845082/project/qwen3.5/weights/Qwen/Qwen3___5-35B-A3B/model.safetensors.index.json"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/c00845082/project/qwen3.5/weights/Qwen",
+      "size_gb": 67,
+      "kind_guess": "model",
+      "name_guess": "Qwen",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 14,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/c00845082/project/qwen3.5/weights/Qwen/Qwen3___5-35B-A3B/model.safetensors-00014-of-00014.safetensors",
+          "/home/c00845082/project/qwen3.5/weights/Qwen/Qwen3___5-35B-A3B/config.json",
+          "/home/c00845082/project/qwen3.5/weights/Qwen/Qwen3___5-35B-A3B/model.safetensors-00011-of-00014.safetensors",
+          "/home/c00845082/project/qwen3.5/weights/Qwen/Qwen3___5-35B-A3B/model.safetensors-00003-of-00014.safetensors",
+          "/home/c00845082/project/qwen3.5/weights/Qwen/Qwen3___5-35B-A3B/model.safetensors.index.json"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/c00845082/project/qwen3.5/weights/Qwen/Qwen3___5-35B-A3B",
+      "size_gb": 67,
+      "kind_guess": "model",
+      "name_guess": "Qwen3___5-35B-A3B",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 14,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/c00845082/project/qwen3.5/weights/Qwen/Qwen3___5-35B-A3B/model.safetensors-00014-of-00014.safetensors",
+          "/home/c00845082/project/qwen3.5/weights/Qwen/Qwen3___5-35B-A3B/config.json",
+          "/home/c00845082/project/qwen3.5/weights/Qwen/Qwen3___5-35B-A3B/model.safetensors-00011-of-00014.safetensors",
+          "/home/c00845082/project/qwen3.5/weights/Qwen/Qwen3___5-35B-A3B/model.safetensors-00003-of-00014.safetensors",
+          "/home/c00845082/project/qwen3.5/weights/Qwen/Qwen3___5-35B-A3B/model.safetensors.index.json"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/weights/Qwen3.5-35B-A3B",
+      "size_gb": 67,
+      "kind_guess": "model",
+      "name_guess": "Qwen3.5-35B-A3B",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 14,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/data/weights/Qwen3.5-35B-A3B/model.safetensors-00014-of-00014.safetensors",
+          "/home/data/weights/Qwen3.5-35B-A3B/config.json",
+          "/home/data/weights/Qwen3.5-35B-A3B/model.safetensors-00011-of-00014.safetensors",
+          "/home/data/weights/Qwen3.5-35B-A3B/model.safetensors-00003-of-00014.safetensors",
+          "/home/data/weights/Qwen3.5-35B-A3B/model.safetensors.index.json"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/weights/dancegrpo",
+      "size_gb": 60,
+      "kind_guess": "model",
+      "name_guess": "dancegrpo",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 2,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 2,
+        "sample_files": [
+          "/home/data/weights/dancegrpo/flux/AI-ModelScope/FLUX___1-dev/ae.safetensors",
+          "/home/data/weights/dancegrpo/flux/AI-ModelScope/FLUX___1-dev/flux1-dev.safetensors",
+          "/home/data/weights/dancegrpo/hps_ckpt/HPS_v2.1_compressed.pt",
+          "/home/data/weights/dancegrpo/hps_ckpt/AI-ModelScope/CLIP-ViT-H-14-laion2B-s32B-b79K/open_clip_pytorch_model.bin"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/weights/Qwen3-VL-30B-A3B-Instruct",
+      "size_gb": 58,
+      "kind_guess": "model",
+      "name_guess": "Qwen3-VL-30B-A3B-Instruct",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 13,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/data/weights/Qwen3-VL-30B-A3B-Instruct/model-00011-of-00013.safetensors",
+          "/home/data/weights/Qwen3-VL-30B-A3B-Instruct/model-00006-of-00013.safetensors",
+          "/home/data/weights/Qwen3-VL-30B-A3B-Instruct/model-00003-of-00013.safetensors",
+          "/home/data/weights/Qwen3-VL-30B-A3B-Instruct/config.json",
+          "/home/data/weights/Qwen3-VL-30B-A3B-Instruct/model-00009-of-00013.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/weights/Qwen3-30B-A3B",
+      "size_gb": 57,
+      "kind_guess": "model",
+      "name_guess": "Qwen3-30B-A3B",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 16,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/data/weights/Qwen3-30B-A3B/model-00008-of-00016.safetensors",
+          "/home/data/weights/Qwen3-30B-A3B/model-00014-of-00016.safetensors",
+          "/home/data/weights/Qwen3-30B-A3B/config.json",
+          "/home/data/weights/Qwen3-30B-A3B/model-00006-of-00016.safetensors",
+          "/home/data/weights/Qwen3-30B-A3B/model-00013-of-00016.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/InternVL",
+      "size_gb": 53,
+      "kind_guess": "model",
+      "name_guess": "InternVL",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 3,
+        "config_json": 5,
+        "safetensors": 14,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/data/InternVL/InternVL3_5-8B-HF/model-00002-of-00004.safetensors",
+          "/home/data/InternVL/InternVL3_5-8B-HF/config.json",
+          "/home/data/InternVL/InternVL3_5-8B-HF/model.safetensors.index.json",
+          "/home/data/InternVL/InternVL3_5-8B-HF/model-00004-of-00004.safetensors",
+          "/home/data/InternVL/InternVL3_5-8B-HF/model-00003-of-00004.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/weights/Qwen35-27B",
+      "size_gb": 52,
+      "kind_guess": "model",
+      "name_guess": "Qwen35-27B",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 11,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/data/weights/Qwen35-27B/model.safetensors-00007-of-00011.safetensors",
+          "/home/data/weights/Qwen35-27B/model.safetensors-00003-of-00011.safetensors",
+          "/home/data/weights/Qwen35-27B/config.json",
+          "/home/data/weights/Qwen35-27B/model.safetensors-00002-of-00011.safetensors",
+          "/home/data/weights/Qwen35-27B/model.safetensors.index.json"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/weights/Qwen35-27B-dcp",
+      "size_gb": 52,
+      "kind_guess": "model",
+      "name_guess": "Qwen35-27B-dcp",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": []
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/weights/Qwen36-27B",
+      "size_gb": 52,
+      "kind_guess": "model",
+      "name_guess": "Qwen36-27B",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 15,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/data/weights/Qwen36-27B/model-00011-of-00015.safetensors",
+          "/home/data/weights/Qwen36-27B/model-00005-of-00015.safetensors",
+          "/home/data/weights/Qwen36-27B/config.json",
+          "/home/data/weights/Qwen36-27B/model-00009-of-00015.safetensors",
+          "/home/data/weights/Qwen36-27B/model-00007-of-00015.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/p00893103/data/weights/Qwen3_6-27B",
+      "size_gb": 52,
+      "kind_guess": "model",
+      "name_guess": "Qwen3_6-27B",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 15,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/p00893103/data/weights/Qwen3_6-27B/model-00011-of-00015.safetensors",
+          "/home/p00893103/data/weights/Qwen3_6-27B/model-00005-of-00015.safetensors",
+          "/home/p00893103/data/weights/Qwen3_6-27B/config.json",
+          "/home/p00893103/data/weights/Qwen3_6-27B/model-00009-of-00015.safetensors",
+          "/home/p00893103/data/weights/Qwen3_6-27B/model-00007-of-00015.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/p00893103/data/weights/gemma-4-26B-A4B",
+      "size_gb": 49,
+      "kind_guess": "model",
+      "name_guess": "gemma-4-26B-A4B",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 2,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/p00893103/data/weights/gemma-4-26B-A4B/config.json",
+          "/home/p00893103/data/weights/gemma-4-26B-A4B/model.safetensors.index.json",
+          "/home/p00893103/data/weights/gemma-4-26B-A4B/model-00001-of-00002.safetensors",
+          "/home/p00893103/data/weights/gemma-4-26B-A4B/model-00002-of-00002.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/p00893103/data/weights/gemma-4-26B-A4B-it",
+      "size_gb": 49,
+      "kind_guess": "model",
+      "name_guess": "gemma-4-26B-A4B-it",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 2,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/p00893103/data/weights/gemma-4-26B-A4B-it/config.json",
+          "/home/p00893103/data/weights/gemma-4-26B-A4B-it/model.safetensors.index.json",
+          "/home/p00893103/data/weights/gemma-4-26B-A4B-it/model-00001-of-00002.safetensors",
+          "/home/p00893103/data/weights/gemma-4-26B-A4B-it/model-00002-of-00002.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/p00893103/data/weights/gemma-4-26B-A4B-it-dcp",
+      "size_gb": 49,
+      "kind_guess": "model",
+      "name_guess": "gemma-4-26B-A4B-it-dcp",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": []
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/ERNIE-4.5-21B-A3B-PT",
+      "size_gb": 41,
+      "kind_guess": "model",
+      "name_guess": "ERNIE-4.5-21B-A3B-PT",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 9,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/data/ERNIE-4.5-21B-A3B-PT/model-00004-of-00009.safetensors",
+          "/home/data/ERNIE-4.5-21B-A3B-PT/config.json",
+          "/home/data/ERNIE-4.5-21B-A3B-PT/model.safetensors.index.json",
+          "/home/data/ERNIE-4.5-21B-A3B-PT/model-00009-of-00009.safetensors",
+          "/home/data/ERNIE-4.5-21B-A3B-PT/model-00001-of-00009.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/wangsijie/data/910b4_bak",
+      "size_gb": 41,
+      "kind_guess": "dataset",
+      "name_guess": "910b4_bak",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 5,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/wangsijie/data/910b4_bak/cann.zip",
+          "/home/wangsijie/data/910b4_bak/cann/LiveCANNBench_github_v2/task_infos_reordered.jsonl",
+          "/home/wangsijie/data/910b4_bak/cann/LiveCANNBench_github/task_infos_reordered.jsonl",
+          "/home/wangsijie/data/910b4_bak/cann/LiveCANNBench/traj.jsonl",
+          "/home/wangsijie/data/910b4_bak/cann/LiveCANNBench/task_infos_reordered.jsonl"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/wangsijie/data/all_test",
+      "size_gb": 33,
+      "kind_guess": "model",
+      "name_guess": "all_test",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 2,
+        "sample_files": [
+          "/home/wangsijie/data/all_test/test_fpdt_fusion/DeepSpeed/bin/deepspeed.pt",
+          "/home/wangsijie/data/all_test/test_fpdt_fusioncodex/DeepSpeed/bin/deepspeed.pt"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/datasets/librispeech_asr",
+      "size_gb": 22,
+      "kind_guess": "dataset",
+      "name_guess": "librispeech_asr",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 48,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/data/datasets/librispeech_asr/0019.parquet",
+          "/home/data/datasets/librispeech_asr/0013.parquet",
+          "/home/data/datasets/librispeech_asr/0018.parquet",
+          "/home/data/datasets/librispeech_asr/0028.parquet",
+          "/home/data/datasets/librispeech_asr/0007.parquet"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/weights/DanceGrpo/hps_ckpt",
+      "size_gb": 21,
+      "kind_guess": "model",
+      "name_guess": "hps_ckpt",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 2,
+        "sample_files": [
+          "/home/data/weights/DanceGrpo/hps_ckpt/HPS_v2.1_compressed.pt",
+          "/home/data/weights/DanceGrpo/hps_ckpt/open_clip_pytorch_model.bin"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/Step3-VL-10B",
+      "size_gb": 19,
+      "kind_guess": "model",
+      "name_guess": "Step3-VL-10B",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 5,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/data/Step3-VL-10B/model-00003.safetensors",
+          "/home/data/Step3-VL-10B/config.json",
+          "/home/data/Step3-VL-10B/model-00004.safetensors",
+          "/home/data/Step3-VL-10B/model.safetensors.index.json",
+          "/home/data/Step3-VL-10B/model-00005.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/l00889958/data/COCO2017",
+      "size_gb": 19,
+      "kind_guess": "dataset",
+      "name_guess": "COCO2017",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": []
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/InternVL/InternVL3_5-8B-HF",
+      "size_gb": 17,
+      "kind_guess": "model",
+      "name_guess": "InternVL3_5-8B-HF",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 4,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/data/InternVL/InternVL3_5-8B-HF/model-00002-of-00004.safetensors",
+          "/home/data/InternVL/InternVL3_5-8B-HF/config.json",
+          "/home/data/InternVL/InternVL3_5-8B-HF/model.safetensors.index.json",
+          "/home/data/InternVL/InternVL3_5-8B-HF/model-00004-of-00004.safetensors",
+          "/home/data/InternVL/InternVL3_5-8B-HF/model-00003-of-00004.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/weights/Qwen3-VL",
+      "size_gb": 17,
+      "kind_guess": "model",
+      "name_guess": "Qwen3-VL",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 4,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/data/weights/Qwen3-VL/model-00002-of-00004.safetensors",
+          "/home/data/weights/Qwen3-VL/config.json",
+          "/home/data/weights/Qwen3-VL/model.safetensors.index.json",
+          "/home/data/weights/Qwen3-VL/model-00004-of-00004.safetensors",
+          "/home/data/weights/Qwen3-VL/model-00003-of-00004.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/weights/Qwen3.5-35B-A3B-8L",
+      "size_gb": 17,
+      "kind_guess": "model",
+      "name_guess": "Qwen3.5-35B-A3B-8L",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 1,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/data/weights/Qwen3.5-35B-A3B-8L/config.json",
+          "/home/data/weights/Qwen3.5-35B-A3B-8L/model.safetensors.index.json",
+          "/home/data/weights/Qwen3.5-35B-A3B-8L/model.safetensors-00001-of-00001.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/weights/Qwen3.5-35B-A3B-8L-DCP",
+      "size_gb": 17,
+      "kind_guess": "model",
+      "name_guess": "Qwen3.5-35B-A3B-8L-DCP",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": []
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/weights/Qwen3.5-35B-A3B-8L-DCP-v2",
+      "size_gb": 17,
+      "kind_guess": "model",
+      "name_guess": "Qwen3.5-35B-A3B-8L-DCP-v2",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": []
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/InternVL/InternVL3_5-8B-OpenGVLab",
+      "size_gb": 16,
+      "kind_guess": "model",
+      "name_guess": "InternVL3_5-8B-OpenGVLab",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 4,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/data/InternVL/InternVL3_5-8B-OpenGVLab/model-00002-of-00004.safetensors",
+          "/home/data/InternVL/InternVL3_5-8B-OpenGVLab/config.json",
+          "/home/data/InternVL/InternVL3_5-8B-OpenGVLab/model.safetensors.index.json",
+          "/home/data/InternVL/InternVL3_5-8B-OpenGVLab/model-00004-of-00004.safetensors",
+          "/home/data/InternVL/InternVL3_5-8B-OpenGVLab/model-00003-of-00004.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/InternVL/InternVL3_5-8B-custom",
+      "size_gb": 16,
+      "kind_guess": "model",
+      "name_guess": "InternVL3_5-8B-custom",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 4,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/data/InternVL/InternVL3_5-8B-custom/model-00002-of-00004.safetensors",
+          "/home/data/InternVL/InternVL3_5-8B-custom/config.json",
+          "/home/data/InternVL/InternVL3_5-8B-custom/model.safetensors.index.json",
+          "/home/data/InternVL/InternVL3_5-8B-custom/model-00004-of-00004.safetensors",
+          "/home/data/InternVL/InternVL3_5-8B-custom/model-00003-of-00004.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/b00961046/res/weights/Qwen2.5-VL-3B-Instruct",
+      "size_gb": 15,
+      "kind_guess": "model",
+      "name_guess": "Qwen2.5-VL-3B-Instruct",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 2,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/b00961046/res/weights/Qwen2.5-VL-3B-Instruct/config.json",
+          "/home/b00961046/res/weights/Qwen2.5-VL-3B-Instruct/model.safetensors.index.json",
+          "/home/b00961046/res/weights/Qwen2.5-VL-3B-Instruct/model-00001-of-00002.safetensors",
+          "/home/b00961046/res/weights/Qwen2.5-VL-3B-Instruct/model-00002-of-00002.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/b00961046/res/weights/bkp/Qwen2.5-VL-3B-Instruct",
+      "size_gb": 15,
+      "kind_guess": "model",
+      "name_guess": "Qwen2.5-VL-3B-Instruct",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 2,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/b00961046/res/weights/bkp/Qwen2.5-VL-3B-Instruct/config.json",
+          "/home/b00961046/res/weights/bkp/Qwen2.5-VL-3B-Instruct/model.safetensors.index.json",
+          "/home/b00961046/res/weights/bkp/Qwen2.5-VL-3B-Instruct/model-00001-of-00002.safetensors",
+          "/home/b00961046/res/weights/bkp/Qwen2.5-VL-3B-Instruct/model-00002-of-00002.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/data/weights/inclusionAI/Ming-flash-omni-2.0/transformer",
+      "size_gb": 12,
+      "kind_guess": "model",
+      "name_guess": "transformer",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 1,
+        "safetensors": 5,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/data/weights/inclusionAI/Ming-flash-omni-2.0/transformer/config.json",
+          "/home/data/weights/inclusionAI/Ming-flash-omni-2.0/transformer/diffusion_pytorch_model-00005-of-00005.safetensors",
+          "/home/data/weights/inclusionAI/Ming-flash-omni-2.0/transformer/diffusion_pytorch_model-00002-of-00005.safetensors",
+          "/home/data/weights/inclusionAI/Ming-flash-omni-2.0/transformer/diffusion_pytorch_model-00003-of-00005.safetensors",
+          "/home/data/weights/inclusionAI/Ming-flash-omni-2.0/transformer/diffusion_pytorch_model-00001-of-00005.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AK-182",
+      "host": "192.168.13.182",
+      "path": "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/text_encoder",
+      "size_gb": 11,
+      "kind_guess": "model",
+      "name_guess": "text_encoder",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:27Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 3,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/text_encoder/model-00001-of-00003.safetensors",
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/text_encoder/config.json",
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/text_encoder/model.safetensors.index.json",
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/text_encoder/model-00003-of-00003.safetensors",
+          "/home/b00961046/res/weights/Wan-AI/Wan2.2-I2V-A14B-Diffusers/text_encoder/model-00002-of-00003.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AX-180",
+      "host": "192.168.13.180",
+      "path": "/data",
+      "size_gb": 1665,
+      "kind_guess": "model",
+      "name_guess": "data",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:41:29Z",
+      "evidence": {
+        "model_index": 2,
+        "config_json": 2,
+        "safetensors": 73,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/home/data/HQ-OpenHumanVid_part001_5000.zip",
+          "/data/home/data/COCO2017/train2017.zip",
+          "/data/home/data/COCO2017/val2017.zip",
+          "/data/home/data/COCO2017/annotations_trainval2017.zip",
+          "/data/home/model/LTX-2.3/ltx-2.3-22b-distilled-lora-384.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AX-180",
+      "host": "192.168.13.180",
+      "path": "/data/home",
+      "size_gb": 1164,
+      "kind_guess": "model",
+      "name_guess": "home",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:41:29Z",
+      "evidence": {
+        "model_index": 2,
+        "config_json": 2,
+        "safetensors": 73,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 1,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/home/data/HQ-OpenHumanVid_part001_5000.zip",
+          "/data/home/data/FineVideo_Subset/LTX2_smoke_t2av/dataset.jsonl",
+          "/data/home/data/COCO2017/train2017.zip",
+          "/data/home/data/COCO2017/val2017.zip",
+          "/data/home/data/COCO2017/annotations_trainval2017.zip"
+        ]
+      }
+    },
+    {
+      "server": "A3-AX-180",
+      "host": "192.168.13.180",
+      "path": "/data/home/model/MiniMax-M3",
+      "size_gb": 796,
+      "kind_guess": "model",
+      "name_guess": "MiniMax-M3",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:41:29Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 59,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/home/model/MiniMax-M3/model-00025-of-00059.safetensors",
+          "/data/home/model/MiniMax-M3/model-00054-of-00059.safetensors",
+          "/data/home/model/MiniMax-M3/model-00026-of-00059.safetensors",
+          "/data/home/model/MiniMax-M3/model-00059-of-00059.safetensors",
+          "/data/home/model/MiniMax-M3/model-00030-of-00059.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AX-180",
+      "host": "192.168.13.180",
+      "path": "/data/LLM",
+      "size_gb": 501,
+      "kind_guess": "model",
+      "name_guess": "LLM",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:41:29Z",
+      "evidence": {
+        "model_index": 3,
+        "config_json": 3,
+        "safetensors": 22,
+        "parquet": 5,
+        "arrow": 0,
+        "jsonl": 3,
+        "bin_or_ckpt": 3,
+        "sample_files": [
+          "/data/LLM/mindSpeed_mm/wan_2_1/pixabay_v2_features_480_832_81_new/data_1point3b_t2v.jsonl",
+          "/data/LLM/mindSpeed_mm/wan_2_1/pixabay_v2_features_480_832_81_new/data_14b_i2v.jsonl",
+          "/data/LLM/mindSpeed_mm/wan_2_1/pixabay_v2_features_480_832_81_new/data.jsonl",
+          "/data/LLM/mindSpeed_llm/Mcore_Ling_Mini/Ling_Mini_hf/model-00002-of-00004.safetensors",
+          "/data/LLM/mindSpeed_llm/Mcore_Ling_Mini/Ling_Mini_hf/model-00001-of-00004.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AX-180",
+      "host": "192.168.13.180",
+      "path": "/home/weights",
+      "size_gb": 418,
+      "kind_guess": "model",
+      "name_guess": "weights",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:41:29Z",
+      "evidence": {
+        "model_index": 3,
+        "config_json": 6,
+        "safetensors": 81,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/vae/config.json",
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/vae/diffusion_pytorch_model.safetensors",
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/transformer/diffusion_pytorch_model-00012-of-00012.safetensors",
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/transformer/diffusion_pytorch_model-00003-of-00012.safetensors",
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/transformer/config.json"
+        ]
+      }
+    },
+    {
+      "server": "A3-AX-180",
+      "host": "192.168.13.180",
+      "path": "/home/weights/Qwen3.5-122B-A10B",
+      "size_gb": 234,
+      "kind_guess": "model",
+      "name_guess": "Qwen3.5-122B-A10B",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:41:29Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 39,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/weights/Qwen3.5-122B-A10B/model.safetensors-00005-of-00039.safetensors",
+          "/home/weights/Qwen3.5-122B-A10B/model.safetensors-00001-of-00039.safetensors",
+          "/home/weights/Qwen3.5-122B-A10B/model.safetensors-00020-of-00039.safetensors",
+          "/home/weights/Qwen3.5-122B-A10B/model.safetensors-00032-of-00039.safetensors",
+          "/home/weights/Qwen3.5-122B-A10B/model.safetensors-00015-of-00039.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AX-180",
+      "host": "192.168.13.180",
+      "path": "/data/home/data",
+      "size_gb": 200,
+      "kind_guess": "dataset",
+      "name_guess": "data",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:41:29Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 50,
+        "arrow": 0,
+        "jsonl": 1,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/home/data/HQ-OpenHumanVid_part001_5000.zip",
+          "/data/home/data/FineVideo_Subset/FineVideo_Subset/data/train-00026-of-01357.parquet",
+          "/data/home/data/FineVideo_Subset/FineVideo_Subset/data/train-00001-of-01357.parquet",
+          "/data/home/data/FineVideo_Subset/FineVideo_Subset/data/train-00046-of-01357.parquet",
+          "/data/home/data/FineVideo_Subset/FineVideo_Subset/data/train-00042-of-01357.parquet"
+        ]
+      }
+    },
+    {
+      "server": "A3-AX-180",
+      "host": "192.168.13.180",
+      "path": "/data/home/model/LTX-2.3",
+      "size_gb": 147,
+      "kind_guess": "model",
+      "name_guess": "LTX-2.3",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:41:29Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 9,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/home/model/LTX-2.3/ltx-2.3-22b-distilled-lora-384.safetensors",
+          "/data/home/model/LTX-2.3/ltx-2.3-temporal-upscaler-x2-1.0.safetensors",
+          "/data/home/model/LTX-2.3/ltx-2.3-spatial-upscaler-x2-1.1.safetensors",
+          "/data/home/model/LTX-2.3/ltx-2.3-22b-distilled-lora-384-1.1.safetensors",
+          "/data/home/model/LTX-2.3/ltx-2.3-22b-distilled-1.1.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AX-180",
+      "host": "192.168.13.180",
+      "path": "/home/weights/Wan2.2-T2V-A14B-Diffusers",
+      "size_gb": 118,
+      "kind_guess": "model",
+      "name_guess": "Wan2.2-T2V-A14B-Diffusers",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:41:29Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 4,
+        "safetensors": 28,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/vae/config.json",
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/vae/diffusion_pytorch_model.safetensors",
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/transformer/diffusion_pytorch_model-00012-of-00012.safetensors",
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/transformer/diffusion_pytorch_model-00003-of-00012.safetensors",
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/transformer/config.json"
+        ]
+      }
+    },
+    {
+      "server": "A3-AX-180",
+      "host": "192.168.13.180",
+      "path": "/home/weights/Qwen3.5-35B-A3B",
+      "size_gb": 67,
+      "kind_guess": "model",
+      "name_guess": "Qwen3.5-35B-A3B",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:41:29Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 14,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/weights/Qwen3.5-35B-A3B/model.safetensors-00012-of-00014.safetensors",
+          "/home/weights/Qwen3.5-35B-A3B/model.safetensors-00010-of-00014.safetensors",
+          "/home/weights/Qwen3.5-35B-A3B/model.safetensors-00009-of-00014.safetensors",
+          "/home/weights/Qwen3.5-35B-A3B/model.safetensors-00002-of-00014.safetensors",
+          "/home/weights/Qwen3.5-35B-A3B/model.safetensors-00006-of-00014.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AX-180",
+      "host": "192.168.13.180",
+      "path": "/home/weights/Wan2.2-T2V-A14B-Diffusers/transformer",
+      "size_gb": 54,
+      "kind_guess": "model",
+      "name_guess": "transformer",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:41:29Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 1,
+        "safetensors": 12,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/transformer/diffusion_pytorch_model-00012-of-00012.safetensors",
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/transformer/diffusion_pytorch_model-00003-of-00012.safetensors",
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/transformer/config.json",
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/transformer/diffusion_pytorch_model-00011-of-00012.safetensors",
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/transformer/diffusion_pytorch_model-00006-of-00012.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AX-180",
+      "host": "192.168.13.180",
+      "path": "/home/weights/Wan2.2-T2V-A14B-Diffusers/transformer_2",
+      "size_gb": 54,
+      "kind_guess": "model",
+      "name_guess": "transformer_2",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:41:29Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 1,
+        "safetensors": 12,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/transformer_2/diffusion_pytorch_model-00012-of-00012.safetensors",
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/transformer_2/diffusion_pytorch_model-00003-of-00012.safetensors",
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/transformer_2/config.json",
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/transformer_2/diffusion_pytorch_model-00011-of-00012.safetensors",
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/transformer_2/diffusion_pytorch_model-00006-of-00012.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A3-AX-180",
+      "host": "192.168.13.180",
+      "path": "/data/home/data/COCO2017",
+      "size_gb": 40,
+      "kind_guess": "dataset",
+      "name_guess": "COCO2017",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:41:29Z",
+      "evidence": {
+        "model_index": 0,
+        "config_json": 0,
+        "safetensors": 0,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/home/data/COCO2017/train2017.zip",
+          "/data/home/data/COCO2017/val2017.zip",
+          "/data/home/data/COCO2017/annotations_trainval2017.zip"
+        ]
+      }
+    },
+    {
+      "server": "A3-AX-180",
+      "host": "192.168.13.180",
+      "path": "/data/home/model/gemma-3-12b-it-qat-q4_0-unquantized",
+      "size_gb": 23,
+      "kind_guess": "model",
+      "name_guess": "gemma-3-12b-it-qat-q4_0-unquantized",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:41:29Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 5,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data/home/model/gemma-3-12b-it-qat-q4_0-unquantized/model-00005-of-00005.safetensors",
+          "/data/home/model/gemma-3-12b-it-qat-q4_0-unquantized/model-00001-of-00005.safetensors",
+          "/data/home/model/gemma-3-12b-it-qat-q4_0-unquantized/model-00002-of-00005.safetensors",
+          "/data/home/model/gemma-3-12b-it-qat-q4_0-unquantized/config.json",
+          "/data/home/model/gemma-3-12b-it-qat-q4_0-unquantized/model.safetensors.index.json"
+        ]
+      }
+    },
+    {
+      "server": "A3-AX-180",
+      "host": "192.168.13.180",
+      "path": "/home/weights/Wan2.2-T2V-A14B-Diffusers/text_encoder",
+      "size_gb": 11,
+      "kind_guess": "model",
+      "name_guess": "text_encoder",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:41:29Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 3,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/text_encoder/config.json",
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/text_encoder/model.safetensors.index.json",
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/text_encoder/model-00003-of-00003.safetensors",
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/text_encoder/model-00002-of-00003.safetensors",
+          "/home/weights/Wan2.2-T2V-A14B-Diffusers/text_encoder/model-00001-of-00003.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-102",
+      "host": "192.168.9.102",
+      "path": "/data01",
+      "size_gb": 180,
+      "kind_guess": "model",
+      "name_guess": "data01",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:18Z",
+      "evidence": {
+        "model_index": 3,
+        "config_json": 3,
+        "safetensors": 58,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data01/qwen3.6_27b/model-00003-of-00015.safetensors",
+          "/data01/qwen3.6_27b/model-00001-of-00015.safetensors",
+          "/data01/qwen3.6_27b/model-00012-of-00015.safetensors",
+          "/data01/qwen3.6_27b/model.safetensors.index.json",
+          "/data01/qwen3.6_27b/model-00002-of-00015.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-102",
+      "host": "192.168.9.102",
+      "path": "/data01/qwen3.6_35b",
+      "size_gb": 67,
+      "kind_guess": "model",
+      "name_guess": "qwen3.6_35b",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:18Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 26,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data01/qwen3.6_35b/model-00024-of-00026.safetensors",
+          "/data01/qwen3.6_35b/model-00020-of-00026.safetensors",
+          "/data01/qwen3.6_35b/model-00003-of-00026.safetensors",
+          "/data01/qwen3.6_35b/model-00010-of-00026.safetensors",
+          "/data01/qwen3.6_35b/model-00026-of-00026.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-102",
+      "host": "192.168.9.102",
+      "path": "/data01/qwen3_32b",
+      "size_gb": 62,
+      "kind_guess": "model",
+      "name_guess": "qwen3_32b",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:18Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 17,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data01/qwen3_32b/model-00014-of-00017.safetensors",
+          "/data01/qwen3_32b/model-00010-of-00017.safetensors",
+          "/data01/qwen3_32b/model-00008-of-00017.safetensors",
+          "/data01/qwen3_32b/model-00012-of-00017.safetensors",
+          "/data01/qwen3_32b/model-00005-of-00017.safetensors"
+        ]
+      }
+    },
+    {
+      "server": "A2-AK-102",
+      "host": "192.168.9.102",
+      "path": "/data01/qwen3.6_27b",
+      "size_gb": 52,
+      "kind_guess": "model",
+      "name_guess": "qwen3.6_27b",
+      "status": "discovered",
+      "scanned_at": "2026-06-25T11:42:18Z",
+      "evidence": {
+        "model_index": 1,
+        "config_json": 1,
+        "safetensors": 15,
+        "parquet": 0,
+        "arrow": 0,
+        "jsonl": 0,
+        "bin_or_ckpt": 0,
+        "sample_files": [
+          "/data01/qwen3.6_27b/model-00003-of-00015.safetensors",
+          "/data01/qwen3.6_27b/model-00001-of-00015.safetensors",
+          "/data01/qwen3.6_27b/model-00012-of-00015.safetensors",
+          "/data01/qwen3.6_27b/model.safetensors.index.json",
+          "/data01/qwen3.6_27b/model-00002-of-00015.safetensors"
+        ]
+      }
+    }
+  ]
+}

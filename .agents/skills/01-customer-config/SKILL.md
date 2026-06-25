@@ -1,3 +1,8 @@
+---
+name: customer-config
+description: Generate, validate, inspect, and safely handle AutoResearch customer configuration files. Use when working on config init/show/validate commands, Pydantic config schema behavior, keyring or env secret placeholders, redacted display, or config/config.yaml templates.
+---
+
 # Skill 01: customer-config
 
 > 生成 / 校验 / 查看客户配置。敏感字段 (密码/SSH key/API token) 不裸奔。

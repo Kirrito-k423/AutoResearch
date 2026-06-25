@@ -1,3 +1,8 @@
+---
+name: experiment-report
+description: Render AutoResearch experiment reports from manifests, logs, W&B data, Prometheus evidence, and formal Verl case outputs. Use when building or diagnosing report HTML, Chinese report copy, bundle-local artifact loading, validation matrix explanations, or missing metric diagnostics.
+---
+
 # Skill 08: experiment-report
 
 > 单页 HTML 报告 (log / wandb / prom 三视图)。
