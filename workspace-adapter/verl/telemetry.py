@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 SOURCE_NPU_SMI_WATCH = "npu-smi-watch"
 SOURCE_HOST_NPU_SMI_WATCH = "host-npu-smi-watch"
+SOURCE_HOST_RESOURCE_WATCH = "host-resource-watch"
 DEFAULT_NPU_TELEMETRY_INTERVAL_SECONDS = 0.5
 
 
@@ -20,6 +21,7 @@ class NpuTelemetrySample(BaseModel):
     case_id: str
     server: str
     device_id: int
+    chip_id: int | None = None
     sample_index: int
     source: str = SOURCE_NPU_SMI_WATCH
     observed_at: str | None = None
@@ -43,9 +45,33 @@ class NpuTelemetrySummary(BaseModel):
     max_npu_utilization_percent: float | None = None
 
 
+class HostResourceSample(BaseModel):
+    """One normalized host CPU/memory sample from Linux ``/proc``."""
+
+    run_id: str
+    case_id: str
+    server: str
+    sample_index: int
+    source: str = SOURCE_HOST_RESOURCE_WATCH
+    observed_at: str | None = None
+    sample_time_seconds: float | None = None
+    memory_used_bytes: float | None = None
+    memory_total_bytes: float | None = None
+    memory_free_bytes: float | None = None
+    memory_available_bytes: float | None = None
+    memory_shared_bytes: float | None = None
+    memory_buff_cache_bytes: float | None = None
+    memory_occupied_bytes: float | None = None
+    memory_utilization_percent: float | None = None
+    memory_occupied_percent: float | None = None
+    cpu_utilization_percent: float | None = None
+    raw_line: str = ""
+
+
 def build_npu_smi_watch_command(
     sample_interval_seconds: int | float = DEFAULT_NPU_TELEMETRY_INTERVAL_SECONDS,
     metric_selector: str = "amn",
+    include_host_metrics: bool = False,
 ) -> str:
     """Build the native Ascend watch command used during Verl cases."""
     if isinstance(sample_interval_seconds, bool):
@@ -57,6 +83,9 @@ def build_npu_smi_watch_command(
     if not selector or not re.fullmatch(r"[A-Za-z]+", selector):
         raise ValueError("npu-smi watch metric selector must contain only letters")
     _ = shlex.quote(selector)
+    host_metrics = ""
+    if include_host_metrics:
+        host_metrics = " " + build_host_metrics_command() + ";"
     return (
         "NPU_SMI_BIN=$(command -v npu-smi"
         " || { test -x /usr/local/sbin/npu-smi && echo /usr/local/sbin/npu-smi; }"
@@ -65,7 +94,45 @@ def build_npu_smi_watch_command(
         " || { test -x /usr/local/Ascend/ascend-toolkit/latest/tools/npu-smi"
         " && echo /usr/local/Ascend/ascend-toolkit/latest/tools/npu-smi; }); "
         'test -n "$NPU_SMI_BIN" || exit 127; '
-        f'while true; do date "+%Y-%m-%d %H:%M:%S"; "$NPU_SMI_BIN" info; sleep {interval:g}; done'
+        f'while true; do date "+%Y-%m-%d %H:%M:%S"; "$NPU_SMI_BIN" info;'
+        f"{host_metrics} sleep {interval:g}; done"
+    )
+
+
+def build_host_metrics_command(cpu_sample_seconds: int | float = 0.2) -> str:
+    """Build a portable Linux host CPU/memory probe using ``/proc``."""
+    if isinstance(cpu_sample_seconds, bool):
+        raise ValueError("host CPU sample interval must be a number in [0.05, 5]")
+    interval = float(cpu_sample_seconds)
+    if interval < 0.05 or interval > 5:
+        raise ValueError("host CPU sample interval must be in [0.05, 5] seconds")
+    return (
+        'host_sample_time=$(date "+%s.%N" 2>/dev/null || date "+%s"); '
+        'echo "__AR_HOST_SAMPLE__ sample_time_seconds=${host_sample_time}"; '
+        "awk '/^MemTotal:/ {total=$2} /^MemFree:/ {free=$2} "
+        "/^MemAvailable:/ {available=$2} /^Buffers:/ {buffers=$2} "
+        "/^Cached:/ {cached=$2} /^SReclaimable:/ {sreclaimable=$2} "
+        "/^Shmem:/ {shmem=$2} END { if (total > 0) { "
+        "buff_cache = buffers + cached + sreclaimable - shmem; "
+        "if (buff_cache < 0) buff_cache = 0; "
+        "used = total - free - buff_cache; "
+        "if (used < 0) used = 0; "
+        "occupied = total - free; "
+        "printf \"__AR_HOST_MEMORY__ used_bytes=%.0f total_bytes=%.0f "
+        "free_bytes=%.0f available_bytes=%.0f shared_bytes=%.0f "
+        "buff_cache_bytes=%.0f occupied_bytes=%.0f "
+        "utilization_percent=%.6f occupied_percent=%.6f\\n\", "
+        "used * 1024, total * 1024, free * 1024, available * 1024, "
+        "shmem * 1024, buff_cache * 1024, occupied * 1024, "
+        "used * 100 / total, occupied * 100 / total } }' /proc/meminfo; "
+        "awk '"
+        "/^cpu / { idle=$5+$6; total=0; for (i=2; i<=NF; i++) total+=$i; "
+        "if (seen) { dt=total-prev_total; didle=idle-prev_idle; "
+        "if (dt > 0) printf \"__AR_HOST_CPU__ utilization_percent=%.6f\\n\", 100 * (1 - didle / dt); "
+        "exit } "
+        "prev_total=total; prev_idle=idle; seen=1; "
+        f"system(\"sleep {interval:g}\") }}"
+        "' /proc/stat /proc/stat"
     )
 
 
@@ -136,6 +203,124 @@ def parse_npu_smi_watch_output(
     return samples
 
 
+def parse_host_metrics_output(
+    text: str,
+    *,
+    run_id: str,
+    case_id: str,
+    server: str,
+    source: str = SOURCE_HOST_RESOURCE_WATCH,
+) -> list[HostResourceSample]:
+    """Parse host CPU/memory marker lines emitted by ``build_host_metrics_command``."""
+    samples: list[HostResourceSample] = []
+    current: dict[str, object] = {}
+    observed_at: str | None = None
+
+    def flush() -> None:
+        nonlocal current
+        if not current:
+            return
+        has_metric = any(
+            current.get(key) is not None
+            for key in (
+                "memory_used_bytes",
+                "memory_total_bytes",
+                "memory_free_bytes",
+                "memory_available_bytes",
+                "memory_shared_bytes",
+                "memory_buff_cache_bytes",
+                "memory_occupied_bytes",
+                "memory_utilization_percent",
+                "memory_occupied_percent",
+                "cpu_utilization_percent",
+            )
+        )
+        if not has_metric:
+            current = {}
+            return
+        samples.append(
+            HostResourceSample(
+                run_id=run_id,
+                case_id=case_id,
+                server=server,
+                sample_index=len(samples),
+                source=source,
+                observed_at=(
+                    str(current.get("observed_at") or observed_at)
+                    if current.get("observed_at") or observed_at
+                    else None
+                ),
+                sample_time_seconds=_float_or_none(current.get("sample_time_seconds")),
+                memory_used_bytes=_float_or_none(current.get("memory_used_bytes")),
+                memory_total_bytes=_float_or_none(current.get("memory_total_bytes")),
+                memory_free_bytes=_float_or_none(current.get("memory_free_bytes")),
+                memory_available_bytes=_float_or_none(
+                    current.get("memory_available_bytes")
+                ),
+                memory_shared_bytes=_float_or_none(current.get("memory_shared_bytes")),
+                memory_buff_cache_bytes=_float_or_none(
+                    current.get("memory_buff_cache_bytes")
+                ),
+                memory_occupied_bytes=_float_or_none(
+                    current.get("memory_occupied_bytes")
+                ),
+                memory_utilization_percent=_float_or_none(
+                    current.get("memory_utilization_percent")
+                ),
+                memory_occupied_percent=_float_or_none(
+                    current.get("memory_occupied_percent")
+                ),
+                cpu_utilization_percent=_float_or_none(
+                    current.get("cpu_utilization_percent")
+                ),
+                raw_line=str(current.get("raw_line") or ""),
+            )
+        )
+        current = {}
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        timestamp = _timestamp_from_line(stripped)
+        if timestamp is not None:
+            observed_at = timestamp
+            continue
+        if stripped.startswith("__AR_HOST_SAMPLE__"):
+            flush()
+            current = {
+                **_marker_fields(stripped),
+                "observed_at": observed_at,
+                "raw_line": stripped,
+            }
+            continue
+        if stripped.startswith("__AR_HOST_MEMORY__"):
+            if not current:
+                current = {"observed_at": observed_at}
+            fields = _marker_fields(stripped)
+            current["memory_used_bytes"] = fields.get("used_bytes")
+            current["memory_total_bytes"] = fields.get("total_bytes")
+            current["memory_free_bytes"] = fields.get("free_bytes")
+            current["memory_available_bytes"] = fields.get("available_bytes")
+            current["memory_shared_bytes"] = fields.get("shared_bytes")
+            current["memory_buff_cache_bytes"] = fields.get("buff_cache_bytes")
+            current["memory_occupied_bytes"] = fields.get("occupied_bytes")
+            current["memory_utilization_percent"] = fields.get(
+                "utilization_percent"
+            )
+            current["memory_occupied_percent"] = fields.get("occupied_percent")
+            current["raw_line"] = _append_raw_line(current.get("raw_line"), stripped)
+            continue
+        if stripped.startswith("__AR_HOST_CPU__"):
+            if not current:
+                current = {"observed_at": observed_at}
+            fields = _marker_fields(stripped)
+            current["cpu_utilization_percent"] = fields.get("utilization_percent")
+            current["raw_line"] = _append_raw_line(current.get("raw_line"), stripped)
+    flush()
+    return samples
+
+
 def summarize_telemetry(
     samples: Iterable[NpuTelemetrySample],
     *,
@@ -143,7 +328,10 @@ def summarize_telemetry(
 ) -> NpuTelemetrySummary:
     """Summarize normalized telemetry rows for result metadata."""
     rows = list(samples)
-    devices = {row.device_id for row in rows}
+    devices = {
+        (row.device_id, row.chip_id if row.chip_id is not None else 0)
+        for row in rows
+    }
     return NpuTelemetrySummary(
         sample_count=len(rows),
         device_count=len(devices),
@@ -180,6 +368,8 @@ def _canonical_header(value: str) -> str | None:
     key = _header_key(value)
     if key in {"npuid", "deviceid", "id"} or key == "npu":
         return "device_id"
+    if key in {"chip", "chipid", "chipphyid", "phyid"}:
+        return "chip_id"
     if "aicore" in key:
         return "ai_core"
     if "npu" in key and ("util" in key or "usage" in key):
@@ -227,8 +417,12 @@ def _sample_from_info_detail(
     raw_line: str,
     source: str,
 ) -> NpuTelemetrySample | None:
-    if len(cells) < 3 or not re.fullmatch(r"\d+", cells[0]):
+    if len(cells) < 3:
         return None
+    identity = [int(item) for item in re.findall(r"\d+", cells[0])]
+    if not identity:
+        return None
+    chip_id = identity[1] if len(identity) > 1 else identity[0]
     values = [float(item) for item in re.findall(r"\d+(?:\.\d+)?", cells[2])]
     if len(values) < 5:
         return None
@@ -237,6 +431,7 @@ def _sample_from_info_detail(
         case_id=case_id,
         server=server,
         device_id=device_id,
+        chip_id=chip_id,
         sample_index=sample_index,
         source=source,
         observed_at=observed_at,
@@ -264,12 +459,14 @@ def _sample_from_cells(
     device_id = _int_at(cells, columns.get("device_id"))
     if device_id is None:
         return None
+    chip_id = _int_at(cells, columns.get("chip_id"))
     memory_used, memory_total = _memory_at(cells, columns)
     return NpuTelemetrySample(
         run_id=run_id,
         case_id=case_id,
         server=server,
         device_id=device_id,
+        chip_id=chip_id,
         sample_index=sample_index,
         source=source,
         observed_at=observed_at,
@@ -321,6 +518,29 @@ def _first_number(value: str) -> float | None:
         return None
     number = float(match.group(0))
     return int(number) if number.is_integer() else number
+
+
+def _marker_fields(line: str) -> dict[str, float]:
+    fields: dict[str, float] = {}
+    for key, value in re.findall(r"([A-Za-z_][A-Za-z0-9_]*)=([-+]?\d+(?:\.\d+)?)", line):
+        parsed = _float_or_none(value)
+        if parsed is not None:
+            fields[key] = parsed
+    return fields
+
+
+def _float_or_none(value: object) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _append_raw_line(existing: object, line: str) -> str:
+    text = str(existing or "")
+    return line if not text else text + "\n" + line
 
 
 def _timestamp_from_line(value: str) -> str | None:

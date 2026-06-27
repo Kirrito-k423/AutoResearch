@@ -13,10 +13,12 @@ from datalake.manifest import write as write_manifest
 from datalake.logs.collector import LogFetchError, collect_tree
 from datalake.prometheus import (
     EXPERIMENT_CASE_METRIC_NAMES,
+    HOST_RESOURCE_METRIC_NAMES,
     MACHINE_RESOURCE_METRIC_NAMES,
     RESOURCE_METRIC_NAMES,
     PushError,
     build_experiment_case_exposition,
+    build_host_latest_exposition,
     build_latest_telemetry_exposition,
     build_machine_latest_telemetry_exposition,
     build_telemetry_exposition,
@@ -65,13 +67,16 @@ is_resource_busy_error = container_runtime_mod.is_resource_busy_error
 prepare_geometry3k = data_prep_mod.prepare_geometry3k
 stage_geometry3k = data_prep_mod.stage_geometry3k
 prepare_model_cache = model_sync_mod.prepare_model_cache
+resolve_ready_remote_model_cache = model_sync_mod.resolve_ready_remote_model_cache
 stage_model_cache = model_sync_mod.stage_model_cache
 capture_repo_provenance = provenance_mod.capture_repo_provenance
 run_in_env = conda_utils_mod.run_in_env
 filter_dependency_repo_paths = source_sync_mod.filter_dependency_repo_paths
 parse_npu_smi_watch_output = telemetry_mod.parse_npu_smi_watch_output
+parse_host_metrics_output = telemetry_mod.parse_host_metrics_output
 extract_stage_timings_from_log = stage_timing_mod.extract_stage_timings_from_log
 write_stage_timings_jsonl = stage_timing_mod.write_stage_timings_jsonl
+SOURCE_HOST_RESOURCE_WATCH = telemetry_mod.SOURCE_HOST_RESOURCE_WATCH
 SOURCE_HOST_NPU_SMI_WATCH = telemetry_mod.SOURCE_HOST_NPU_SMI_WATCH
 SOURCE_NPU_SMI_WATCH = telemetry_mod.SOURCE_NPU_SMI_WATCH
 DEFAULT_NPU_TELEMETRY_INTERVAL_SECONDS = telemetry_mod.DEFAULT_NPU_TELEMETRY_INTERVAL_SECONDS
@@ -130,6 +135,7 @@ def run_verl_case_orchestration(
 ) -> tuple[int, dict[str, Any]]:
     """Run the formal Verl case and persist local-first artifacts."""
     cfg_path = config or DEFAULT_CONFIG_PATH
+    data_config_path = _data_config_path_for(cfg_path)
     steps: list[StepResult] = []
     warnings: list[str] = []
     started_at = datetime.now(timezone.utc)
@@ -188,6 +194,7 @@ def run_verl_case_orchestration(
             warnings=warnings,
         )
 
+    readiness_payload: dict[str, Any] | None = None
     if skip_readiness:
         steps.append(
             skipped_step(
@@ -236,6 +243,12 @@ def run_verl_case_orchestration(
                 failed_step_override="readiness",
             )
 
+    runtime_npu_devices, runtime_npu_device_source, runtime_npu_warnings = (
+        _resolve_runtime_npu_devices(adapter_config, readiness_payload)
+    )
+    warnings.extend(runtime_npu_warnings)
+    adapter_config = _apply_runtime_npu_devices(adapter_config, runtime_npu_devices)
+
     emit_progress("orch.verl_case.prepare", run_id=rid)
     remote_dataset_path = f"{resolved_workdir}/autoresearch/dataset"
     try:
@@ -247,23 +260,47 @@ def run_verl_case_orchestration(
             server_name=server_name,
         )
         warnings.extend(provenance_warnings)
-        prepared = prepare_geometry3k(adapter_config, adapter_config.cache_root)
-        prepared_model = prepare_model_cache(
+        prepared = prepare_geometry3k(
             adapter_config,
             adapter_config.cache_root,
-            proxy_url=local_proxy_url,
+            data_config_path=data_config_path,
         )
-        remote_model_path = stage_model_cache(
+        remote_model_path = resolve_ready_remote_model_cache(
             spec,
-            local_model_dir=prepared_model.model_cache,
-            remote_model_dir=f"{resolved_workdir}/autoresearch/runs/{rid}/model",
-            remote_shared_model_root=f"{resolved_workdir}/autoresearch/model-cache",
+            adapter_config,
+            data_config_path=data_config_path,
         )
+        if remote_model_path:
+            prepared_model_payload = {
+                "model_id": adapter_config.model_id,
+                "cache_root": adapter_config.cache_root,
+                "model_cache": remote_model_path,
+                "ready": True,
+                "downloaded": False,
+                "remote_registry_reused": True,
+            }
+        else:
+            prepared_model = prepare_model_cache(
+                adapter_config,
+                adapter_config.cache_root,
+                proxy_url=local_proxy_url,
+                data_config_path=data_config_path,
+            )
+            remote_model_path = stage_model_cache(
+                spec,
+                local_model_dir=prepared_model.model_cache,
+                remote_model_dir=f"{resolved_workdir}/autoresearch/runs/{rid}/model",
+                remote_shared_model_root=f"{resolved_workdir}/autoresearch/model-cache",
+                model_id=adapter_config.model_id,
+                data_config_path=data_config_path,
+            )
+            prepared_model_payload = prepared_model.model_dump(mode="json")
         if prepared.train_parquet and prepared.test_parquet:
             remote_dataset_path = stage_geometry3k(
                 spec,
                 prepared,
                 remote_dataset_dir=remote_dataset_path,
+                data_config_path=data_config_path,
             )
         else:
             warnings.append(
@@ -285,10 +322,13 @@ def run_verl_case_orchestration(
                 "execution_profile": getattr(adapter_config, "execution_profile", "fsdp"),
                 "cache": {
                     **prepared.model_dump(mode="json"),
-                    "local_model_cache": prepared_model.model_dump(mode="json"),
+                    "local_model_cache": prepared_model_payload,
+                    "asset_registry": str(data_config_path),
                 },
                 "pushgateway_url": pushgateway_url,
                 "prometheus_url": prometheus_url,
+                "npu_devices": runtime_npu_devices,
+                "npu_count_source": runtime_npu_device_source,
                 "local_proxy_url": local_proxy_url,
                 "remote_proxy_port": remote_proxy_port,
                 "container_proxy_url": container_proxy_url,
@@ -402,13 +442,34 @@ def run_verl_case_orchestration(
                 artifact_layout["paths"]["rows"] / "stage-timings.jsonl",
                 run_id=rid,
             )
-    telemetry_rows = _read_telemetry_rows(artifact_layout["paths"]["rows"], run_id=rid, server=server_name)
+    telemetry_rows = _read_telemetry_rows(
+        artifact_layout["paths"]["rows"],
+        run_id=rid,
+        server=server_name,
+    )
+    host_resource_rows = _read_host_resource_rows(
+        artifact_layout["paths"]["rows"],
+        run_id=rid,
+        server=server_name,
+    )
+    configured_npu_count = int(getattr(adapter_config, "n_gpus_per_node", 0) or 0)
+    observed_npu_count = _npu_count_from_telemetry_rows(telemetry_rows)
+    npu_count = observed_npu_count or configured_npu_count
+    if observed_npu_count and configured_npu_count and observed_npu_count != configured_npu_count:
+        warnings.append(
+            "telemetry observed "
+            f"{observed_npu_count} NPU devices; override configured count "
+            f"{configured_npu_count} for Prometheus evidence."
+        )
     telemetry_exposition = build_telemetry_exposition(telemetry_rows)
     telemetry_latest_exposition = build_latest_telemetry_exposition(telemetry_rows)
     telemetry_machine_exposition = build_machine_latest_telemetry_exposition(telemetry_rows)
+    host_resource_exposition = build_host_latest_exposition(host_resource_rows)
+    machine_push_exposition = telemetry_machine_exposition + host_resource_exposition
     telemetry_exposition_path = None
     telemetry_latest_exposition_path = None
     telemetry_machine_exposition_path = None
+    host_resource_exposition_path = None
     if telemetry_exposition.strip():
         telemetry_exposition_path = _write_text(
             artifact_layout["paths"]["prometheus"] / "telemetry-openmetrics.prom",
@@ -422,7 +483,17 @@ def run_verl_case_orchestration(
     if telemetry_machine_exposition.strip():
         telemetry_machine_exposition_path = _write_text(
             artifact_layout["paths"]["prometheus"] / "machine-latest-openmetrics.prom",
-            telemetry_machine_exposition,
+            machine_push_exposition,
+        )
+    elif host_resource_exposition.strip():
+        telemetry_machine_exposition_path = _write_text(
+            artifact_layout["paths"]["prometheus"] / "machine-latest-openmetrics.prom",
+            machine_push_exposition,
+        )
+    if host_resource_exposition.strip():
+        host_resource_exposition_path = _write_text(
+            artifact_layout["paths"]["prometheus"] / "host-resource-openmetrics.prom",
+            host_resource_exposition,
         )
     matrix_ok = bool(remote_result and remote_result.ok and matrix_path and matrix_path.exists())
     matrix_payload = {
@@ -468,7 +539,7 @@ def run_verl_case_orchestration(
             _write_formal_wandb_summary(
                 wandb_path,
                 remote_result,
-                npu_count=int(getattr(adapter_config, "n_gpus_per_node", 0) or 0),
+                npu_count=npu_count,
             )
             wandb_run_names.update(_read_wandb_run_names_from_source_runs(wandb_path))
         except WandbSyncError as exc:
@@ -492,7 +563,6 @@ def run_verl_case_orchestration(
     telemetry_prom_pushed = False
     machine_prom_pushed = False
     experiment_case_prom_pushed = False
-    npu_count = int(getattr(adapter_config, "n_gpus_per_node", 0) or 0)
     if npu_count > 0:
         try:
             count_prom_pushed = push_metrics(
@@ -514,13 +584,13 @@ def run_verl_case_orchestration(
             )
         except PushError as exc:
             warnings.append(f"formal telemetry prom push failed: {exc}")
-    if telemetry_machine_exposition.strip():
+    if machine_push_exposition.strip():
         try:
             machine_prom_pushed = push_machine_telemetry_metrics(
                 spec,
                 telemetry_rows,
                 pushgateway_url=pushgateway_url,
-                exposition=telemetry_machine_exposition,
+                exposition=machine_push_exposition,
             )
         except PushError as exc:
             warnings.append(f"formal machine telemetry prom push failed: {exc}")
@@ -557,17 +627,31 @@ def run_verl_case_orchestration(
             "metrics_pushed": (
                 (["autoresearch_npu_count"] if count_prom_pushed else [])
                 + (list(RESOURCE_METRIC_NAMES) if telemetry_prom_pushed else [])
-                + (list(MACHINE_RESOURCE_METRIC_NAMES) if machine_prom_pushed else [])
+                + (
+                    list(MACHINE_RESOURCE_METRIC_NAMES)
+                    if machine_prom_pushed and telemetry_machine_exposition.strip()
+                    else []
+                )
+                + (
+                    list(HOST_RESOURCE_METRIC_NAMES)
+                    if machine_prom_pushed and host_resource_exposition.strip()
+                    else []
+                )
                 + (list(EXPERIMENT_CASE_METRIC_NAMES) if experiment_case_prom_pushed else [])
             ),
             "metrics_available": (
                 ["autoresearch_npu_count"]
                 + (list(RESOURCE_METRIC_NAMES) if telemetry_rows else [])
                 + (list(MACHINE_RESOURCE_METRIC_NAMES) if telemetry_rows else [])
+                + (list(HOST_RESOURCE_METRIC_NAMES) if host_resource_rows else [])
                 + (list(EXPERIMENT_CASE_METRIC_NAMES) if telemetry_rows else [])
             ),
             "missing_resource_metrics": [] if telemetry_rows else list(RESOURCE_METRIC_NAMES),
+            "missing_host_resource_metrics": (
+                [] if host_resource_rows else list(HOST_RESOURCE_METRIC_NAMES)
+            ),
             "telemetry_samples": len(telemetry_rows),
+            "host_resource_samples": len(host_resource_rows),
             "telemetry_sample_interval_seconds": (
                 DEFAULT_NPU_TELEMETRY_INTERVAL_SECONDS if telemetry_rows else None
             ),
@@ -582,6 +666,11 @@ def run_verl_case_orchestration(
                 if telemetry_machine_exposition_path
                 else None
             ),
+            "host_resource_openmetrics_file": (
+                str(host_resource_exposition_path)
+                if host_resource_exposition_path
+                else None
+            ),
             "experiment_case_openmetrics_file": (
                 str(experiment_case_exposition_path)
                 if experiment_case_exposition_path
@@ -590,9 +679,13 @@ def run_verl_case_orchestration(
             "wandb_run_names": wandb_run_names,
             "row_count": len(remote_result.rows) if remote_result is not None else 0,
             "note": (
-                "已保存 npu-smi watch HBM/Core/NPU telemetry；Pushgateway 只保存 latest gauge，历史曲线来自运行期持续 push + Prometheus scrape，本地 evidence 可离线重建 0.5s 原始曲线。"
-                if telemetry_rows
-                else "当前 evidence 未找到 npu-smi watch 采样行；资源曲线需要检查 rows/*/npu-telemetry.jsonl。"
+                "已保存 npu-smi watch HBM/Core/NPU telemetry 与 host CPU/内存 telemetry；Pushgateway 只保存 latest gauge，历史曲线来自运行期持续 push + Prometheus scrape，本地 evidence 可离线重建原始曲线。"
+                if telemetry_rows and host_resource_rows
+                else (
+                    "已保存 npu-smi watch HBM/Core/NPU telemetry；host CPU/内存 telemetry 未找到。"
+                    if telemetry_rows
+                    else "当前 evidence 未找到 npu-smi watch 采样行；资源曲线需要检查 rows/*/npu-telemetry.jsonl。"
+                )
             ),
         },
     )
@@ -708,6 +801,128 @@ def _adapter_config(
     return VerlCaseConfig.model_validate(payload)
 
 
+def _resolve_runtime_npu_devices(
+    adapter_config: Any,
+    readiness_payload: dict[str, Any] | None,
+) -> tuple[list[int], str, list[str]]:
+    configured = _configured_npu_devices(adapter_config)
+    detected = _npu_devices_from_readiness(readiness_payload)
+    if not detected:
+        return configured, "config", []
+    if detected == configured:
+        return detected, "readiness_hw", []
+    return (
+        detected,
+        "readiness_hw",
+        [
+            "readiness hw detected "
+            f"{len(detected)} NPU devices {detected}; override configured "
+            f"{len(configured)} devices {configured} for formal-case runtime and Prometheus count."
+        ],
+    )
+
+
+def _apply_runtime_npu_devices(adapter_config: Any, devices: list[int]) -> Any:
+    if not devices:
+        return adapter_config
+    updates: dict[str, Any] = {
+        "single_node_devices": devices,
+        "n_gpus_per_node": len(devices),
+    }
+    single_card_devices = _unique_ints(
+        getattr(adapter_config, "single_card_devices", []) or []
+    )
+    if not single_card_devices or not set(single_card_devices).issubset(set(devices)):
+        updates["single_card_devices"] = [devices[0]]
+    return adapter_config.model_copy(update=updates)
+
+
+def _configured_npu_devices(adapter_config: Any) -> list[int]:
+    devices = _unique_ints(getattr(adapter_config, "single_node_devices", []) or [])
+    if devices:
+        return devices
+    count = _int_or_none(getattr(adapter_config, "n_gpus_per_node", None)) or 0
+    return list(range(max(0, count)))
+
+
+def _npu_devices_from_readiness(readiness_payload: dict[str, Any] | None) -> list[int]:
+    if not readiness_payload:
+        return []
+    for step in list(readiness_payload.get("steps") or []):
+        if not isinstance(step, dict) or step.get("id") != "hw":
+            continue
+        payload = step.get("payload")
+        if isinstance(payload, dict):
+            return _npu_devices_from_hw_payload(payload)
+    return []
+
+
+def _npu_devices_from_hw_payload(payload: dict[str, Any]) -> list[int]:
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        return []
+    devices = _npu_devices_from_hw_data(data)
+    if devices:
+        return devices
+    results = data.get("results")
+    if isinstance(results, dict):
+        for result in results.values():
+            if not isinstance(result, dict):
+                continue
+            nested_data = result.get("data")
+            if isinstance(nested_data, dict):
+                devices = _npu_devices_from_hw_data(nested_data)
+                if devices:
+                    return devices
+    return []
+
+
+def _npu_devices_from_hw_data(data: dict[str, Any]) -> list[int]:
+    raw_devices = data.get("devices")
+    if not isinstance(raw_devices, list) or not raw_devices:
+        return []
+    entries: list[tuple[int, int | None]] = []
+    for index, device in enumerate(raw_devices):
+        if not isinstance(device, dict):
+            continue
+        device_id = _int_or_none(device.get("id"))
+        chip_id = _int_or_none(device.get("chip_id"))
+        entries.append((device_id if device_id is not None else index, chip_id))
+    if not entries:
+        return []
+    device_ids = [device_id for device_id, _chip_id in entries]
+    chip_ids = [chip_id for _device_id, chip_id in entries if chip_id is not None]
+    if len(set(device_ids)) < len(entries) and len(set(chip_ids)) == len(entries):
+        return sorted(set(chip_ids))
+    return sorted(set(device_ids))
+
+
+def _unique_ints(values: list[Any]) -> list[int]:
+    seen: set[int] = set()
+    result: list[int] = []
+    for value in values:
+        number = _int_or_none(value)
+        if number is None or number in seen:
+            continue
+        seen.add(number)
+        result.append(number)
+    return result
+
+
+def _int_or_none(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _data_config_path_for(config_path: str | Path) -> Path:
+    """Resolve the model/data asset registry next to the selected config file."""
+    return Path(config_path).expanduser().with_name("data.yaml")
+
+
 def _docker_image_for_server(cfg: Any, server_name: str) -> str:
     overrides = getattr(cfg.verl_case, "docker_images_by_server", {}) or {}
     return overrides.get(server_name, cfg.verl_case.docker_image)
@@ -787,6 +1002,8 @@ def _build_single_node_promotion_rows(adapter_config: Any, rows: list[Any]) -> l
     single_card_devices = [int(device) for device in getattr(adapter_config, "single_card_devices", [])]
     if len(devices) <= max(1, len(single_card_devices)):
         return []
+    if set(single_card_devices) >= set(devices):
+        return []
     stable_rows = [
         row for row in rows
         if getattr(row, "status", None) == "passed" and getattr(row, "train_batch_size", None)
@@ -809,7 +1026,7 @@ def _build_single_node_promotion_rows(adapter_config: Any, rows: list[Any]) -> l
         rows_out.append(
             VerlTrainingTuningRow(
                 case_id=(
-                    f"train-{len(devices)}npu-bs{train_batch_size}"
+                    f"train-{len(devices)}npu-{best.inference_mode}-bs{train_batch_size}"
                     f"-mini{int(best.ppo_mini_batch_size or 1)}"
                     f"-micro{int(best.ppo_micro_batch_size_per_gpu or 1)}"
                     f"-{int(best.input_tokens)}-{int(best.output_tokens)}"
@@ -1248,6 +1465,53 @@ def _read_telemetry_rows(rows_dir: Path, *, run_id: str, server: str) -> list[di
         )
         rows.extend(normalized_rows)
     return rows
+
+
+def _read_host_resource_rows(rows_dir: Path, *, run_id: str, server: str) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    if not rows_dir.exists():
+        return rows
+    row_dirs_with_jsonl = set()
+    for path in sorted(rows_dir.glob("**/*host-resource-telemetry.jsonl")):
+        loaded = _read_telemetry_jsonl(path)
+        if loaded:
+            rows.extend(loaded)
+            row_dirs_with_jsonl.add(path.parent)
+
+    for path in sorted(rows_dir.glob("**/*npu-smi-watch.raw.log")):
+        if path.parent in row_dirs_with_jsonl:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        parsed = parse_host_metrics_output(
+            text,
+            run_id=run_id,
+            case_id=path.parent.name,
+            server=server,
+            source=SOURCE_HOST_RESOURCE_WATCH,
+        )
+        if not parsed:
+            continue
+        normalized_rows = [sample.model_dump(mode="json") for sample in parsed]
+        (path.parent / "host-resource-telemetry.jsonl").write_text(
+            "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in normalized_rows),
+            encoding="utf-8",
+        )
+        rows.extend(normalized_rows)
+    return rows
+
+
+def _npu_count_from_telemetry_rows(rows: list[dict[str, Any]]) -> int:
+    devices: set[tuple[int, int]] = set()
+    for row in rows:
+        device_id = _int_or_none(row.get("device_id"))
+        if device_id is None:
+            continue
+        chip_id = _int_or_none(row.get("chip_id"))
+        devices.add((device_id, chip_id if chip_id is not None else 0))
+    return len(devices)
 
 
 def _read_telemetry_jsonl(path: Path) -> list[dict[str, Any]]:

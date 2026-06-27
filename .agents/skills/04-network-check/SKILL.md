@@ -1,3 +1,8 @@
+---
+name: network-check
+description: Check local and remote network access for AutoResearch, including baidu, Hugging Face, GitHub speed probes and SSH proxy/tunnel setup. Use when diagnosing external network reachability, 127.0.0.1:7890 proxy fallback, remote no-network paths, or network-check CLI behavior.
+---
+
 # Skill 04: network-check
 
 > 测外网 (baidu/hf/github) 速度 + 搭 SSH 反向代理。

@@ -1,3 +1,8 @@
+---
+name: train-stack-health
+description: Inspect remote training stack health for conda envs, verl or veomni versions, and minimal one-step training smoke tests. Use when validating training dependencies, stack probe outputs, minimal runner behavior, or train stack readiness before data collection.
+---
+
 # Skill 06: train-stack-health
 
 > 探测 conda env + verl/veomni 版本 + 跑 1-step 最小用例。

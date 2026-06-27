@@ -2,10 +2,12 @@
 
 from .push_gateway import (
     EXPERIMENT_CASE_METRIC_NAMES,
+    HOST_RESOURCE_METRIC_NAMES,
     MACHINE_RESOURCE_METRIC_NAMES,
     RESOURCE_METRIC_NAMES,
     PushError,
     build_experiment_case_exposition,
+    build_host_latest_exposition,
     build_latest_telemetry_exposition,
     build_machine_latest_telemetry_exposition,
     build_telemetry_exposition,
@@ -17,10 +19,12 @@ from .push_gateway import (
 
 __all__ = [
     "EXPERIMENT_CASE_METRIC_NAMES",
+    "HOST_RESOURCE_METRIC_NAMES",
     "MACHINE_RESOURCE_METRIC_NAMES",
     "RESOURCE_METRIC_NAMES",
     "PushError",
     "build_experiment_case_exposition",
+    "build_host_latest_exposition",
     "build_latest_telemetry_exposition",
     "build_machine_latest_telemetry_exposition",
     "build_telemetry_exposition",

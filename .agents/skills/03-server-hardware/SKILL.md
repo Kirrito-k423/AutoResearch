@@ -1,3 +1,8 @@
+---
+name: server-hardware-probe
+description: Probe remote GPU/NPU server hardware over SSH and parse npu-smi or nvidia-smi outputs. Use when collecting accelerator inventory, driver versions, memory/core utilization, process occupancy, partial hardware data, or hardware probe CLI behavior.
+---
+
 # Skill 03: server-hardware
 
 > SSH 连到远端 NPU/GPU 服务器，跑 `npu-smi` / `nvidia-smi` 解析硬件规格和占用方。

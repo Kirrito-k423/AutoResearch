@@ -47,6 +47,13 @@ def _matrix_rows(*, missing_async_16k: bool = False) -> list[dict[str, object]]:
                     "status": "passed",
                     "elapsed_seconds": 2.0,
                     "tokens_per_second": 1000.0 / (output_tokens / 2048),
+                    "steady_state_tokens_per_second": 12.0 if mode == "sync" else 13.0,
+                    "steady_state_tokens_per_second_per_npu": 12.0 if mode == "sync" else 13.0,
+                    "steady_state_step_count": 3,
+                    "completed_training_steps": 5,
+                    "target_training_steps": 5,
+                    "device_count": 1,
+                    "train_batch_size": 1,
                     "latency_ms": float(output_tokens / 2),
                     "sample_count": 3,
                     "accuracy": 0.75 if mode == "sync" else 0.74,
@@ -148,6 +155,8 @@ def test_load_verl_case_view_reports_complete_matrix(tmp_path):
     assert {item["output_tokens"] for item in view.length_summary} == {2048, 4096, 8192, 16384}
     assert isinstance(view.accuracy_overall, float)
     assert isinstance(view.consistency_overall, float)
+    assert view.rows[0].steady_state_tokens_per_second_per_npu is not None
+    assert view.length_summary[0]["steady_state_tokens_per_second_per_npu"] is not None
     assert view.stage_timings[0].stage == "rollout"
     assert view.stage_timing_summary[0]["avg_seconds"] == 1.25
     assert view.trainer_val_only is True
@@ -176,6 +185,8 @@ def test_render_formal_case_sections(tmp_path, monkeypatch):
 
     html = output.read_text(encoding="utf-8")
     assert "Verl 正式 Case 矩阵" in html
+    assert "稳态单卡吞吐排行" in html
+    assert "稳态 tokens/s/卡" in html
     assert "序列长度影响" in html
     assert "同步/异步影响" in html
     assert "准确率" in html

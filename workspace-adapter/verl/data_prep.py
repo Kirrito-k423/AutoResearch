@@ -7,6 +7,7 @@ import shlex
 from typing import Any
 
 from pydantic import BaseModel
+from workspace_core.asset_registry import local_path_for_asset, update_asset_record
 from workspace_core.config import ServerSpec
 from workspace_core.secrets import resolve_secret
 from workspace_core.ssh import HostSpec
@@ -85,11 +86,22 @@ def prepare_geometry3k(
     *,
     max_samples: int | None = None,
     local_dataset_path: str | Path | None = None,
+    data_config_path: str | Path | None = None,
 ) -> PreparedGeometry3K:
     """Prepare a Verl-ready geometry3k JSONL file without silent text fallback."""
     root = Path(cache_root).expanduser()
-    model_cache = root / "models" / config.model_id.replace("/", "__")
-    dataset_cache = root / "datasets" / config.dataset_id.replace("/", "__")
+    model_cache = local_path_for_asset(
+        kind="model",
+        canonical_id=config.model_id,
+        cache_root=root,
+        data_config_path=data_config_path,
+    )
+    dataset_cache = local_path_for_asset(
+        kind="dataset",
+        canonical_id=config.dataset_id,
+        cache_root=root,
+        data_config_path=data_config_path,
+    )
     image_dir = dataset_cache / "images"
     jsonl_path = dataset_cache / "geometry3k-verl.jsonl"
     train_parquet = dataset_cache / "train.parquet"
@@ -99,6 +111,13 @@ def prepare_geometry3k(
 
     if local_dataset_path is None:
         parquet_ready = train_parquet.exists() and test_parquet.exists()
+        ready = jsonl_path.exists() or parquet_ready
+        _record_dataset_cache(
+            config.dataset_id,
+            data_config_path,
+            dataset_cache,
+            status="ready" if ready else "missing",
+        )
         return PreparedGeometry3K(
             dataset_id=config.dataset_id,
             cache_root=root,
@@ -107,7 +126,7 @@ def prepare_geometry3k(
             image_dir=image_dir,
             jsonl_path=jsonl_path,
             sample_count=0,
-            ready=jsonl_path.exists() or parquet_ready,
+            ready=ready,
             train_parquet=train_parquet if train_parquet.exists() else None,
             test_parquet=test_parquet if test_parquet.exists() else None,
         )
@@ -119,6 +138,12 @@ def prepare_geometry3k(
     jsonl_path.write_text(
         "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in normalized),
         encoding="utf-8",
+    )
+    _record_dataset_cache(
+        config.dataset_id,
+        data_config_path,
+        dataset_cache,
+        status="ready",
     )
     return PreparedGeometry3K(
         dataset_id=config.dataset_id,
@@ -139,6 +164,7 @@ def stage_geometry3k(
     prepared: PreparedGeometry3K,
     *,
     remote_dataset_dir: str | PurePosixPath,
+    data_config_path: str | Path | None = None,
 ) -> str:
     """Upload cached geometry3k parquet files into the shared remote dataset path."""
     train_parquet = prepared.train_parquet or (prepared.dataset_cache / "train.parquet")
@@ -171,4 +197,50 @@ def stage_geometry3k(
             sftp.put(str(test_parquet), (remote_geo3k / "test.parquet").as_posix())
         finally:
             sftp.close()
+    _record_remote_dataset_cache(
+        prepared.dataset_id,
+        data_config_path,
+        prepared.dataset_cache,
+        spec,
+        remote_geo3k,
+    )
     return remote_root.as_posix()
+
+
+def _record_dataset_cache(
+    dataset_id: str,
+    data_config_path: str | Path | None,
+    dataset_cache: Path,
+    *,
+    status: str,
+) -> None:
+    if data_config_path is None:
+        return
+    update_asset_record(
+        kind="dataset",
+        canonical_id=dataset_id,
+        data_config_path=data_config_path,
+        status=status,
+        local_path=dataset_cache,
+    )
+
+
+def _record_remote_dataset_cache(
+    dataset_id: str,
+    data_config_path: str | Path | None,
+    dataset_cache: Path,
+    spec: ServerSpec,
+    remote_path: PurePosixPath,
+) -> None:
+    if data_config_path is None:
+        return
+    update_asset_record(
+        kind="dataset",
+        canonical_id=dataset_id,
+        data_config_path=data_config_path,
+        status="ready",
+        local_path=dataset_cache,
+        remote_server=spec.name,
+        remote_host=spec.host,
+        remote_path=remote_path.as_posix(),
+    )

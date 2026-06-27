@@ -45,6 +45,8 @@ class VerlCaseConfig(BaseModel):
     tuning_train_batch_sizes: list[int] = Field(default_factory=lambda: [1, 2, 4, 8])
     tuning_ppo_mini_batch_sizes: list[int] = Field(default_factory=lambda: [1])
     tuning_ppo_micro_batch_sizes_per_gpu: list[int] = Field(default_factory=lambda: [1])
+    tuning_output_tokens: list[int] | None = None
+    tuning_inference_modes: list[InferenceMode] | None = None
     train_batch_size: int = 8
     val_batch_size: int = 1
     train_max_samples: int = 8
@@ -52,8 +54,16 @@ class VerlCaseConfig(BaseModel):
     rollout_n: int = 1
     n_gpus_per_node: int = 8
     tensor_model_parallel_size: int = 2
+    rollout_gpu_memory_utilization: float = Field(default=0.5, ge=0.0, le=1.0)
+    rollout_max_model_len_floor: int = Field(default=24576, ge=0)
+    ppo_max_token_len_per_gpu_floor: int = Field(default=24576, ge=0)
+    rollout_update_weights_bucket_megabytes: int = Field(default=2048, ge=1)
+    rollout_max_num_seqs: int | None = Field(default=None, ge=1)
+    rollout_free_cache_engine: bool | None = None
+    cleanup_stale_verl_processes: bool = True
     row_timeout_seconds: int = 1800
     execution_profile: ExecutionProfile = "fsdp"
+    fsdp2_offload_policy: bool | None = None
     use_remove_padding: bool | None = None
     use_dynamic_bsz: bool | None = None
 
@@ -138,6 +148,15 @@ class VerlCaseResultRow(BaseModel):
     sample_count: int = 0
     completed_training_steps: int | None = None
     target_training_steps: int | None = None
+    steady_state_step_start: int | None = None
+    steady_state_step_end: int | None = None
+    steady_state_step_count: int | None = None
+    steady_state_total_tokens: float | None = None
+    steady_state_total_seconds: float | None = None
+    steady_state_tokens_per_second: float | None = None
+    steady_state_tokens_per_second_per_npu: float | None = None
+    steady_state_token_source: str | None = None
+    steady_state_time_keys: list[str] | None = None
     device_count: int | None = None
     visible_devices: list[int] | None = None
     train_batch_size: int | None = None
@@ -168,37 +187,50 @@ def build_length_matrix(config: VerlCaseConfig) -> list[VerlCaseMatrixRow]:
 
 
 def build_training_tuning_matrix(config: VerlCaseConfig) -> list[VerlTrainingTuningRow]:
-    """Build the single-card training tuning candidates.
+    """Build the first-stage training tuning candidates.
 
     Promotion to 8-card single-node candidates is handled by orchestration after
-    a stable single-card boundary is observed.
+    a stable smaller-device boundary is observed. If ``single_card_devices`` is
+    configured with all local devices, this matrix directly starts full-node.
     """
-    output_tokens = min(config.output_tokens)
     rows: list[VerlTrainingTuningRow] = []
+    visible_devices = list(config.single_card_devices)
+    device_count = len(visible_devices)
     train_batch_sizes = _unique_positive(
         [config.single_card_start_batch_size, *config.tuning_train_batch_sizes]
     )
-    for train_batch_size in train_batch_sizes:
-        for mini_batch_size in _unique_positive(config.tuning_ppo_mini_batch_sizes):
-            for micro_batch_size in _unique_positive(config.tuning_ppo_micro_batch_sizes_per_gpu):
-                rows.append(
-                    VerlTrainingTuningRow(
-                        case_id=(
-                            f"train-1npu-bs{train_batch_size}-mini{mini_batch_size}"
-                            f"-micro{micro_batch_size}-{config.input_tokens}-{output_tokens}"
-                        ),
-                        input_tokens=config.input_tokens,
-                        output_tokens=output_tokens,
-                        inference_mode=config.inference_modes[0],
-                        ignore_eos=config.ignore_eos,
-                        device_count=len(config.single_card_devices),
-                        visible_devices=list(config.single_card_devices),
-                        train_batch_size=train_batch_size,
-                        ppo_mini_batch_size=mini_batch_size,
-                        ppo_micro_batch_size_per_gpu=micro_batch_size,
-                        rollout_n=config.rollout_n,
-                    )
-                )
+    output_candidates = _unique_positive(
+        list(config.tuning_output_tokens or [min(config.output_tokens)])
+    )
+    mode_candidates = list(config.tuning_inference_modes or [config.inference_modes[0]])
+    for output_tokens in output_candidates:
+        for mode in mode_candidates:
+            for train_batch_size in train_batch_sizes:
+                for mini_batch_size in _valid_ppo_mini_batch_sizes(
+                    config.tuning_ppo_mini_batch_sizes,
+                    device_count=device_count,
+                    train_batch_size=train_batch_size,
+                ):
+                    for micro_batch_size in _unique_positive(config.tuning_ppo_micro_batch_sizes_per_gpu):
+                        rows.append(
+                            VerlTrainingTuningRow(
+                                case_id=(
+                                    f"train-{device_count}npu-{mode}-bs{train_batch_size}"
+                                    f"-mini{mini_batch_size}-micro{micro_batch_size}"
+                                    f"-{config.input_tokens}-{output_tokens}"
+                                ),
+                                input_tokens=config.input_tokens,
+                                output_tokens=output_tokens,
+                                inference_mode=mode,
+                                ignore_eos=config.ignore_eos,
+                                device_count=device_count,
+                                visible_devices=visible_devices,
+                                train_batch_size=train_batch_size,
+                                ppo_mini_batch_size=mini_batch_size,
+                                ppo_micro_batch_size_per_gpu=micro_batch_size,
+                                rollout_n=config.rollout_n,
+                            )
+                        )
     return rows
 
 
@@ -266,6 +298,22 @@ def _unique_positive(values: list[int]) -> list[int]:
         seen.add(value)
         result.append(value)
     return result
+
+
+def _valid_ppo_mini_batch_sizes(
+    values: list[int], *, device_count: int, train_batch_size: int
+) -> list[int]:
+    """Return PPO mini batches compatible with Verl's DP sharding rule."""
+    candidates = [
+        value
+        for value in _unique_positive(values)
+        if value <= train_batch_size and value % device_count == 0
+    ]
+    if candidates:
+        return candidates
+    if train_batch_size % device_count == 0:
+        return [train_batch_size]
+    return []
 
 
 def _safe_slug(value: str) -> str:

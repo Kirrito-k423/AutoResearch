@@ -40,6 +40,8 @@ curl 'http://localhost:9090/api/v1/query?query=up{job="prometheus"}'
 - `autoresearch_npu_*` 是实验切片指标，保留 `run_id/case_id/server/device_id`。
 - `autoresearch_machine_npu_*` 是机器长期监控指标，只保留 `server/device_id/chip_id/source`，避免每个实验 case 复制一组设备曲线。
 - `autoresearch_machine_npu_sample_time_seconds` 是真实采样写入时间，用于区分“硬件值没变化”和“采样进程停了但 Pushgateway 还在暴露旧值”。
+- `autoresearch_machine_host_*` 是机器级 Host CPU/内存指标，只保留 `server/source`，与 NPU 机器指标同一个 Pushgateway 分组一起 PUT，避免覆盖。内存会拆分 `used/free/available/shared/buff_cache/occupied(total-free)`，其中 `used` 对齐 `free` 命令里的进程占用视角，`occupied` 对齐 `used + buff/cache` 的非空闲视角。
+- `autoresearch_machine_host_sample_time_seconds` 是 Host CPU/内存真实采样写入时间。
 - `autoresearch_experiment_case_info` 关联 `run_id/case_id/server/wandb_project/wandb_run_name`；新 run 还会带 `case_started_at/case_finished_at` 标签。
 - `autoresearch_experiment_case_start_time_seconds`、`autoresearch_experiment_case_end_time_seconds`、`autoresearch_experiment_case_elapsed_seconds` 提供 case 时间窗口和耗时，用于 Grafana 按实验切片。
 - run 结束后一次性 push 的 latest gauge 只能证明“最终值”；历史曲线必须来自运行期持续 push 后 Prometheus scrape，或从数据仓里的 `telemetry-openmetrics.prom` / `npu-telemetry.jsonl` 离线重建。

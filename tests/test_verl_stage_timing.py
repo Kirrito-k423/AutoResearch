@@ -119,3 +119,47 @@ def test_count_completed_training_steps_handles_zero_to_three_steps():
     assert stage_timing.count_completed_training_steps("Training Progress: 100%| 3/3 [10:15<00:00]") == 3
     assert stage_timing.count_completed_training_steps("perf/time-per-step=205.4 - step: 3") == 3
     assert stage_timing.count_completed_training_steps("perf/time-per-step=205.4") == 0
+
+
+def test_extract_steady_state_throughput_uses_steps_three_to_five():
+    log_text = "\n".join(
+        [
+            "step:1 - global_seqlen/mean:1000 - perf/time_per_step:100",
+            "step:2 - global_seqlen/mean:1000 - perf/time_per_step:100",
+            "step:3 - global_seqlen/mean:2000 - perf/time_per_step:100",
+            "step:4 - global_seqlen/mean:3000 - timing_s/step:150",
+            "step:5 - global_seqlen/mean:4000 - perf/time_per_step:250",
+        ]
+    )
+
+    result = stage_timing.extract_steady_state_throughput_from_log(
+        log_text,
+        run_id="run123",
+        case_id="case-a",
+        train_batch_size=2,
+        output_tokens=2048,
+        device_count=2,
+    )
+
+    assert result is not None
+    assert result.step_count == 3
+    assert result.total_tokens == 18000
+    assert result.total_seconds == 500
+    assert result.tokens_per_second == 36
+    assert result.tokens_per_second_per_npu == 18
+    assert result.token_source == "global_seqlen_mean"
+
+
+def test_extract_steady_state_throughput_falls_back_to_output_tokens():
+    result = stage_timing.extract_steady_state_throughput_from_log(
+        "step:3 - perf/time_per_step:10\nstep:4 - perf/time_per_step:10\nstep:5 - perf/time_per_step:20",
+        run_id="run123",
+        case_id="case-a",
+        train_batch_size=2,
+        output_tokens=1000,
+        device_count=4,
+    )
+
+    assert result is not None
+    assert result.token_source == "output_tokens_fallback"
+    assert result.tokens_per_second_per_npu == 37.5

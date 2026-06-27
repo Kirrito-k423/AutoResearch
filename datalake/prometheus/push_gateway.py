@@ -36,6 +36,20 @@ MACHINE_RESOURCE_METRIC_NAMES = (
     "autoresearch_machine_npu_sample_time_seconds",
 )
 
+HOST_RESOURCE_METRIC_NAMES = (
+    "autoresearch_machine_host_memory_used_bytes",
+    "autoresearch_machine_host_memory_total_bytes",
+    "autoresearch_machine_host_memory_free_bytes",
+    "autoresearch_machine_host_memory_available_bytes",
+    "autoresearch_machine_host_memory_shared_bytes",
+    "autoresearch_machine_host_memory_buff_cache_bytes",
+    "autoresearch_machine_host_memory_occupied_bytes",
+    "autoresearch_machine_host_memory_utilization_percent",
+    "autoresearch_machine_host_memory_occupied_percent",
+    "autoresearch_machine_host_cpu_utilization_percent",
+    "autoresearch_machine_host_sample_time_seconds",
+)
+
 EXPERIMENT_CASE_METRIC_NAMES = (
     "autoresearch_experiment_case_info",
     "autoresearch_experiment_case_latest_sample_index",
@@ -119,6 +133,14 @@ def build_machine_latest_telemetry_exposition(samples: Iterable[Any]) -> str:
     for sample in samples:
         latest[_machine_telemetry_labels(sample)] = sample
     return _build_machine_telemetry_exposition(latest.values())
+
+
+def build_host_latest_exposition(samples: Iterable[Any]) -> str:
+    """Build latest host CPU/memory telemetry for machine dashboards."""
+    latest: dict[str, Any] = {}
+    for sample in samples:
+        latest[_host_labels(sample)] = sample
+    return _build_host_exposition(latest.values())
 
 
 def build_experiment_case_exposition(
@@ -272,6 +294,79 @@ def _build_machine_telemetry_exposition(samples: Iterable[Any]) -> str:
     return "\n".join(lines + [""])
 
 
+def _build_host_exposition(samples: Iterable[Any]) -> str:
+    lines = [
+        "# TYPE autoresearch_machine_host_memory_used_bytes gauge",
+        "# TYPE autoresearch_machine_host_memory_total_bytes gauge",
+        "# TYPE autoresearch_machine_host_memory_free_bytes gauge",
+        "# TYPE autoresearch_machine_host_memory_available_bytes gauge",
+        "# TYPE autoresearch_machine_host_memory_shared_bytes gauge",
+        "# TYPE autoresearch_machine_host_memory_buff_cache_bytes gauge",
+        "# TYPE autoresearch_machine_host_memory_occupied_bytes gauge",
+        "# TYPE autoresearch_machine_host_memory_utilization_percent gauge",
+        "# TYPE autoresearch_machine_host_memory_occupied_percent gauge",
+        "# TYPE autoresearch_machine_host_cpu_utilization_percent gauge",
+        "# TYPE autoresearch_machine_host_sample_time_seconds gauge",
+    ]
+    emitted = 0
+    for sample in samples:
+        labels = _host_labels(sample)
+        values = {
+            "autoresearch_machine_host_memory_used_bytes": _sample_value(
+                sample,
+                "memory_used_bytes",
+            ),
+            "autoresearch_machine_host_memory_total_bytes": _sample_value(
+                sample,
+                "memory_total_bytes",
+            ),
+            "autoresearch_machine_host_memory_free_bytes": _sample_value(
+                sample,
+                "memory_free_bytes",
+            ),
+            "autoresearch_machine_host_memory_available_bytes": _sample_value(
+                sample,
+                "memory_available_bytes",
+            ),
+            "autoresearch_machine_host_memory_shared_bytes": _sample_value(
+                sample,
+                "memory_shared_bytes",
+            ),
+            "autoresearch_machine_host_memory_buff_cache_bytes": _sample_value(
+                sample,
+                "memory_buff_cache_bytes",
+            ),
+            "autoresearch_machine_host_memory_occupied_bytes": _sample_value(
+                sample,
+                "memory_occupied_bytes",
+            ),
+            "autoresearch_machine_host_memory_utilization_percent": _sample_value(
+                sample,
+                "memory_utilization_percent",
+            ),
+            "autoresearch_machine_host_memory_occupied_percent": _sample_value(
+                sample,
+                "memory_occupied_percent",
+            ),
+            "autoresearch_machine_host_cpu_utilization_percent": _sample_value(
+                sample,
+                "cpu_utilization_percent",
+            ),
+            "autoresearch_machine_host_sample_time_seconds": _sample_value(
+                sample,
+                "sample_time_seconds",
+            ),
+        }
+        for name, value in values.items():
+            if value is None:
+                continue
+            lines.append(f"{name}{{{labels}}} {_metric_number(value)}")
+            emitted += 1
+    if emitted == 0:
+        return ""
+    return "\n".join(lines + [""])
+
+
 def push_telemetry_metrics(
     server: ServerSpec,
     run_id: str,
@@ -395,6 +490,7 @@ def _telemetry_labels(sample: Any, *, include_sample_index: bool) -> str:
         "case_id": _sample_value(sample, "case_id"),
         "server": _sample_value(sample, "server"),
         "device_id": _sample_value(sample, "device_id"),
+        "chip_id": _sample_value(sample, "chip_id"),
         "source": _sample_value(sample, "source") or "npu-smi-watch",
     }
     if include_sample_index:
@@ -415,6 +511,15 @@ def _machine_telemetry_labels(sample: Any) -> str:
             "device_id": _sample_value(sample, "device_id"),
             "chip_id": _sample_value(sample, "chip_id") or "0",
             "source": _sample_value(sample, "source") or "npu-smi-watch",
+        }
+    )
+
+
+def _host_labels(sample: Any) -> str:
+    return _labels_from_dict(
+        {
+            "server": _sample_value(sample, "server"),
+            "source": _sample_value(sample, "source") or "host-resource-watch",
         }
     )
 

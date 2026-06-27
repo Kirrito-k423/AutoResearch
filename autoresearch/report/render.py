@@ -97,28 +97,55 @@ def _formal_case_sections(bundle: ReportBundle) -> str:
         return ""
     rows = "".join(
         "<tr>"
+        f"<td>{escape(row.case_id or '')}</td>"
         f"<td>{row.input_tokens}</td>"
         f"<td>{row.output_tokens}</td>"
         f"<td>{escape(row.mode)}</td>"
+        f"<td>{escape(str(row.device_count) if row.device_count is not None else '')}</td>"
+        f"<td>{escape(str(row.train_batch_size) if row.train_batch_size is not None else '')}</td>"
         f"<td>{escape(row.status)}</td>"
+        f"<td>{escape(_fmt_metric(row.steady_state_tokens_per_second_per_npu))}</td>"
+        f"<td>{escape(str(row.steady_state_step_count or 0))}</td>"
         f"<td>{escape(_fmt_metric(row.tokens_per_second))}</td>"
         f"<td>{escape(_fmt_metric(row.latency_ms))}</td>"
         f"<td>{row.sample_count}</td>"
+        f"<td>{escape(str(row.completed_training_steps) if row.completed_training_steps is not None else '')}/{escape(str(row.target_training_steps) if row.target_training_steps is not None else '')}</td>"
         f"<td>{escape(_fmt_metric(row.accuracy, percent=True))}</td>"
         f"<td>{escape(_fmt_metric(row.consistency, percent=True))}</td>"
         f"<td>{escape(row.error or '')}</td>"
         "</tr>"
         for row in view.rows
-    ) or "<tr><td colspan='10'>暂无矩阵行</td></tr>"
+    ) or "<tr><td colspan='16'>暂无矩阵行</td></tr>"
+    ranked = sorted(
+        [row for row in view.rows if row.steady_state_tokens_per_second_per_npu is not None],
+        key=lambda row: row.steady_state_tokens_per_second_per_npu or 0,
+        reverse=True,
+    )
+    ranking_rows = "".join(
+        "<tr>"
+        f"<td>{index}</td>"
+        f"<td>{escape(row.case_id or '')}</td>"
+        f"<td>{escape(row.mode)}</td>"
+        f"<td>{escape(str(row.device_count) if row.device_count is not None else '')}</td>"
+        f"<td>{escape(str(row.train_batch_size) if row.train_batch_size is not None else '')}</td>"
+        f"<td>{row.output_tokens}</td>"
+        f"<td>{escape(_fmt_metric(row.steady_state_tokens_per_second_per_npu))}</td>"
+        f"<td>{escape(_fmt_metric(row.steady_state_tokens_per_second))}</td>"
+        f"<td>{escape(str(row.steady_state_step_count or 0))}</td>"
+        f"<td>{escape(row.status)}</td>"
+        "</tr>"
+        for index, row in enumerate(ranked, start=1)
+    ) or "<tr><td colspan='10'>暂无稳态吞吐数据</td></tr>"
     length_rows = "".join(
         "<tr>"
         f"<td>{item['output_tokens']}</td>"
         f"<td>{escape(_fmt_metric(item.get('success_rate'), percent=True))}</td>"
+        f"<td>{escape(_fmt_metric(item.get('steady_state_tokens_per_second_per_npu')))}</td>"
         f"<td>{escape(_fmt_metric(item.get('tokens_per_second')))}</td>"
         f"<td>{escape(_fmt_metric(item.get('latency_ms')))}</td>"
         "</tr>"
         for item in view.length_summary
-    ) or "<tr><td colspan='4'>暂无长度数据</td></tr>"
+    ) or "<tr><td colspan='5'>暂无长度数据</td></tr>"
     async_rows = "".join(
         "<tr>"
         f"<td>{item['output_tokens']}</td>"
@@ -134,11 +161,12 @@ def _formal_case_sections(bundle: ReportBundle) -> str:
         f"<td>{escape(str(item['mode']))}</td>"
         f"<td>{escape(_fmt_metric(item.get('success_rate'), percent=True))}</td>"
         f"<td>{escape(_fmt_metric(item.get('accuracy'), percent=True))}</td>"
+        f"<td>{escape(_fmt_metric(item.get('steady_state_tokens_per_second_per_npu')))}</td>"
         f"<td>{escape(_fmt_metric(item.get('tokens_per_second')))}</td>"
         f"<td>{escape(_fmt_metric(item.get('latency_ms')))}</td>"
         "</tr>"
         for item in view.mode_summary
-    ) or "<tr><td colspan='5'>暂无模式数据</td></tr>"
+    ) or "<tr><td colspan='6'>暂无模式数据</td></tr>"
     stage_summary_rows = "".join(
         "<tr>"
         f"<td>{escape(str(item['stage']))}</td>"
@@ -178,8 +206,17 @@ def _formal_case_sections(bundle: ReportBundle) -> str:
       <div class="note {'ok' if view.complete_matrix else 'error'}">矩阵状态: {escape(status)}</div>
       <div class="note">{escape(view.training_mode)}</div>
       <table>
-        <thead><tr><th>输入</th><th>输出</th><th>模式</th><th>状态</th><th>Tokens/s</th><th>延迟 ms</th><th>样本</th><th>准确率</th><th>一致性</th><th>错误</th></tr></thead>
+        <thead><tr><th>Case</th><th>输入</th><th>输出</th><th>模式</th><th>NPU</th><th>BS</th><th>状态</th><th>稳态 tokens/s/卡</th><th>稳态步数</th><th>Tokens/s</th><th>延迟 ms</th><th>样本</th><th>训练步</th><th>准确率</th><th>一致性</th><th>错误</th></tr></thead>
         <tbody>{rows}</tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>稳态单卡吞吐排行</h2>
+      <p>口径: 训练前 5 step 中 step 3-5，使用日志中的 global_seqlen/mean 与 perf/time_per_step 或 timing_s/step 计算，并按 NPU 数归一化。</p>
+      <table>
+        <thead><tr><th>#</th><th>Case</th><th>模式</th><th>NPU</th><th>BS</th><th>输出 Tokens</th><th>tokens/s/卡</th><th>tokens/s 总</th><th>步数</th><th>状态</th></tr></thead>
+        <tbody>{ranking_rows}</tbody>
       </table>
     </section>
 
@@ -187,7 +224,7 @@ def _formal_case_sections(bundle: ReportBundle) -> str:
       <section class="section">
         <h2>序列长度影响</h2>
         <table>
-          <thead><tr><th>输出 Tokens</th><th>成功率</th><th>Tokens/s</th><th>延迟 ms</th></tr></thead>
+          <thead><tr><th>输出 Tokens</th><th>成功率</th><th>稳态 tokens/s/卡</th><th>Tokens/s</th><th>延迟 ms</th></tr></thead>
           <tbody>{length_rows}</tbody>
         </table>
       </section>
@@ -205,7 +242,7 @@ def _formal_case_sections(bundle: ReportBundle) -> str:
         <h2>准确率</h2>
         <p>整体: <strong>{escape(_fmt_metric(view.accuracy_overall, percent=True))}</strong></p>
         <table>
-          <thead><tr><th>模式</th><th>成功率</th><th>准确率</th><th>Tokens/s</th><th>延迟 ms</th></tr></thead>
+          <thead><tr><th>模式</th><th>成功率</th><th>准确率</th><th>稳态 tokens/s/卡</th><th>Tokens/s</th><th>延迟 ms</th></tr></thead>
           <tbody>{mode_rows}</tbody>
         </table>
       </section>

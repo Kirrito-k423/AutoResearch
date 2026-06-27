@@ -1,0 +1,4 @@
+interface:
+  display_name: "Wandb Clean Empty Runs"
+  short_description: "Clean W&B runs with no successful step signal"
+  default_prompt: "Use $wandb-clean-empty-runs to dry-run and clean AutoResearch W&B files that lack any successful step signal."

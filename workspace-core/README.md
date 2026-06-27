@@ -15,6 +15,8 @@
 | `result/` | CheckResult schema (ok/warn/fail + data) | `CheckResult(ok, data, message)` |
 | `layout/` | 固定目录约定 `~/.autoresearch/{runs,logs,cache}/` | `Layout.ensure()` |
 | `log/` | 统一日志格式 (人类 + JSON) | `get_logger(name)` |
+| `model-data-assets/` | Codex 标准 skill：模型权重/数据集下载、登记、缓存和远端位置契约 | `config/data.yaml` |
+| `wandb-clean-empty-runs/` | Codex 标准 skill：清理无成功 step 信号的本地/服务端 W&B run | `scripts/clean_wandb_*.py` |
 
 ## 设计原则
 

@@ -1,3 +1,8 @@
+---
+name: data-collection
+description: Collect AutoResearch experiment evidence from minimal or formal runs, including W&B offline sync, remote logs, Prometheus evidence, manifests, config locks, and local-first run bundles. Use when implementing collect commands, run evidence persistence, bundle-local fallback, or formal Verl case data collection.
+---
+
 # Skill 07: data-collection
 
 > 跑最小实验 + wandb sync + log 采集 + prom push。
@@ -16,6 +21,8 @@
 
 - W&B 项目名使用代码栈名，例如 `verl`；run display name 使用 `模型-规模-算法-序列长度-时间-其余配置`，例如 `Qwen35-2B-GRPO-1Kto16K-260622d-145001s-valonly-sync-noignoreeos`。
 - 数据仓必须保存 raw W&B offline runs、`runs.json`、`rebuild-wandb.sh`，保证复制数据仓后能重建同一个本地 W&B Web 视图。
+- 数据准备必须通过 `workspace-core/model-data-assets` 读取模型/数据资产；Qwen3.5-35B-A3B 这类大权重跨多机器运行时，用单一 canonical id 加 `remotes.<server-name>.path` 记录每台机器副本，不创建 per-machine 假模型。
+- 权重/数据集走网络下载前，必须先按 `workspace-core/model-data-assets` 做远端本地发现：优先扫 `/home/data`、`/data*`、`/home/*/data`，再扫常见权重目录；把所有大于 10GB 的候选数据集/权重路径记录到 `config/data.yaml: discovered_large_assets`。
 - Prometheus 采集必须区分两类证据：实时 query 结果和本地 `prom/*.json` evidence。当前只推 `autoresearch_npu_count` 时，必须在 evidence 里显式记录缺少 HBM/Core 利用率。
 - `manifest.json` 里的旧绝对路径不能作为唯一定位方式；报告和恢复脚本应能从数据包本地 `logs/`、`wandb/`、`prom/`、`rows/` 回退加载。
 

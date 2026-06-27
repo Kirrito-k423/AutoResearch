@@ -1,0 +1,4 @@
+interface:
+  display_name: "RMB Cost Report"
+  short_description: "统计 token 缓存命中和人民币 API 成本报告"
+  default_prompt: "Use $rmb-cost-report to generate RMB-Cost.md for the last Codex goal."

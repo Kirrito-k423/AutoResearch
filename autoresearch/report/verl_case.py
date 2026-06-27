@@ -81,6 +81,7 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
 
 def _row_view(row: dict[str, Any]) -> VerlCaseMatrixRowView:
     return VerlCaseMatrixRowView(
+        case_id=str(row.get("case_id") or "") or None,
         input_tokens=int(row.get("input_tokens") or 0),
         output_tokens=int(row.get("output_tokens") or 0),
         mode=str(row.get("inference_mode") or row.get("mode") or ""),
@@ -90,6 +91,14 @@ def _row_view(row: dict[str, Any]) -> VerlCaseMatrixRowView:
         sample_count=int(row.get("sample_count") or 0),
         accuracy=_num(row.get("accuracy")),
         consistency=_num(row.get("consistency")),
+        completed_training_steps=_int_or_none(row.get("completed_training_steps")),
+        target_training_steps=_int_or_none(row.get("target_training_steps")),
+        device_count=_int_or_none(row.get("device_count")),
+        train_batch_size=_int_or_none(row.get("train_batch_size")),
+        steady_state_step_count=_int_or_none(row.get("steady_state_step_count")),
+        steady_state_tokens_per_second=_num(row.get("steady_state_tokens_per_second")),
+        steady_state_tokens_per_second_per_npu=_num(row.get("steady_state_tokens_per_second_per_npu")),
+        steady_state_total_seconds=_num(row.get("steady_state_total_seconds")),
         error=row.get("error"),
     )
 
@@ -269,6 +278,9 @@ def _length_summary(rows: list[VerlCaseMatrixRowView]) -> list[dict[str, Any]]:
                 "output_tokens": output_tokens,
                 "success_rate": _success_rate(chunk),
                 "tokens_per_second": _avg([row.tokens_per_second for row in chunk]),
+                "steady_state_tokens_per_second_per_npu": _avg(
+                    [row.steady_state_tokens_per_second_per_npu for row in chunk]
+                ),
                 "latency_ms": _avg([row.latency_ms for row in chunk]),
             }
         )
@@ -285,6 +297,9 @@ def _mode_summary(rows: list[VerlCaseMatrixRowView]) -> list[dict[str, Any]]:
                 "success_rate": _success_rate(chunk),
                 "accuracy": _avg([row.accuracy for row in chunk]),
                 "tokens_per_second": _avg([row.tokens_per_second for row in chunk]),
+                "steady_state_tokens_per_second_per_npu": _avg(
+                    [row.steady_state_tokens_per_second_per_npu for row in chunk]
+                ),
                 "latency_ms": _avg([row.latency_ms for row in chunk]),
             }
         )
@@ -335,5 +350,14 @@ def _num(value: Any) -> float | None:
         return None
     try:
         return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _int_or_none(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
     except (TypeError, ValueError):
         return None

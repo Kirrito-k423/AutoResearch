@@ -142,6 +142,14 @@ verl_case:
   # fsdp is the portable default for the official Verl image. Use fsdp2 or
   # veomni only after the staged Verl repo/image confirms backend support.
   execution_profile: fsdp
+  # Set true for FSDP2 CPUOffloadPolicy when actor optimizer state must stay off NPU.
+  fsdp2_offload_policy: null
+  # Null keeps the adapter default. Set a small integer to cap vLLM rollout
+  # concurrency during memory-fragmentation probes.
+  rollout_max_num_seqs: null
+  # Null keeps the adapter default true. Set false to test avoiding repeated
+  # vLLM sleep/wake around rollout weight updates.
+  rollout_free_cache_engine: null
   # Null lets the adapter choose compatibility defaults. For Qwen3.5/FSDP the
   # runner disables both by default to avoid 3D position_ids microbatch splits.
   use_remove_padding: null
