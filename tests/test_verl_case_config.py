@@ -41,6 +41,8 @@ def test_training_tuning_defaults_start_single_card_bs1():
     assert config.execution_profile == "fsdp"
     assert config.use_remove_padding is None
     assert config.use_dynamic_bsz is None
+    assert config.rollout_max_num_seqs is None
+    assert config.rollout_free_cache_engine is None
     assert config.single_card_start_batch_size == 1
     assert config.single_card_devices == [0]
     assert config.single_node_devices == list(range(8))
@@ -98,7 +100,7 @@ def test_training_tuning_matrix_uses_configured_device_count_in_case_id():
     assert [row.ppo_mini_batch_size for row in rows] == [8, 16]
 
 
-def test_training_tuning_matrix_allows_explicit_full_node_batch_below_device_count():
+def test_training_tuning_matrix_rejects_full_node_batch_below_device_count():
     config = case_config.VerlCaseConfig(
         single_card_devices=list(range(8)),
         single_card_start_batch_size=4,
@@ -110,13 +112,7 @@ def test_training_tuning_matrix_allows_explicit_full_node_batch_below_device_cou
 
     rows = case_config.build_training_tuning_matrix(config)
 
-    assert [row.case_id for row in rows] == [
-        "train-8npu-sync-bs4-mini4-micro1-1024-1024"
-    ]
-    assert rows[0].device_count == 8
-    assert rows[0].visible_devices == list(range(8))
-    assert rows[0].train_batch_size == 4
-    assert rows[0].ppo_mini_batch_size == 4
+    assert rows == []
 
 
 def test_immutable_config_snapshot_has_second_timestamp(tmp_path):

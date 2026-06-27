@@ -22,6 +22,9 @@ def test_from_yaml_minimal():
     assert cfg.verl_case.rollout_max_model_len_floor == 24576
     assert cfg.verl_case.ppo_max_token_len_per_gpu_floor == 24576
     assert cfg.verl_case.rollout_update_weights_bucket_megabytes == 2048
+    assert cfg.verl_case.rollout_max_num_seqs is None
+    assert cfg.verl_case.rollout_free_cache_engine is None
+    assert cfg.verl_case.fsdp2_offload_policy is None
     assert cfg.verl_case.use_remove_padding is None
     assert cfg.verl_case.use_dynamic_bsz is None
 
@@ -60,6 +63,9 @@ verl_case:
   rollout_max_model_len_floor: 0
   ppo_max_token_len_per_gpu_floor: 4096
   rollout_update_weights_bucket_megabytes: 512
+  rollout_max_num_seqs: 4
+  rollout_free_cache_engine: false
+  fsdp2_offload_policy: true
   use_remove_padding: false
   use_dynamic_bsz: false
   dependency_repo_paths:
@@ -76,6 +82,9 @@ verl_case:
     assert cfg.verl_case.rollout_max_model_len_floor == 0
     assert cfg.verl_case.ppo_max_token_len_per_gpu_floor == 4096
     assert cfg.verl_case.rollout_update_weights_bucket_megabytes == 512
+    assert cfg.verl_case.rollout_max_num_seqs == 4
+    assert cfg.verl_case.rollout_free_cache_engine is False
+    assert cfg.verl_case.fsdp2_offload_policy is True
     assert cfg.verl_case.use_remove_padding is False
     assert cfg.verl_case.use_dynamic_bsz is False
     assert cfg.verl_case.dependency_repo_paths["verl"] == "/home/t00906153/verl"

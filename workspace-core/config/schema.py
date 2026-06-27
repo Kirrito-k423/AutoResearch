@@ -217,6 +217,21 @@ class VerlCaseConfig(BaseModel):
             "FSDP-to-rollout weight sync OOMs on the bucket allocation."
         ),
     )
+    rollout_max_num_seqs: int | None = Field(
+        default=None,
+        ge=1,
+        description=(
+            "Optional vLLM rollout.max_num_seqs override. None keeps the adapter "
+            "default of max(1, val_batch_size, train_batch_size)."
+        ),
+    )
+    rollout_free_cache_engine: bool | None = Field(
+        default=None,
+        description=(
+            "Optional vLLM rollout.free_cache_engine override. None keeps the "
+            "adapter default true; set false to test avoiding repeated sleep/wake."
+        ),
+    )
     cleanup_stale_verl_processes: bool = Field(
         default=True,
         description=(
@@ -235,6 +250,13 @@ class VerlCaseConfig(BaseModel):
         description=(
             "Formal Verl backend profile. fsdp is the portable default; fsdp2 "
             "and veomni must be selected explicitly after backend validation."
+        ),
+    )
+    fsdp2_offload_policy: bool | None = Field(
+        default=None,
+        description=(
+            "Optional FSDP2 fsdp_config.offload_policy override. Set true to "
+            "activate FSDP2 CPUOffloadPolicy for param/grad/optimizer training."
         ),
     )
     use_remove_padding: bool | None = Field(

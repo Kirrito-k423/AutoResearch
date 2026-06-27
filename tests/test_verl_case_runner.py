@@ -1819,11 +1819,15 @@ def test_row_command_builds_formal_verl_script():
     assert "trainer.project_name={wandb_project}" in command
     assert "trainer.experiment_name={wandb_run_name}" in command
     assert "wandb_run_name = _wandb_run_name(case, row)" in command
-    assert "rollout_max_num_seqs = max(1, val_batch_size, train_batch_size)" in command
+    assert "configured_rollout_max_num_seqs = case.get('rollout_max_num_seqs')" in script
+    assert "else max(1, val_batch_size, train_batch_size)" in script
+    assert "rollout_max_num_seqs = max(1, rollout_max_num_seqs)" in script
     assert "actor_rollout_ref.rollout.max_num_seqs={rollout_max_num_seqs}" in command
     assert "data.return_raw_chat=True" in command
-    assert "ray_tmp_root = Path(" in command
-    assert "/tmp" in command
+    assert "ray_tmp_target = output_root / 'ray_tmp'" in script
+    assert "ray_tmp_root = Path('/tmp') / f'ar-{ray_run_id[-6:]}-{ray_row_id[-6:]}'" in script
+    assert "ray_tmp_root.symlink_to(ray_tmp_target, target_is_directory=True)" in script
+    assert "'RAY_TMPDIR': str(ray_tmp_root)" in script
     assert "rollout_max_model_len_floor = int(case.get('rollout_max_model_len_floor', 24576))" in async_script
     assert "ppo_max_token_len_per_gpu_floor = int(case.get('ppo_max_token_len_per_gpu_floor', 24576))" in async_script
     assert "ppo_max_token_len_per_gpu = max(max_tokens, ppo_max_token_len_per_gpu_floor)" in async_script
@@ -1878,6 +1882,8 @@ def test_row_command_builds_real_training_three_step_script():
     assert "qwen35_compat = PROFILE == 'fsdp' and _is_qwen35_model(case)" in command
     assert "use_remove_padding = _runtime_bool('use_remove_padding', PROFILE != 'veomni' and not qwen35_compat)" in command
     assert "use_dynamic_bsz = _runtime_bool('use_dynamic_bsz', PROFILE != 'veomni' and not qwen35_compat)" in command
+    assert "fsdp2_offload_policy = _runtime_bool('fsdp2_offload_policy', False)" in command
+    assert "rollout_free_cache_engine = _runtime_bool('rollout_free_cache_engine', True)" in command
     assert "rollout_max_model_len_floor = int(case.get('rollout_max_model_len_floor', 24576))" in command
     assert "ppo_max_token_len_per_gpu_floor = int(case.get('ppo_max_token_len_per_gpu_floor', 24576))" in command
     assert "ppo_max_token_len_per_gpu = max(max_tokens, ppo_max_token_len_per_gpu_floor)" in command
@@ -1885,6 +1891,7 @@ def test_row_command_builds_real_training_three_step_script():
     assert "rollout_gpu_memory_utilization = float(case.get('rollout_gpu_memory_utilization', 0.5))" in command
     assert "rollout_update_weights_bucket_megabytes = int(case.get('rollout_update_weights_bucket_megabytes', 2048))" in command
     assert "actor_rollout_ref.rollout.gpu_memory_utilization={rollout_gpu_memory_utilization}" in command
+    assert "actor_rollout_ref.rollout.free_cache_engine={str(rollout_free_cache_engine)}" in command
     assert (
         "actor_rollout_ref.rollout.checkpoint_engine.update_weights_bucket_megabytes="
         "{rollout_update_weights_bucket_megabytes}"
@@ -1898,6 +1905,14 @@ def test_row_command_builds_real_training_three_step_script():
     assert "total training steps" in command
     assert "resource_busy" in command
     assert "vllm_kv_cache_memory" in command
+    assert "to serve at least one request" in command
+    assert "ray_socket_path_length" in command
+    assert "disk_space" in command
+    assert "vllm_mamba_block_size" in command
+    assert "vllm_engine_dead_aicpu_hccl" in command
+    assert "vllm_camem_update_weights_oom" in command
+    assert "vllm_update_weights_shape_mismatch" in command
+    assert "start out of range" in command
     assert "_telemetry_info_device_id" in command
     assert "_telemetry_info_sample" in command
     assert "incomplete_training_steps" in command
@@ -1950,7 +1965,7 @@ def test_row_command_defaults_to_fsdp_profile_for_a3_qwen35():
 
 
 def test_row_command_uses_explicit_fsdp2_profile_for_a3_qwen35():
-    config = case_config.VerlCaseConfig(execution_profile="fsdp2")
+    config = case_config.VerlCaseConfig(execution_profile="fsdp2", fsdp2_offload_policy=True)
     run_config = case_config.VerlCaseRunConfig(
         run_id="run123",
         created_at=datetime(2026, 6, 16, 8, 0, tzinfo=timezone.utc),
@@ -1965,6 +1980,7 @@ def test_row_command_uses_explicit_fsdp2_profile_for_a3_qwen35():
     assert case_runner._execution_profile(run_config) == "fsdp2"
     assert "PROFILE = 'fsdp2'" in script
     assert "actor_rollout_ref.actor.strategy={fsdp_strategy}" in script
+    assert "actor_rollout_ref.actor.fsdp_config.offload_policy=True" in command
     assert "trainer.logger=[console,wandb]" in command
     assert "row_timeout_seconds" in command
     assert "VERL_CASE_RESULT=" in command

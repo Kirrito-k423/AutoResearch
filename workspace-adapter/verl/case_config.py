@@ -58,9 +58,12 @@ class VerlCaseConfig(BaseModel):
     rollout_max_model_len_floor: int = Field(default=24576, ge=0)
     ppo_max_token_len_per_gpu_floor: int = Field(default=24576, ge=0)
     rollout_update_weights_bucket_megabytes: int = Field(default=2048, ge=1)
+    rollout_max_num_seqs: int | None = Field(default=None, ge=1)
+    rollout_free_cache_engine: bool | None = None
     cleanup_stale_verl_processes: bool = True
     row_timeout_seconds: int = 1800
     execution_profile: ExecutionProfile = "fsdp"
+    fsdp2_offload_policy: bool | None = None
     use_remove_padding: bool | None = None
     use_dynamic_bsz: bool | None = None
 
@@ -304,9 +307,7 @@ def _valid_ppo_mini_batch_sizes(
     candidates = [
         value
         for value in _unique_positive(values)
-        if value <= train_batch_size
-        and train_batch_size % value == 0
-        and (value % device_count == 0 or value == train_batch_size)
+        if value <= train_batch_size and value % device_count == 0
     ]
     if candidates:
         return candidates
