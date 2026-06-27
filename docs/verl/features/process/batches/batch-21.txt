@@ -1,0 +1,15 @@
+distillation.teacher_models.gsm8k.inference.name
+exp_name
+experiment_name
+gsm8k_test_path
+gsm8k_train_path
+math_test_path
+math_train_path
+output_path
+project_name
+reward.custom_reward_function.name
+reward.custom_reward_function.path
+save_path
+test_path
+train_path
+trainer.default_hdfs_dir
