@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "AutoResearch · Evidence-driven Research Architecture",
+    "subtitle": "Local control plane → isolated training execution → evidence lake → independent verification → durable learning",
+    "output": "diagram/autoresearch-loop.architecture.html",
+    "viewBox": [1360, 860]
+  },
+  "components": [
+    { "id": "human", "type": "external", "label": "Researcher", "sublabel": "goal · risk · approval", "pos": [34, 128], "size": [150, 68], "tag": "final authority" },
+    { "id": "scheduler", "type": "cloud", "label": "Loop Trigger", "sublabel": "manual · daily · run-complete", "pos": [250, 128], "size": [160, 68], "tag": "L1 report-only" },
+    { "id": "triage", "type": "backend", "label": "Triage + Hypothesis", "sublabel": "priority · failure layer · next test", "pos": [460, 128], "size": [170, 68] },
+    { "id": "gate", "type": "security", "label": "Policy / Human Gate", "sublabel": "scope · secrets · remote risk", "pos": [680, 128], "size": [170, 68], "tag": "deny by default" },
+    { "id": "orchestrator", "type": "backend", "label": "AutoResearch Orchestrator", "sublabel": "CLI · Archon · progress protocol", "pos": [900, 128], "size": [180, 68] },
+    { "id": "github", "type": "external", "label": "Git + GitHub", "sublabel": "provenance · worktree · PR", "pos": [1145, 128], "size": [160, 68] },
+
+    { "id": "core", "type": "backend", "label": "workspace-core", "sublabel": "config · SSH · secrets · lifecycle", "pos": [460, 330], "size": [170, 68] },
+    { "id": "adapter", "type": "backend", "label": "workspace-adapter", "sublabel": "verl / veomni · case runner", "pos": [680, 330], "size": [170, 68] },
+    { "id": "remote", "type": "cloud", "label": "Remote Training Runtime", "sublabel": "NPU/GPU · container · verl", "pos": [900, 330], "size": [180, 68], "tag": "stateless target" },
+    { "id": "services", "type": "cloud", "label": "Local Service Stack", "sublabel": "wandb · Prometheus · Grafana", "pos": [1145, 330], "size": [160, 68] },
+
+    { "id": "state", "type": "database", "label": "Loop State", "sublabel": "STATE.md · run log · budget", "pos": [34, 548], "size": [150, 68], "tag": "durable memory" },
+    { "id": "decision", "type": "backend", "label": "Keep / Reject / Escalate", "sublabel": "bounded next action", "pos": [250, 548], "size": [160, 68] },
+    { "id": "verifier", "type": "security", "label": "Independent Verifier", "sublabel": "tests · guardrails · evidence", "pos": [460, 548], "size": [170, 68], "tag": "maker ≠ checker" },
+    { "id": "datalake", "type": "database", "label": "Local Evidence Lake", "sublabel": "manifest · logs · metrics · artifacts", "pos": [680, 548], "size": [170, 68] },
+    { "id": "collect", "type": "messagebus", "label": "Collect + Normalize", "sublabel": "wandb sync · prom push · SFTP", "pos": [900, 548], "size": [180, 68] },
+    { "id": "report", "type": "frontend", "label": "Reports + Dashboards", "sublabel": "HTML · wandb · Grafana", "pos": [1145, 548], "size": [160, 68] }
+  ],
+  "boundaries": [
+    { "kind": "security-group", "label": "CONTROL PLANE · judgment, policy, orchestration", "wraps": ["scheduler", "triage", "gate", "orchestrator"] },
+    { "kind": "region", "label": "EXECUTION PLANE · reusable core → training adapter → remote runtime", "wraps": ["core", "adapter", "remote"] },
+    { "kind": "region", "label": "EVIDENCE PLANE · collect → persist → verify → decide → remember", "wraps": ["state", "decision", "verifier", "datalake", "collect"] }
+  ],
+  "connections": [
+    { "from": "human", "to": "scheduler", "variant": "emphasis" },
+    { "from": "scheduler", "to": "triage" },
+    { "from": "triage", "to": "gate", "variant": "security" },
+    { "from": "gate", "to": "orchestrator", "variant": "emphasis" },
+    { "from": "orchestrator", "to": "github", "variant": "dashed" },
+    { "from": "orchestrator", "to": "core", "fromSide": "bottom", "toSide": "top", "route": "orthogonal-v" },
+    { "from": "core", "to": "adapter" },
+    { "from": "adapter", "to": "remote", "variant": "emphasis" },
+    { "from": "remote", "to": "services", "variant": "dashed" },
+    { "from": "remote", "to": "collect", "label": "run output", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "labelAt": [990, 470] },
+    { "from": "collect", "to": "datalake" },
+    { "from": "datalake", "to": "verifier", "variant": "emphasis" },
+    { "from": "verifier", "to": "decision", "variant": "security" },
+    { "from": "decision", "to": "state" },
+    { "from": "state", "to": "scheduler", "label": "next run context", "variant": "dashed", "fromSide": "top", "toSide": "bottom", "via": [[109, 252], [330, 252]], "labelAt": [218, 244] },
+    { "from": "datalake", "to": "report", "label": "read-only views", "variant": "dashed", "fromSide": "bottom", "toSide": "bottom", "via": [[765, 680], [1225, 680]], "labelAt": [995, 695] },
+    { "from": "services", "to": "report", "fromSide": "bottom", "toSide": "top" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Main path",
+      "items": [
+        "Goal → triage → policy gate → orchestrate → run",
+        "Collect → persist → verify → decide → update state"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Safety",
+      "items": [
+        "Week 1 is report-only; remote execution needs approval",
+        "Three attempts or repeated failure signature triggers escalation"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Learning asset",
+      "items": [
+        "Every run leaves immutable provenance and evidence",
+        "Only independently verified conclusions enter durable state"
+      ]
+    }
+  ]
+}
