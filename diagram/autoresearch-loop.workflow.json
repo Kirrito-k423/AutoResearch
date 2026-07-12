@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "AutoResearch · Bounded Experiment Learning Loop",
+    "subtitle": "Loop Engineering L1 → L2: observe, isolate, execute, verify, remember, or escalate",
+    "output": "diagram/autoresearch-loop.workflow.html",
+    "viewBox": [720, 980]
+  },
+  "lanes": [
+    { "id": "control", "label": "Automation + Triage" },
+    { "id": "human", "label": "Human Policy Gate" },
+    { "id": "maker", "label": "Isolated Maker / Experiment" },
+    { "id": "checker", "label": "Independent Verifier" },
+    { "id": "memory", "label": "Evidence + Durable State" },
+    { "id": "exception", "label": "Stop / Escalation", "variant": "exception" }
+  ],
+  "phases": [
+    { "id": "observe", "label": "Observe + choose", "fromCol": 0, "toCol": 1 },
+    { "id": "act", "label": "Gate + execute", "fromCol": 2, "toCol": 4, "variant": "emphasis" },
+    { "id": "learn", "label": "Verify + remember", "fromCol": 5, "toCol": 5, "variant": "dashed" }
+  ],
+  "groups": [
+    { "id": "isolated_attempt", "label": "one hypothesis · one worktree · max 3 attempts", "lane": "maker", "fromCol": 2, "toCol": 4, "variant": "emphasis" },
+    { "id": "stop_path", "label": "budget, policy, ambiguity, or no progress", "lane": "exception", "fromCol": 4, "toCol": 5, "variant": "security" }
+  ],
+  "mainPath": ["trigger", "triage", "gate", "worktree", "experiment", "verify", "state"],
+  "nodes": [
+    { "id": "trigger", "lane": "control", "col": 0, "type": "cloud", "label": "Trigger", "sublabel": "manual / run complete", "width": 88 },
+    { "id": "triage", "lane": "control", "col": 1, "type": "backend", "label": "Triage", "sublabel": "rank + hypothesis", "tag": "read-only first" },
+    { "id": "gate", "lane": "human", "col": 2, "type": "security", "label": "Scope Gate", "sublabel": "risk + authority", "tag": "human approval" },
+    { "id": "worktree", "lane": "maker", "col": 2, "type": "messagebus", "label": "Worktree", "sublabel": "isolated change", "width": 84 },
+    { "id": "experiment", "lane": "maker", "col": 4, "type": "backend", "label": "Experiment", "sublabel": "fixed budget", "width": 92 },
+    { "id": "verify", "lane": "checker", "col": 5, "type": "security", "label": "Verify", "sublabel": "tests + evidence", "tag": "default REJECT" },
+    { "id": "state", "lane": "memory", "col": 5, "type": "database", "label": "Record", "sublabel": "learning + verdict", "tag": "STATE + run log" },
+    { "id": "evidence", "lane": "memory", "col": 3, "type": "database", "label": "Evidence Bundle", "sublabel": "manifest + metrics", "width": 104 },
+    { "id": "escalate", "lane": "exception", "col": 4, "type": "external", "label": "Escalate", "sublabel": "context + options", "tag": "stop safely" }
+  ],
+  "edges": [
+    { "from": "trigger", "to": "triage" },
+    { "from": "triage", "to": "gate", "variant": "security", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "from": "gate", "to": "worktree", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "from": "worktree", "to": "experiment" },
+    { "from": "experiment", "to": "verify", "label": "candidate + result", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelSegment": 1 },
+    { "from": "experiment", "to": "evidence", "label": "persist facts", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelSegment": 1 },
+    { "from": "evidence", "to": "verify", "variant": "dashed", "fromSide": "top", "toSide": "left", "route": "up-channel" },
+    { "from": "verify", "to": "state", "label": "APPROVE / REJECT", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelAt": [625, 539] },
+    { "from": "verify", "to": "escalate", "variant": "security", "role": "error", "fromSide": "right", "toSide": "right", "route": "outside-right" },
+    { "from": "state", "to": "trigger", "variant": "dashed", "role": "return", "fromSide": "top", "toSide": "left", "via": [[625, 560], [24, 560], [24, 111]] },
+    { "from": "escalate", "to": "state", "variant": "security", "role": "return", "fromSide": "top", "toSide": "bottom", "route": "up-channel" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "L1 · start here",
+      "items": [
+        "Triage and report only; no source or remote mutation",
+        "Measure signal quality before granting more authority"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "L2 · assisted",
+      "items": [
+        "One low-risk fix per isolated worktree",
+        "Verifier evidence plus human approval before PR"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Circuit breaker",
+      "items": [
+        "Stop at 3 attempts, repeated signature, or budget cap",
+        "Never auto-merge; risky paths always escalate"
+      ]
+    }
+  ]
+}

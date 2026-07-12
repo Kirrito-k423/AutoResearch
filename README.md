@@ -116,7 +116,12 @@ autoresearch check all --server A2-AK-225 --stack-lib verl
 
 ## 架构
 
-4 列架构图见 [diagram/autoresearch_arch.svg](diagram/autoresearch_arch.svg)。
+[![AutoResearch evidence-driven architecture](diagram/autoresearch-loop.architecture.preview.png)](diagram/autoresearch-loop.architecture.html)
+
+- [交互式架构图](diagram/autoresearch-loop.architecture.html) — 明暗主题，可导出 PNG / JPEG / WebP / SVG；
+- [交互式实验学习循环](diagram/autoresearch-loop.workflow.html) — L1 report-only 到 L2 assisted 的运行时闭环；
+- [Loop Engineering 中文说明](docs/LOOP_ENGINEERING.md) — 原理、分级、命令与本仓落地方式；
+- [旧版四列架构图](diagram/autoresearch_arch.svg) — 保留用于设计演进对照。
 
 ## 8 步最小循环
 
@@ -126,6 +131,7 @@ autoresearch check all --server A2-AK-225 --stack-lib verl
 
 - [AGENTS.md](AGENTS.md) — AI 协作者指南（必读）
 - [docs/VISUALIZATION.md](docs/VISUALIZATION.md) — 本地 Web 界面、端口、账号与常用入口
+- [docs/LOOP_ENGINEERING.md](docs/LOOP_ENGINEERING.md) — 有状态实验循环、人工门、预算与熔断
 - [services/README.md](services/README.md) — 本地服务栈启动与端口说明
 - [.planning/PROJECT.md](.planning/PROJECT.md) — 项目哲学 / 约束 / 关键决策
 - [.planning/ROADMAP.md](.planning/ROADMAP.md) — 14 阶段路线图

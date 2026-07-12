@@ -5,6 +5,10 @@
 > 详细路线见 [.planning/ROADMAP.md](.planning/ROADMAP.md)。本文档描述**最终态 (M1 14 阶段完成时)**，
 > 当前进度见 [.planning/STATE.md](.planning/STATE.md)。
 
+新版组件边界与证据闭环见 [交互式 Archify 架构图](diagram/autoresearch-loop.architecture.html)，
+运行时状态推进见 [实验学习循环图](diagram/autoresearch-loop.workflow.html)。循环的权限、预算、状态与
+熔断契约分别记录在 [LOOP.md](LOOP.md) 和 [Loop Engineering 说明](docs/LOOP_ENGINEERING.md)。
+
 ## 顶层结构
 
 ```
